@@ -187,4 +187,11 @@ Derive the display reference from structured fields:
 
 ## Lessons
 
+- Bolls.life /get-verses/ may return verse objects with undefined text
+  for non-existent verse numbers rather than omitting them entirely —
+  always guard against undefined before calling string methods on verse text
+- Bolls.life /get-verses/ returns an array of arrays (one per request
+  object) not a flat array — always call .flat() after parsing the
+  JSON response
+
 _(Add entries here any time Claude makes a mistake so it doesn't repeat)_
