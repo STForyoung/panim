@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Panim is a React Native mobile app for meditating on scripture. Users create personal Bible passage snippets with reflections, organize them by topic, and receive them as scheduled push notifications throughout the day.
 
 ## Commands
+
 ```bash
 npm install          # Install dependencies
 npx expo start       # Start dev server
@@ -27,6 +28,7 @@ npm run lint         # Run ESLint
 Routing is file-based via Expo Router. The `app/` directory defines screens and navigation. Path alias `@/*` maps to the repo root.
 
 ### File Structure
+
 ```
 app/                  # Screens (one file per route)
 src/
@@ -36,6 +38,7 @@ src/
 ```
 
 ### Data Model
+
 ```typescript
 Snippet {
   id: string              // UUID
@@ -72,9 +75,18 @@ NotificationSchedule {
 }
 ```
 
+## Delete Behavior
+
+- Snippets: permanently deleted with confirmation prompt
+- Topics: permanently deleted with confirmation prompt
+- Deleting a topic does not delete its snippets — they become unorganized
+- Warn user before deleting a topic that contains snippets
+- ON DELETE CASCADE handles snippet_topics cleanup automatically
+
 ### Reference Display Logic
 
 Derive the display reference from structured fields:
+
 - Single verse: `${book} ${chapterStart}:${verseStart}`
 - Same chapter range: `${book} ${chapterStart}:${verseStart}-${verseEnd}`
 - Cross-chapter range: `${book} ${chapterStart}:${verseStart}-${chapterEnd}:${verseEnd}`

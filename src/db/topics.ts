@@ -1,0 +1,35 @@
+import { type SQLiteDatabase } from 'expo-sqlite';
+
+export type Topic = {
+  id: string;
+  name: string;
+  type: 'conceptual' | 'directed';
+  createdAt: number;
+};
+
+export async function createTopic(
+  db: SQLiteDatabase,
+  topic: Omit<Topic, 'id' | 'createdAt'>
+): Promise<void> {
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  await db.runAsync(
+    'INSERT INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)',
+    id,
+    topic.name,
+    topic.type,
+    now
+  );
+}
+
+export async function getTopic(db: SQLiteDatabase, id: string): Promise<Topic | null> {
+  return db.getFirstAsync<Topic>('SELECT * FROM topics WHERE id = ?', id);
+}
+
+export async function getAllTopics(db: SQLiteDatabase): Promise<Topic[]> {
+  return db.getAllAsync<Topic>('SELECT * FROM topics ORDER BY createdAt DESC');
+}
+
+export async function deleteTopic(db: SQLiteDatabase, id: string): Promise<void> {
+  await db.runAsync('DELETE FROM topics WHERE id = ?', id);
+}
