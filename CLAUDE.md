@@ -103,13 +103,51 @@ Derive the display reference from structured fields:
 
 ## Bible API
 
-- Provider: bible-api.com (free, no auth required)
-- Base URL: `https://bible-api.com/`
-- Example: `https://bible-api.com/1+corinthians+3:5-10`
-- Passage is fetched once on snippet creation and cached in SQLite
-- App must work offline after initial fetch — never re-fetch if passage already exists
-- Book names must be standardized full names (e.g. "1 Corinthians" not "1 Cor")
-- If the API call fails, prompt the user to retry — do not save the snippet without a passage
+### Provider
+
+- **Current (MVP):** Bolls.life (free, no API key required)
+- **Planned migration path:** API.Bible (American Bible Society) → self-hosted/licensed text at scale
+
+### Supported Translations
+
+| Code | Full Name                   |
+| ---- | --------------------------- |
+| NKJV | New King James Version      |
+| NIV  | New International Version   |
+| ESV  | English Standard Version    |
+| NASB | New American Standard Bible |
+| NLT  | New Living Translation      |
+| KJV  | King James Version          |
+
+- Default translation: NKJV
+- Translation is a global user preference stored in `notification_schedule`
+
+### Architecture
+
+- The Bible API is always accessed through `src/services/bibleService.ts` — never called directly from screens or components
+- This abstraction means the underlying provider can be swapped without touching any other file
+- Passage is fetched **once** at snippet creation time and cached permanently in SQLite
+- Never re-fetch a passage that already exists in the database
+- App must be fully functional offline after the initial fetch
+
+### API Details (Bolls.life)
+
+- Base URL: `https://bolls.life`
+- Books are referenced by number (e.g. Genesis = 1, John = 43)
+- Verses are fetched individually and joined into a passage string
+- Use the POST `/get-verses/` endpoint for fetching verse ranges
+
+### Error Handling
+
+- If the API call fails on snippet creation, prompt the user to retry
+- Do not save a snippet without a successfully fetched passage
+- Show a clear error message — do not fail silently
+
+### Translation Change Behavior (MVP)
+
+- Changing translation applies to new snippets only
+- Existing cached passages are not re-fetched when translation changes
+- Post-MVP: offer user the option to re-fetch all passages in the new translation
 
 ## Notifications
 
@@ -148,5 +186,12 @@ Derive the display reference from structured fields:
 - Social features
 
 ## Lessons
+
+- Bolls.life /get-verses/ may return verse objects with undefined text
+  for non-existent verse numbers rather than omitting them entirely —
+  always guard against undefined before calling string methods on verse text
+- Bolls.life /get-verses/ returns an array of arrays (one per request
+  object) not a flat array — always call .flat() after parsing the
+  JSON response
 
 _(Add entries here any time Claude makes a mistake so it doesn't repeat)_
