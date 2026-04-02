@@ -186,12 +186,6 @@ export default function CreateSnippetScreen() {
       setShowRetry(false);
       return;
     }
-    if (assignedTopics.length === 0) {
-      setError("Assign at least one topic before saving.");
-      setShowRetry(false);
-      return;
-    }
-
     setError(null);
     setShowRetry(false);
     setIsSaving(true);
