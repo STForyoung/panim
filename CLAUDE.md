@@ -32,21 +32,25 @@ Routing is file-based via Expo Router using a tab-based layout.
 ```
 app/
   (tabs)/
-    index.tsx          # Home — current/next snippet in rotation
-    library.tsx        # Snippet list + topic filtering
-    settings.tsx       # Translation preference + notification schedule
+    index.tsx              # Home — current/next snippet in rotation
+    library.tsx            # Library overview — 3 entry points
+    settings.tsx           # Translation preference + notification schedule
+  topic-kind/
+    conceptual.tsx         # All conceptual topics list
+    directed.tsx           # All directed topics list
+    unassigned.tsx         # Snippets with no topic assigned
   snippet/
-    create.tsx         # Create snippet (full-screen modal)
-    [id].tsx           # Snippet detail
+    create.tsx             # Create snippet (full-screen)
+    [id].tsx               # Snippet detail
   topic/
-    [id].tsx           # Topic detail — snippets within a topic
-  _layout.tsx          # Root layout with SQLiteProvider
+    [id].tsx               # Individual topic detail
+  _layout.tsx              # Root layout with SQLiteProvider
 src/
-  components/          # Reusable UI components
-  db/                  # SQLite setup and queries
-  services/            # External service abstractions
-    bibleService.ts    # Bible API service layer
-  notifications/       # Scheduling logic
+  components/              # Reusable UI components
+  db/                      # SQLite setup and queries
+  services/
+    bibleService.ts        # Bible API service layer
+  notifications/           # Scheduling logic
 ```
 
 ### Data Model
@@ -98,25 +102,44 @@ Derive the display reference from structured fields:
 
 ### Navigation Structure
 
-Three main tabs:
+**Tab 1 — Home**
+A welcoming, contemplative screen. Shows the current/next snippet in the notification rotation. One snippet at a time, not a list.
 
-- **Home** — welcoming, contemplative. Shows the current/next snippet in the notification rotation. Not a list — one snippet at a time.
-- **Library** — full snippet list, browsable and filterable by topic. Create new snippet from here.
-- **Settings** — translation preference, notification schedule configuration.
+**Tab 2 — Library**
+Overview screen with three entry points:
 
-Snippet detail and topic detail are full-screen routes outside the tab bar.
+- Conceptual Topics → app/topic-kind/conceptual.tsx
+- Directed Topics → app/topic-kind/directed.tsx
+- Unassigned Snippets → app/topic-kind/unassigned.tsx
 
-### Screens & Build Order
+**Topic Kind screens** show a list of topics of that kind, each showing name and snippet count. Tapping a topic navigates to its detail screen.
 
-1. Tab navigation setup
-2. Topic List + Create Topic (within Library tab)
-3. Create Snippet (updated with topic assignment)
-4. Snippet List (Library tab)
-5. Snippet Detail
-6. Topic Detail
-7. Home tab
-8. Settings
-9. Onboarding
+**Topic Detail** (app/topic/[id].tsx) shows all snippets belonging to that topic. Each snippet shows reference, truncated passage, truncated reflection.
+
+**Unassigned** (app/topic-kind/unassigned.tsx) shows all snippets not belonging to any topic. Same snippet item format as Topic Detail.
+
+**Tab 3 — Settings**
+Translation preference and notification schedule configuration.
+
+**Outside tabs:**
+
+- Snippet create and detail are full-screen routes
+- Topic detail is a full-screen route
+
+### Screen & Build Order
+
+1. ✅ Tab navigation setup
+2. ✅ Topic List + Create Topic (Library tab — now being restructured)
+3. ✅ Create Snippet with topic assignment
+4. Library overview screen (3 entry points)
+5. Conceptual Topics screen
+6. Directed Topics screen
+7. Unassigned Snippets screen
+8. Snippet Detail
+9. Topic Detail
+10. Home tab
+11. Settings
+12. Onboarding
 
 ## Bible API
 
