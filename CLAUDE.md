@@ -25,16 +25,28 @@ npm run lint         # Run ESLint
 
 ## Architecture
 
-Routing is file-based via Expo Router. The `app/` directory defines screens and navigation. Path alias `@/*` maps to the repo root.
+Routing is file-based via Expo Router using a tab-based layout.
 
 ### File Structure
 
 ```
-app/                  # Screens (one file per route)
+app/
+  (tabs)/
+    index.tsx          # Home — current/next snippet in rotation
+    library.tsx        # Snippet list + topic filtering
+    settings.tsx       # Translation preference + notification schedule
+  snippet/
+    create.tsx         # Create snippet (full-screen modal)
+    [id].tsx           # Snippet detail
+  topic/
+    [id].tsx           # Topic detail — snippets within a topic
+  _layout.tsx          # Root layout with SQLiteProvider
 src/
-  components/         # Reusable UI components
-  db/                 # SQLite setup and queries
-  notifications/      # Scheduling logic
+  components/          # Reusable UI components
+  db/                  # SQLite setup and queries
+  services/            # External service abstractions
+    bibleService.ts    # Bible API service layer
+  notifications/       # Scheduling logic
 ```
 
 ### Data Model
@@ -72,16 +84,9 @@ NotificationSchedule {
   activeTopic: string | null           // topicId, used when mode is "topic"
   selectionOrder: "random" | "sequential"  // how to pick within pool
   lastSentIndex: number                // used when selectionOrder is "sequential"
+  translation: "NKJV" | "NIV" | "ESV" | "NASB" | "NLT" | "KJV"
 }
 ```
-
-## Delete Behavior
-
-- Snippets: permanently deleted with confirmation prompt
-- Topics: permanently deleted with confirmation prompt
-- Deleting a topic does not delete its snippets — they become unorganized
-- Warn user before deleting a topic that contains snippets
-- ON DELETE CASCADE handles snippet_topics cleanup automatically
 
 ### Reference Display Logic
 
@@ -91,15 +96,27 @@ Derive the display reference from structured fields:
 - Same chapter range: `${book} ${chapterStart}:${verseStart}-${verseEnd}`
 - Cross-chapter range: `${book} ${chapterStart}:${verseStart}-${chapterEnd}:${verseEnd}`
 
-### Screens
+### Navigation Structure
 
-1. Home / Snippet List
-2. Create / Edit Snippet
-3. Snippet Detail
-4. Topic List
-5. Topic Detail (snippets within a topic)
-6. Settings (notification times, mode, active topic)
-7. Onboarding (first launch only)
+Three main tabs:
+
+- **Home** — welcoming, contemplative. Shows the current/next snippet in the notification rotation. Not a list — one snippet at a time.
+- **Library** — full snippet list, browsable and filterable by topic. Create new snippet from here.
+- **Settings** — translation preference, notification schedule configuration.
+
+Snippet detail and topic detail are full-screen routes outside the tab bar.
+
+### Screens & Build Order
+
+1. Tab navigation setup
+2. Topic List + Create Topic (within Library tab)
+3. Create Snippet (updated with topic assignment)
+4. Snippet List (Library tab)
+5. Snippet Detail
+6. Topic Detail
+7. Home tab
+8. Settings
+9. Onboarding
 
 ## Bible API
 
@@ -134,24 +151,9 @@ Derive the display reference from structured fields:
 
 - Base URL: `https://bolls.life`
 - Books are referenced by number (e.g. Genesis = 1, John = 43)
-- Verses are fetched individually and joined into a passage string
+- Verses are fetched individually and joined into a single passage string
 - Use the POST `/get-verses/` endpoint for fetching verse ranges
-
-## UI Conventions
-
-### Book Selection
-
-- Use a grouped picker/modal with books organized by Testament
-- Old Testament (Genesis → Malachi) and New Testament (Matthew → Revelation)
-- No search filter for MVP — browse only
-- Book list is derived from the BOOK_IDS lookup table in bibleService.ts
-- Do not duplicate the book list anywhere else in the codebase
-
-### General
-
-- Plain functional UI first — no custom styling until all screens are built
-- Use React Native core components only (View, Text, TextInput, TouchableOpacity, FlatList, Modal)
-- No third party UI libraries for MVP
+- Response is an array of arrays — always call `.flat()` after parsing JSON
 
 ### Error Handling
 
@@ -165,21 +167,65 @@ Derive the display reference from structured fields:
 - Existing cached passages are not re-fetched when translation changes
 - Post-MVP: offer user the option to re-fetch all passages in the new translation
 
+## Create Snippet Flow
+
+1. Book picker — grouped modal (Old Testament / New Testament)
+2. Chapter + verse inputs (start required, end optional)
+3. Fetch Passage button — calls bibleService.ts, displays result
+4. Passage display — read-only
+5. Reflection input — required
+6. Topic assignment:
+   - List of currently assigned topics (each removable)
+   - Dropdown to assign an existing topic from the database
+   - Auto-suggested directed topic based on book + chapter (e.g. "Genesis 1") — one tap to add
+   - Inline create new topic (name + type) — immediately assigned on creation
+   - At least one topic required before saving
+7. Save — validates all fields, calls createSnippet + addSnippetToTopic, navigates to Library
+
+## UI Conventions
+
+### Book Selection
+
+- Grouped picker modal: Old Testament (Genesis → Malachi), New Testament (Matthew → Revelation)
+- No search filter for MVP — browse only
+- Book list derived from BOOK_IDS in bibleService.ts — never duplicated elsewhere
+
+### Topic Assignment (Create Snippet)
+
+- Auto-suggest directed topic from book + chapter as soon as both are entered
+- User can accept suggested topic with one tap
+- User can assign multiple topics per snippet
+- User can create a new topic inline without leaving the screen
+
+### General
+
+- Plain functional UI first — no custom styling until all screens are built
+- Use React Native core components only (View, Text, TextInput, TouchableOpacity, FlatList, Modal, ScrollView)
+- No third party UI libraries for MVP
+
+## Delete Behavior
+
+- Snippets: permanently deleted with confirmation prompt
+- Topics: permanently deleted with confirmation prompt
+- Deleting a topic does not delete its snippets — they become unorganized
+- Warn user before deleting a topic that contains snippets
+- ON DELETE CASCADE handles snippet_topics cleanup automatically
+
 ## Notifications
 
-- Scheduling is handled entirely on-device via expo-notifications — no backend needed
-- Reschedule notifications whenever: settings change, a new snippet is added to the active topic, or the active topic changes
-- If mode is "topic" but the active topic has no snippets, fall back to "random"
-- Notification body shows the display reference + first sentence of the passage
+- Scheduling handled entirely on-device via expo-notifications — no backend needed
+- Reschedule notifications whenever: settings change, new snippet added to active topic, active topic changes
+- If mode is "topic" but active topic has no snippets, fall back to "random"
+- Notification body shows display reference + first sentence of passage
 - Tapping a notification opens the app to that snippet's detail screen
 
 ## Validation
 
-- Book name must be a standardized full Bible book name
-- chapterStart, verseStart are required
+- Book name must be a standardized full Bible book name from BOOK_IDS
+- chapterStart and verseStart are required
 - chapterEnd and verseEnd are optional but must both be present if a range is intended
 - verseEnd must be greater than verseStart if chapterEnd equals chapterStart
-- Reflection is required — snippets cannot be saved without a personal reflection
+- Reflection is required
 - Each snippet must be assigned to at least one topic before saving
 
 ## MVP Rules
@@ -200,14 +246,15 @@ Derive the display reference from structured fields:
 - Topic editing or merging
 - Streaks or gamification
 - Social features
+- AMP translation
+- Search filter in book picker
+- Re-fetching passages when translation changes
 
 ## Lessons
 
-- Bolls.life /get-verses/ may return verse objects with undefined text
-  for non-existent verse numbers rather than omitting them entirely —
-  always guard against undefined before calling string methods on verse text
-- Bolls.life /get-verses/ returns an array of arrays (one per request
-  object) not a flat array — always call .flat() after parsing the
-  JSON response
-
-_(Add entries here any time Claude makes a mistake so it doesn't repeat)_
+- newArchEnabled in app.json — if useSQLiteContext throws "Property doesn't exist",
+  try restarting the dev server with --clear before assuming a version or config issue
+- Bolls.life /get-verses/ may return verse objects with undefined text for non-existent
+  verse numbers — always guard against undefined before calling string methods on verse text
+- Bolls.life /get-verses/ returns an array of arrays (one per request object) not a flat
+  array — always call .flat() after parsing the JSON response
