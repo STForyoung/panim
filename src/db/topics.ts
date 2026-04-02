@@ -1,4 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
+import * as Crypto from 'expo-crypto';
 
 export type Topic = {
   id: string;
@@ -11,7 +12,7 @@ export async function createTopic(
   db: SQLiteDatabase,
   topic: Omit<Topic, 'id' | 'createdAt'>
 ): Promise<void> {
-  const id = crypto.randomUUID();
+  const id = Crypto.randomUUID();
   const now = Date.now();
   await db.runAsync(
     'INSERT INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)',
