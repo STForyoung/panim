@@ -137,6 +137,22 @@ Derive the display reference from structured fields:
 - Verses are fetched individually and joined into a passage string
 - Use the POST `/get-verses/` endpoint for fetching verse ranges
 
+## UI Conventions
+
+### Book Selection
+
+- Use a grouped picker/modal with books organized by Testament
+- Old Testament (Genesis → Malachi) and New Testament (Matthew → Revelation)
+- No search filter for MVP — browse only
+- Book list is derived from the BOOK_IDS lookup table in bibleService.ts
+- Do not duplicate the book list anywhere else in the codebase
+
+### General
+
+- Plain functional UI first — no custom styling until all screens are built
+- Use React Native core components only (View, Text, TextInput, TouchableOpacity, FlatList, Modal)
+- No third party UI libraries for MVP
+
 ### Error Handling
 
 - If the API call fails on snippet creation, prompt the user to retry
