@@ -1,142 +1,72 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Modal,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { type Topic, createTopic, deleteTopic, getAllTopics } from "@/src/db/topics";
-import { getSnippetsForTopic } from "@/src/db/snippetTopics";
+import { getAllTopics } from "@/src/db/topics";
+import { getAllSnippets } from "@/src/db/snippets";
+import { getTopicsForSnippet } from "@/src/db/snippetTopics";
+
+type SectionItem = {
+  key: string;
+  label: string;
+  route: "/topic-kind/conceptual" | "/topic-kind/directed" | "/topic-kind/unassigned";
+  count: number;
+};
 
 export default function LibraryScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
 
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [topicName, setTopicName] = useState("");
-  const [topicType, setTopicType] = useState<"conceptual" | "directed">("conceptual");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sections, setSections] = useState<SectionItem[]>([
+    { key: "conceptual", label: "Conceptual Topics", route: "/topic-kind/conceptual", count: 0 },
+    { key: "directed", label: "Directed Topics", route: "/topic-kind/directed", count: 0 },
+    { key: "unassigned", label: "Unassigned Snippets", route: "/topic-kind/unassigned", count: 0 },
+  ]);
 
-  const loadTopics = useCallback(async () => {
-    const result = await getAllTopics(db);
-    setTopics(result);
+  const loadCounts = useCallback(async () => {
+    const [topics, snippets] = await Promise.all([
+      getAllTopics(db),
+      getAllSnippets(db),
+    ]);
+
+    const conceptualCount = topics.filter((t) => t.type === "conceptual").length;
+    const directedCount = topics.filter((t) => t.type === "directed").length;
+
+    const topicChecks = await Promise.all(
+      snippets.map((s) => getTopicsForSnippet(db, s.id))
+    );
+    const unassignedCount = topicChecks.filter((t) => t.length === 0).length;
+
+    setSections([
+      { key: "conceptual", label: "Conceptual Topics", route: "/topic-kind/conceptual", count: conceptualCount },
+      { key: "directed", label: "Directed Topics", route: "/topic-kind/directed", count: directedCount },
+      { key: "unassigned", label: "Unassigned Snippets", route: "/topic-kind/unassigned", count: unassignedCount },
+    ]);
   }, [db]);
 
   useEffect(() => {
-    loadTopics();
-  }, [loadTopics]);
-
-  function openModal() {
-    setTopicName("");
-    setTopicType("conceptual");
-    setError(null);
-    setModalVisible(true);
-  }
-
-  function closeModal() {
-    setModalVisible(false);
-  }
-
-  async function handleSave() {
-    if (!topicName.trim()) {
-      setError("Topic name is required.");
-      return;
-    }
-    setError(null);
-    setIsSaving(true);
-    try {
-      await createTopic(db, { name: topicName.trim(), type: topicType });
-      closeModal();
-      await loadTopics();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create topic.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleLongPress(topic: Topic) {
-    const snippets = await getSnippetsForTopic(db, topic.id);
-    const hasSnippets = snippets.length > 0;
-
-    const message = hasSnippets
-      ? `"${topic.name}" has ${snippets.length} snippet${snippets.length === 1 ? "" : "s"}. Deleting this topic will not delete those snippets — they will become unorganized.`
-      : `Are you sure you want to delete "${topic.name}"?`;
-
-    Alert.alert("Delete Topic", message, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          await deleteTopic(db, topic.id);
-          await loadTopics();
-        },
-      },
-    ]);
-  }
+    loadCounts();
+  }, [loadCounts]);
 
   return (
     <View>
-      <TouchableOpacity onPress={openModal}>
-        <Text>Create Topic</Text>
+      <TouchableOpacity onPress={() => router.push("/snippet/create")}>
+        <Text>+ Create Snippet</Text>
       </TouchableOpacity>
 
       <FlatList
-        data={topics}
-        keyExtractor={(item) => item.id}
+        data={sections}
+        keyExtractor={(item) => item.key}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => router.push(`/topic/${item.id}`)}
-            onLongPress={() => handleLongPress(item)}
-          >
-            <Text>{item.name}</Text>
-            <Text>{item.type}</Text>
+          <TouchableOpacity onPress={() => router.push(item.route)}>
+            <View>
+              <Text>{item.label}</Text>
+              <Text>{item.count}</Text>
+            </View>
+            <Text>›</Text>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<Text>No topics yet. Create one to get started.</Text>}
       />
-
-      <Modal visible={modalVisible} animationType="slide" transparent={false}>
-        <View>
-          <Text>New Topic</Text>
-
-          <Text>Name</Text>
-          <TextInput
-            value={topicName}
-            onChangeText={setTopicName}
-            placeholder="Topic name"
-            autoFocus
-          />
-
-          <Text>Type</Text>
-          <View>
-            <TouchableOpacity onPress={() => setTopicType("conceptual")}>
-              <Text>{topicType === "conceptual" ? "[x]" : "[ ]"} Conceptual</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setTopicType("directed")}>
-              <Text>{topicType === "directed" ? "[x]" : "[ ]"} Directed</Text>
-            </TouchableOpacity>
-          </View>
-
-          {error ? <Text>{error}</Text> : null}
-
-          <TouchableOpacity onPress={handleSave} disabled={isSaving}>
-            <Text>{isSaving ? "Saving…" : "Save"}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={closeModal} disabled={isSaving}>
-            <Text>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
     </View>
   );
 }
