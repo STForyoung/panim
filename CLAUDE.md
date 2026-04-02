@@ -202,7 +202,7 @@ Translation preference and notification schedule configuration.
    - Dropdown to assign an existing topic from the database
    - Auto-suggested directed topic based on book + chapter (e.g. "Genesis 1") — one tap to add
    - Inline create new topic (name + type) — immediately assigned on creation
-   - At least one topic required before saving
+   - Topic assignment is optional — snippets saved without a topic appear in Unassigned Snippets
 7. Save — validates all fields, calls createSnippet + addSnippetToTopic, navigates to Library
 
 ## UI Conventions
@@ -259,7 +259,7 @@ Translation preference and notification schedule configuration.
 - chapterEnd and verseEnd are optional but must both be present if a range is intended
 - verseEnd must be greater than verseStart if chapterEnd equals chapterStart
 - Reflection is required
-- Each snippet must be assigned to at least one topic before saving
+- Topic assignment is optional — unassigned snippets appear in the Unassigned Snippets screen
 
 ## MVP Rules
 
