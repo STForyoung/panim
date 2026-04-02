@@ -17,7 +17,7 @@ export type Snippet = {
 export async function createSnippet(
   db: SQLiteDatabase,
   snippet: Omit<Snippet, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<void> {
+): Promise<string> {
   const id = Crypto.randomUUID();
   const now = Date.now();
   await db.runAsync(
@@ -35,6 +35,7 @@ export async function createSnippet(
     now,
     now
   );
+  return id;
 }
 
 export async function getSnippet(db: SQLiteDatabase, id: string): Promise<Snippet | null> {
