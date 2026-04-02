@@ -220,6 +220,16 @@ Translation preference and notification schedule configuration.
 - User can assign multiple topics per snippet
 - User can create a new topic inline without leaving the screen
 
+### Topic Creation
+
+- Topics are created in two places only:
+  1. Inline during Create Snippet — handles both types, immediately assigned
+  2. Via "New Topic" button on the Conceptual Topics and Directed Topics
+     screens — type is pre-determined by which screen you're on
+- No standalone Create Topic screen
+- Never create a topic without context — it should always be clear
+  what type is being created
+
 ### General
 
 - Plain functional UI first — no custom styling until all screens are built
