@@ -1,4 +1,4 @@
-const BOOK_IDS: Record<string, number> = {
+export const BOOK_IDS: Record<string, number> = {
   // Old Testament
   Genesis: 1,
   Exodus: 2,

@@ -1,4 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
+import * as Crypto from 'expo-crypto';
 
 export type Snippet = {
   id: string;
@@ -17,7 +18,7 @@ export async function createSnippet(
   db: SQLiteDatabase,
   snippet: Omit<Snippet, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<void> {
-  const id = crypto.randomUUID();
+  const id = Crypto.randomUUID();
   const now = Date.now();
   await db.runAsync(
     `INSERT INTO snippets
