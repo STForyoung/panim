@@ -67,6 +67,7 @@ Snippet {
   verseEnd: number | null     // null if single verse
   passage: string         // Fetched from Bible API, cached locally
   reflection: string      // User's personal thoughts
+  isFavourite: boolean
   createdAt: number       // Unix timestamp
   updatedAt: number       // Unix timestamp
 }
@@ -285,6 +286,8 @@ Translation preference and notification schedule configuration.
 - AMP translation
 - Search filter in book picker
 - Re-fetching passages when translation changes
+- Favourite toggle lives on Snippet Detail screen — long press
+  or a dedicated button
 
 ## Lessons
 
