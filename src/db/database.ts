@@ -15,7 +15,8 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
       passage TEXT NOT NULL,
       reflection TEXT NOT NULL,
       createdAt INTEGER NOT NULL,
-      updatedAt INTEGER NOT NULL
+      updatedAt INTEGER NOT NULL,
+      isFavourite INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS topics (
@@ -42,4 +43,13 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
       lastSentIndex INTEGER NOT NULL DEFAULT 0
     );
   `);
+
+  // Migrations for existing installs
+  try {
+    await db.execAsync(
+      'ALTER TABLE snippets ADD COLUMN isFavourite INTEGER NOT NULL DEFAULT 0'
+    );
+  } catch {
+    // Column already exists — ignore
+  }
 }

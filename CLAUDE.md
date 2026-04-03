@@ -67,6 +67,7 @@ Snippet {
   verseEnd: number | null     // null if single verse
   passage: string         // Fetched from Bible API, cached locally
   reflection: string      // User's personal thoughts
+  isFavourite: boolean
   createdAt: number       // Unix timestamp
   updatedAt: number       // Unix timestamp
 }
@@ -140,9 +141,10 @@ Translation preference and notification schedule configuration.
 8. Snippet Detail
 9. Snippet Edit
 10. Topic Detail
-11. Home tab
+11. Add isFavourite to data model
 12. Settings
-13. Onboarding
+13. Home tab
+14. Onboarding
 
 ## Bible API
 
@@ -285,6 +287,8 @@ Translation preference and notification schedule configuration.
 - AMP translation
 - Search filter in book picker
 - Re-fetching passages when translation changes
+- Favourite toggle lives on Snippet Detail screen — long press
+  or a dedicated button
 
 ## Lessons
 
@@ -294,3 +298,6 @@ Translation preference and notification schedule configuration.
   verse numbers — always guard against undefined before calling string methods on verse text
 - Bolls.life /get-verses/ returns an array of arrays (one per request object) not a flat
   array — always call .flat() after parsing the JSON response
+- SQLite does not return booleans — boolean fields come back as
+  0 or 1 integers. Always cast with !! when using in UI conditions
+  e.g. !!snippet.isFavourite instead of snippet.isFavourite === true
