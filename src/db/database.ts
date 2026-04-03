@@ -40,7 +40,8 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
       mode TEXT NOT NULL,
       activeTopic TEXT,
       selectionOrder TEXT NOT NULL,
-      lastSentIndex INTEGER NOT NULL DEFAULT 0
+      lastSentIndex INTEGER NOT NULL DEFAULT 0,
+      translation TEXT NOT NULL DEFAULT 'NKJV'
     );
   `);
 
@@ -48,6 +49,14 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
   try {
     await db.execAsync(
       'ALTER TABLE snippets ADD COLUMN isFavourite INTEGER NOT NULL DEFAULT 0'
+    );
+  } catch {
+    // Column already exists — ignore
+  }
+
+  try {
+    await db.execAsync(
+      "ALTER TABLE notification_schedule ADD COLUMN translation TEXT NOT NULL DEFAULT 'NKJV'"
     );
   } catch {
     // Column already exists — ignore

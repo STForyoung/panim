@@ -7,6 +7,7 @@ export type NotificationSchedule = {
   activeTopic: string | null;
   selectionOrder: 'random' | 'sequential';
   lastSentIndex: number;
+  translation: 'NKJV' | 'NIV' | 'ESV' | 'NASB' | 'NLT' | 'KJV';
 };
 
 const SINGLETON_ID = 'singleton';
@@ -18,9 +19,10 @@ const DEFAULT_SCHEDULE: NotificationSchedule = {
   activeTopic: null,
   selectionOrder: 'random',
   lastSentIndex: 0,
+  translation: 'NKJV',
 };
 
-type RawRow = Omit<NotificationSchedule, 'times'> & { times: string };
+type RawRow = Omit<NotificationSchedule, 'times' | 'translation'> & { times: string; translation: string };
 
 function parseRow(row: RawRow): NotificationSchedule {
   return { ...row, times: JSON.parse(row.times) as string[] };
@@ -34,14 +36,15 @@ export async function getSchedule(db: SQLiteDatabase): Promise<NotificationSched
   if (row) return parseRow(row);
 
   await db.runAsync(
-    `INSERT INTO notification_schedule (id, times, mode, activeTopic, selectionOrder, lastSentIndex)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO notification_schedule (id, times, mode, activeTopic, selectionOrder, lastSentIndex, translation)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     SINGLETON_ID,
     JSON.stringify(DEFAULT_SCHEDULE.times),
     DEFAULT_SCHEDULE.mode,
     DEFAULT_SCHEDULE.activeTopic,
     DEFAULT_SCHEDULE.selectionOrder,
-    DEFAULT_SCHEDULE.lastSentIndex
+    DEFAULT_SCHEDULE.lastSentIndex,
+    DEFAULT_SCHEDULE.translation
   );
   return { ...DEFAULT_SCHEDULE };
 }
