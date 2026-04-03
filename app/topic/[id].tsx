@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Topic, deleteTopic, getTopic } from "@/src/db/topics";
 import { type Snippet } from "@/src/db/snippets";
@@ -27,21 +27,23 @@ export default function TopicDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      const result = await getTopic(db, id);
-      if (!result) {
-        setNotFound(true);
+  useFocusEffect(
+    useCallback(() => {
+      async function load() {
+        const result = await getTopic(db, id);
+        if (!result) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        const topicSnippets = await getSnippetsForTopic(db, id);
+        setTopic(result);
+        setSnippets(topicSnippets);
         setLoading(false);
-        return;
       }
-      const topicSnippets = await getSnippetsForTopic(db, id);
-      setTopic(result);
-      setSnippets(topicSnippets);
-      setLoading(false);
-    }
-    load();
-  }, [db, id]);
+      load();
+    }, [db, id])
+  );
 
   function handleDelete() {
     if (!topic) return;

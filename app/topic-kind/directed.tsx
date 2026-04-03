@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Topic, createTopic, deleteTopic, getAllTopics } from "@/src/db/topics";
 import { getSnippetsForTopic } from "@/src/db/snippetTopics";
@@ -37,9 +37,11 @@ export default function DirectedTopicsScreen() {
     setTopics(withCounts);
   }, [db]);
 
-  useEffect(() => {
-    loadTopics();
-  }, [loadTopics]);
+  useFocusEffect(
+    useCallback(() => {
+      loadTopics();
+    }, [loadTopics])
+  );
 
   function openModal() {
     setTopicName("");
