@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { type Snippet, deleteSnippet, getSnippet } from "@/src/db/snippets";
+import { type Snippet, deleteSnippet, getSnippet, toggleFavourite } from "@/src/db/snippets";
 import { type Topic } from "@/src/db/topics";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
 
@@ -95,6 +95,16 @@ export default function SnippetDetailScreen() {
           ))}
         </View>
       ) : null}
+
+      <TouchableOpacity
+        onPress={async () => {
+          const next = !!(snippet.isFavourite);
+          await toggleFavourite(db, id, !next);
+          setSnippet({ ...snippet, isFavourite: !next });
+        }}
+      >
+        <Text>{!!snippet.isFavourite ? "Remove from Favourites" : "Add to Favourites"}</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push(`/snippet/edit/${id}`)}>
         <Text>Edit</Text>

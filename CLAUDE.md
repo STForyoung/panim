@@ -298,3 +298,6 @@ Translation preference and notification schedule configuration.
   verse numbers — always guard against undefined before calling string methods on verse text
 - Bolls.life /get-verses/ returns an array of arrays (one per request object) not a flat
   array — always call .flat() after parsing the JSON response
+- SQLite does not return booleans — boolean fields come back as
+  0 or 1 integers. Always cast with !! when using in UI conditions
+  e.g. !!snippet.isFavourite instead of snippet.isFavourite === true
