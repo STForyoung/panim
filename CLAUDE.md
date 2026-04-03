@@ -40,8 +40,10 @@ app/
     directed.tsx           # All directed topics list
     unassigned.tsx         # Snippets with no topic assigned
   snippet/
-    create.tsx             # Create snippet (full-screen)
-    [id].tsx               # Snippet detail
+    create.tsx             # Create new snippet
+    [id].tsx               # Snippet detail (read-only)
+    edit/
+      [id].tsx             # Edit existing snippet
   topic/
     [id].tsx               # Individual topic detail
   _layout.tsx              # Root layout with SQLiteProvider
@@ -136,10 +138,11 @@ Translation preference and notification schedule configuration.
 6. Directed Topics screen
 7. Unassigned Snippets screen
 8. Snippet Detail
-9. Topic Detail
-10. Home tab
-11. Settings
-12. Onboarding
+9. Snippet Edit
+10. Topic Detail
+11. Home tab
+12. Settings
+13. Onboarding
 
 ## Bible API
 
