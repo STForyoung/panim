@@ -46,13 +46,16 @@ app/
       [id].tsx             # Edit existing snippet
   topic/
     [id].tsx               # Individual topic detail
-  _layout.tsx              # Root layout with SQLiteProvider
+  onboarding.tsx           # First-launch onboarding flow
+  index.tsx                # Redirects to /(tabs)
+  _layout.tsx              # Root layout with SQLiteProvider + AppInitializer
 src/
   components/              # Reusable UI components
   db/                      # SQLite setup and queries
   services/
     bibleService.ts        # Bible API service layer
-  notifications/           # Scheduling logic
+  notifications/
+    scheduler.ts           # Local notification scheduling logic
 ```
 
 ### Data Model
@@ -134,17 +137,18 @@ Translation preference and notification schedule configuration.
 1. ✅ Tab navigation setup
 2. ✅ Topic List + Create Topic (Library tab — now being restructured)
 3. ✅ Create Snippet with topic assignment
-4. Library overview screen (3 entry points)
-5. Conceptual Topics screen
-6. Directed Topics screen
-7. Unassigned Snippets screen
-8. Snippet Detail
-9. Snippet Edit
-10. Topic Detail
-11. Add isFavourite to data model
-12. Settings
-13. Home tab
-14. Onboarding
+4. ✅ Library overview screen (3 entry points)
+5. ✅ Conceptual Topics screen
+6. ✅ Directed Topics screen
+7. ✅ Unassigned Snippets screen
+8. ✅ Snippet Detail
+9. ✅ Snippet Edit
+10. ✅ Topic Detail
+11. ✅ Add isFavourite to data model
+12. ✅ Settings
+13. ✅ Home tab
+14. ✅ Onboarding
+15. ✅ Notification scheduling
 
 ## Bible API
 
@@ -237,7 +241,7 @@ Translation preference and notification schedule configuration.
 
 ### General
 
-- Plain functional UI first — no custom styling until all screens are built
+- All screens are built — styling pass is next
 - Use React Native core components only (View, Text, TextInput, TouchableOpacity, FlatList, Modal, ScrollView)
 - No third party UI libraries for MVP
 
@@ -287,8 +291,6 @@ Translation preference and notification schedule configuration.
 - AMP translation
 - Search filter in book picker
 - Re-fetching passages when translation changes
-- Favourite toggle lives on Snippet Detail screen — long press
-  or a dedicated button
 
 ## Lessons
 
