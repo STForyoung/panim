@@ -141,9 +141,10 @@ Translation preference and notification schedule configuration.
 8. Snippet Detail
 9. Snippet Edit
 10. Topic Detail
-11. Home tab
-12. Settings
-13. Onboarding
+11. Add isFavourite to data model
+12. Home tab
+13. Settings
+14. Onboarding
 
 ## Bible API
 
