@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { getAllTopics } from "@/src/db/topics";
 import { getAllSnippets } from "@/src/db/snippets";
@@ -44,9 +44,11 @@ export default function LibraryScreen() {
     ]);
   }, [db]);
 
-  useEffect(() => {
-    loadCounts();
-  }, [loadCounts]);
+  useFocusEffect(
+    useCallback(() => {
+      loadCounts();
+    }, [loadCounts])
+  );
 
   return (
     <View>

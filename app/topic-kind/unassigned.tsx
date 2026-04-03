@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, getAllSnippets } from "@/src/db/snippets";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
@@ -30,9 +30,11 @@ export default function UnassignedSnippetsScreen() {
     setSnippets(all.filter((_, i) => topicChecks[i].length === 0));
   }, [db]);
 
-  useEffect(() => {
-    loadSnippets();
-  }, [loadSnippets]);
+  useFocusEffect(
+    useCallback(() => {
+      loadSnippets();
+    }, [loadSnippets])
+  );
 
   return (
     <View>
