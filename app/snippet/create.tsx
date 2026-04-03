@@ -2,6 +2,7 @@ import { createSnippet } from "@/src/db/snippets";
 import { addSnippetToTopic } from "@/src/db/snippetTopics";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
 import { BOOK_IDS, fetchPassage } from "@/src/services/bibleService";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -202,6 +203,7 @@ export default function CreateSnippetScreen() {
       for (const topic of assignedTopics) {
         await addSnippetToTopic(db, snippetId, topic.id);
       }
+      await scheduleNotifications(db);
       router.replace("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save snippet.");

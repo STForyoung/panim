@@ -305,3 +305,7 @@ Translation preference and notification schedule configuration.
   in SDK 53+. Local notifications still work on iOS Expo Go.
   For full Android notification testing create a development build
   via: eas build --profile development --platform android
+- useSQLiteContext cannot be called in \_layout.tsx directly since
+  it is the component that renders SQLiteProvider. Extract any
+  logic that needs DB access into a child component rendered
+  inside SQLiteProvider (e.g. AppInitializer)

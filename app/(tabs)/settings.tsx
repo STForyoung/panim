@@ -15,6 +15,7 @@ import {
   updateSchedule,
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "NKJV",
@@ -56,6 +57,7 @@ export default function SettingsScreen() {
   ) {
     await updateSchedule(db, { translation });
     setSchedule((prev) => prev ? { ...prev, translation } : prev);
+    await scheduleNotifications(db);
   }
 
   async function handleRemoveTime(time: string) {
@@ -63,6 +65,7 @@ export default function SettingsScreen() {
     const times = schedule.times.filter((t) => t !== time);
     await updateSchedule(db, { times });
     setSchedule({ ...schedule, times });
+    await scheduleNotifications(db);
   }
 
   async function handleAddTime() {
@@ -92,6 +95,7 @@ export default function SettingsScreen() {
     setMinuteInput("");
     setTimeError(null);
     setAddTimeVisible(false);
+    await scheduleNotifications(db);
   }
 
   async function handleModeChange(mode: "random" | "topic") {
@@ -102,6 +106,7 @@ export default function SettingsScreen() {
         : { mode };
     await updateSchedule(db, update);
     setSchedule({ ...schedule, ...update });
+    await scheduleNotifications(db);
   }
 
   async function handleTopicSelect(topicId: string) {
@@ -109,6 +114,7 @@ export default function SettingsScreen() {
     await updateSchedule(db, { activeTopic: topicId });
     setSchedule({ ...schedule, activeTopic: topicId });
     setTopicPickerVisible(false);
+    await scheduleNotifications(db);
   }
 
   async function handleSelectionOrderChange(
@@ -117,6 +123,7 @@ export default function SettingsScreen() {
     if (!schedule) return;
     await updateSchedule(db, { selectionOrder });
     setSchedule({ ...schedule, selectionOrder });
+    await scheduleNotifications(db);
   }
 
   if (loading || !schedule) {
