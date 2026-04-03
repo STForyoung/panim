@@ -301,3 +301,7 @@ Translation preference and notification schedule configuration.
 - SQLite does not return booleans — boolean fields come back as
   0 or 1 integers. Always cast with !! when using in UI conditions
   e.g. !!snippet.isFavourite instead of snippet.isFavourite === true
+- expo-notifications remote notifications are removed from Expo Go
+  in SDK 53+. Local notifications still work on iOS Expo Go.
+  For full Android notification testing create a development build
+  via: eas build --profile development --platform android
