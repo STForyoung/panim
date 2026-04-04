@@ -9,6 +9,7 @@ import {
   getTopicsForSnippet,
 } from "@/src/db/snippetTopics";
 import { type Topic } from "@/src/db/topics";
+import { getNextReminderTime } from "@/src/notifications/scheduler";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
@@ -61,6 +62,7 @@ export default function HomeScreen() {
   const [favourites, setFavourites] = useState<Snippet[]>([]);
   // Fingerprint of schedule settings used for the last pick
   const [scheduleKey, setScheduleKey] = useState<string>("");
+  const [nextReminder, setNextReminder] = useState<string | null>(null);
 
   const pickFromSchedule = useCallback(
     async (snippets: Snippet[]) => {
@@ -87,6 +89,7 @@ export default function HomeScreen() {
       setCurrent(picked);
       setCurrentTopics(topics);
       setScheduleKey(key);
+      setNextReminder(getNextReminderTime(schedule.times));
 
       if (schedule.selectionOrder === "sequential") {
         // NOTE: lastSentIndex is never incremented in MVP, so this list will
@@ -136,6 +139,8 @@ export default function HomeScreen() {
         const key = `${schedule.mode}:${schedule.activeTopic}:${schedule.selectionOrder}`;
         if (key !== scheduleKey && snippets.length > 0) {
           await pickFromSchedule(snippets);
+        } else {
+          setNextReminder(getNextReminderTime(schedule.times));
         }
       }
       onFocus();
@@ -188,6 +193,11 @@ export default function HomeScreen() {
       {current ? (
         <View>
           <Text>Next in Playlist</Text>
+          {nextReminder ? (
+            <Text>{nextReminder}</Text>
+          ) : (
+            <Text>Set a schedule in Settings to start receiving reminders</Text>
+          )}
           <Text>{formatReference(current)}</Text>
           {currentTopics.length > 0 ? (
             <View>
