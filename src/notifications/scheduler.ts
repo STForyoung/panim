@@ -1,9 +1,9 @@
-import * as Notifications from 'expo-notifications';
-import { router } from 'expo-router';
-import { type SQLiteDatabase } from 'expo-sqlite';
-import { getAllSnippets, type Snippet } from '@/src/db/snippets';
-import { getSnippetsForTopic } from '@/src/db/snippetTopics';
-import { getSchedule } from '@/src/db/notificationSchedule';
+import { getSchedule } from "@/src/db/notificationSchedule";
+import { getAllSnippets, type Snippet } from "@/src/db/snippets";
+import { getSnippetsForTopic } from "@/src/db/snippetTopics";
+import * as Notifications from "expo-notifications";
+import { router } from "expo-router";
+import { type SQLiteDatabase } from "expo-sqlite";
 
 function formatReference(snippet: Snippet): string {
   const { book, chapterStart, verseStart, chapterEnd, verseEnd } = snippet;
@@ -20,12 +20,45 @@ function formatReference(snippet: Snippet): string {
 // the first segment. Works for most scripture passages but may occasionally
 // include abbreviations (e.g. "vs. ") in the first segment. Good enough for MVP.
 function firstSentence(text: string): string {
-  return text.split('. ')[0];
+  return text.split(". ")[0];
+}
+
+export function getNextReminderTime(times: string[]): string | null {
+  if (times.length === 0) return null;
+
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Parse all times into total minutes
+  const parsed = times.map((t) => {
+    const [h, m] = t.split(":").map(Number);
+    return { totalMinutes: h * 60 + m, hour: h, minute: m };
+  });
+
+  // Find the next time later today
+  const todayNext = parsed.find((t) => t.totalMinutes > nowMinutes);
+
+  function formatTime(hour: number, minute: string, suffix: string): string {
+    const h12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${h12}:${minute} ${suffix}`;
+  }
+
+  if (todayNext) {
+    const suffix = todayNext.hour < 12 ? "AM" : "PM";
+    const minute = String(todayNext.minute).padStart(2, "0");
+    return `Next reminder at ${formatTime(todayNext.hour, minute, suffix)}`;
+  }
+
+  // No times left today — return the first time tomorrow
+  const first = parsed[0];
+  const suffix = first.hour < 12 ? "AM" : "PM";
+  const minute = String(first.minute).padStart(2, "0");
+  return `Next reminder tomorrow at ${formatTime(first.hour, minute, suffix)}`;
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
   const { status } = await Notifications.requestPermissionsAsync();
-  return status === 'granted';
+  return status === "granted";
 }
 
 export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
@@ -40,7 +73,7 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
 
   // Determine snippet pool
   let pool: Snippet[] = allSnippets;
-  if (schedule.mode === 'topic') {
+  if (schedule.mode === "topic") {
     if (!schedule.activeTopic) {
       // activeTopic is null — fall back to all snippets
       pool = allSnippets;
@@ -58,12 +91,12 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
   for (const time of schedule.times) {
     if (pool.length === 0) continue;
 
-    const [hourStr, minuteStr] = time.split(':');
+    const [hourStr, minuteStr] = time.split(":");
     const hour = parseInt(hourStr, 10);
     const minute = parseInt(minuteStr, 10);
 
     let snippet: Snippet;
-    if (schedule.selectionOrder === 'sequential') {
+    if (schedule.selectionOrder === "sequential") {
       snippet = pool[schedule.lastSentIndex % pool.length];
     } else {
       snippet = pool[Math.floor(Math.random() * pool.length)];
@@ -85,10 +118,10 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
 }
 
 export function handleNotificationTap(
-  response: Notifications.NotificationResponse
+  response: Notifications.NotificationResponse,
 ): void {
   const snippetId = response.notification.request.content.data?.snippetId;
-  if (typeof snippetId === 'string') {
+  if (typeof snippetId === "string") {
     router.push(`/snippet/${snippetId}`);
   }
 }
