@@ -10,6 +10,7 @@ import {
 } from "@/src/db/snippetTopics";
 import { type Topic } from "@/src/db/topics";
 import { getNextReminderTime } from "@/src/notifications/scheduler";
+import { getDisplayReference } from "@/src/utils/displayReference";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
@@ -20,17 +21,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-function formatReference(snippet: Snippet): string {
-  const { book, chapterStart, verseStart, chapterEnd, verseEnd } = snippet;
-  if (chapterEnd !== null && verseEnd !== null && chapterEnd !== chapterStart) {
-    return `${book} ${chapterStart}:${verseStart}-${chapterEnd}:${verseEnd}`;
-  }
-  if (verseEnd !== null) {
-    return `${book} ${chapterStart}:${verseStart}-${verseEnd}`;
-  }
-  return `${book} ${chapterStart}:${verseStart}`;
-}
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -198,7 +188,7 @@ export default function HomeScreen() {
           ) : (
             <Text>Set a schedule in Settings to start receiving reminders</Text>
           )}
-          <Text>{formatReference(current)}</Text>
+          <Text>{getDisplayReference(current)}</Text>
           {currentTopics.length > 0 ? (
             <View>
               {currentTopics.map((t) => (
@@ -227,15 +217,17 @@ export default function HomeScreen() {
       {comingUp.length > 0 ? (
         <View>
           <Text>Coming Up</Text>
-          {comingUp.map((snippet) => (
-            <TouchableOpacity
-              key={snippet.id}
-              onPress={() => router.push(`/snippet/${snippet.id}`)}
-            >
-              <Text>{formatReference(snippet)}</Text>
-              <Text numberOfLines={1}>{snippet.passage}</Text>
-            </TouchableOpacity>
-          ))}
+          <FlatList
+            horizontal
+            data={comingUp}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity onPress={() => router.push(`/snippet/${item.id}`)}>
+                <Text>{getDisplayReference(item)}</Text>
+                <Text numberOfLines={1}>{item.passage}</Text>
+              </TouchableOpacity>
+            )}
+          />
         </View>
       ) : null}
 
@@ -255,7 +247,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 onPress={() => router.push(`/snippet/${item.id}`)}
               >
-                <Text>{formatReference(item)}</Text>
+                <Text>{getDisplayReference(item)}</Text>
                 <Text numberOfLines={1}>{item.passage}</Text>
               </TouchableOpacity>
             )}
