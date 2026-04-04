@@ -1,11 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
-import { FlatList, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { getSchedule } from "@/src/db/notificationSchedule";
+import {
+  type Snippet,
+  getAllSnippets,
+  getFavouriteSnippets,
+} from "@/src/db/snippets";
+import {
+  getSnippetsForTopic,
+  getTopicsForSnippet,
+} from "@/src/db/snippetTopics";
+import { type Topic } from "@/src/db/topics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { type Snippet, getAllSnippets, getFavouriteSnippets } from "@/src/db/snippets";
-import { type Topic } from "@/src/db/topics";
-import { getSnippetsForTopic, getTopicsForSnippet } from "@/src/db/snippetTopics";
-import { getSchedule } from "@/src/db/notificationSchedule";
+import { useCallback, useEffect, useState } from "react";
+import {
+  FlatList,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 function formatReference(snippet: Snippet): string {
   const { book, chapterStart, verseStart, chapterEnd, verseEnd } = snippet;
@@ -46,47 +59,35 @@ export default function HomeScreen() {
   const [currentTopics, setCurrentTopics] = useState<Topic[]>([]);
   const [comingUp, setComingUp] = useState<Snippet[]>([]);
   const [favourites, setFavourites] = useState<Snippet[]>([]);
+  // Fingerprint of schedule settings used for the last pick
+  const [scheduleKey, setScheduleKey] = useState<string>("");
 
-  useEffect(() => {
-    async function load() {
-      const [snippets, schedule, favs] = await Promise.all([
-        getAllSnippets(db),
-        getSchedule(db),
-        getFavouriteSnippets(db),
-      ]);
+  const pickFromSchedule = useCallback(
+    async (snippets: Snippet[]) => {
+      const schedule = await getSchedule(db);
+      const key = `${schedule.mode}:${schedule.activeTopic}:${schedule.selectionOrder}`;
 
-      setAllSnippets(snippets);
-      setFavourites(favs);
-
-      if (snippets.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      // Determine snippet pool based on schedule mode
       let pool: Snippet[] = snippets;
-
       if (schedule.mode === "topic") {
         if (!schedule.activeTopic) {
-          // activeTopic is null — fall back to random from all snippets
           pool = snippets;
         } else {
-          const topicSnippets = await getSnippetsForTopic(db, schedule.activeTopic);
-          if (topicSnippets.length === 0) {
-            // activeTopic has no snippets — fall back to random from all snippets
-            pool = snippets;
-          } else {
-            pool = topicSnippets;
-          }
+          const topicSnippets = await getSnippetsForTopic(
+            db,
+            schedule.activeTopic,
+          );
+          pool = topicSnippets.length === 0 ? snippets : topicSnippets;
         }
       }
+
+      if (pool.length === 0) return;
 
       const picked = pickRandom(pool);
       const topics = await getTopicsForSnippet(db, picked.id);
       setCurrent(picked);
       setCurrentTopics(topics);
+      setScheduleKey(key);
 
-      // Coming Up: next 3 snippets
       if (schedule.selectionOrder === "sequential") {
         // NOTE: lastSentIndex is never incremented in MVP, so this list will
         // always start from index 0. Post-MVP: increment lastSentIndex after
@@ -101,16 +102,44 @@ export default function HomeScreen() {
       } else {
         setComingUp(pickRandomN(pool, 3, picked));
       }
+    },
+    [db],
+  );
 
+  useEffect(() => {
+    async function load() {
+      const [snippets, favs] = await Promise.all([
+        getAllSnippets(db),
+        getFavouriteSnippets(db),
+      ]);
+      setAllSnippets(snippets);
+      setFavourites(favs);
+      if (snippets.length > 0) {
+        await pickFromSchedule(snippets);
+      }
       setLoading(false);
     }
     load();
-  }, [db]);
+  }, [db, pickFromSchedule]);
 
   useFocusEffect(
     useCallback(() => {
-      getFavouriteSnippets(db).then(setFavourites);
-    }, [db])
+      async function onFocus() {
+        const [snippets, favs, schedule] = await Promise.all([
+          getAllSnippets(db),
+          getFavouriteSnippets(db),
+          getSchedule(db),
+        ]);
+        setAllSnippets(snippets);
+        setFavourites(favs);
+
+        const key = `${schedule.mode}:${schedule.activeTopic}:${schedule.selectionOrder}`;
+        if (key !== scheduleKey && snippets.length > 0) {
+          await pickFromSchedule(snippets);
+        }
+      }
+      onFocus();
+    }, [db, scheduleKey, pickFromSchedule]),
   );
 
   async function handleNewSnippet() {
@@ -170,7 +199,9 @@ export default function HomeScreen() {
           <Text>{current.passage}</Text>
           <Text>{current.reflection}</Text>
 
-          <TouchableOpacity onPress={() => router.push(`/snippet/${current.id}`)}>
+          <TouchableOpacity
+            onPress={() => router.push(`/snippet/${current.id}`)}
+          >
             <Text>View Snippet</Text>
           </TouchableOpacity>
 
@@ -202,14 +233,18 @@ export default function HomeScreen() {
       <View>
         <Text>Favourites</Text>
         {favourites.length === 0 ? (
-          <Text>Tap a snippet and use the favourite button to save it here.</Text>
+          <Text>
+            Tap a snippet and use the favourite button to save it here.
+          </Text>
         ) : (
           <FlatList
             horizontal
             data={favourites}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => router.push(`/snippet/${item.id}`)}>
+              <TouchableOpacity
+                onPress={() => router.push(`/snippet/${item.id}`)}
+              >
                 <Text>{formatReference(item)}</Text>
                 <Text numberOfLines={1}>{item.passage}</Text>
               </TouchableOpacity>

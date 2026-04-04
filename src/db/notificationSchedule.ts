@@ -25,7 +25,11 @@ const DEFAULT_SCHEDULE: NotificationSchedule = {
 type RawRow = Omit<NotificationSchedule, 'times' | 'translation'> & { times: string; translation: string };
 
 function parseRow(row: RawRow): NotificationSchedule {
-  return { ...row, times: JSON.parse(row.times) as string[] };
+  return {
+    ...row,
+    times: JSON.parse(row.times) as string[],
+    translation: row.translation as NotificationSchedule['translation'],
+  };
 }
 
 export async function getSchedule(db: SQLiteDatabase): Promise<NotificationSchedule> {

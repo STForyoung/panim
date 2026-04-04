@@ -82,7 +82,7 @@ export default function OnboardingScreen() {
   if (step === 4) {
     return (
       <View>
-        <Text>You're all set</Text>
+        <Text>You&apos;re all set</Text>
         <Text>Start by creating your first snippet.</Text>
         <TouchableOpacity onPress={() => handleComplete('create')}>
           <Text>Create Your First Snippet</Text>
