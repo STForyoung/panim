@@ -1,3 +1,11 @@
+import {
+  type NotificationSchedule,
+  getSchedule,
+  updateSchedule,
+} from "@/src/db/notificationSchedule";
+import { type Topic, getAllTopics } from "@/src/db/topics";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
+import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
   Modal,
@@ -8,14 +16,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useSQLiteContext } from "expo-sqlite";
-import {
-  type NotificationSchedule,
-  getSchedule,
-  updateSchedule,
-} from "@/src/db/notificationSchedule";
-import { type Topic, getAllTopics } from "@/src/db/topics";
-import { scheduleNotifications } from "@/src/notifications/scheduler";
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "NKJV",
@@ -42,6 +42,14 @@ export default function SettingsScreen() {
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
 
+  // Quick Setup
+  const [qsStartHour, setQsStartHour] = useState("8");
+  const [qsStartMinute, setQsStartMinute] = useState("0");
+  const [qsEndHour, setQsEndHour] = useState("22");
+  const [qsEndMinute, setQsEndMinute] = useState("0");
+  const [qsInterval, setQsInterval] = useState<1 | 2 | 3 | 4 | null>(null);
+  const [qsError, setQsError] = useState<string | null>(null);
+
   useEffect(() => {
     async function load() {
       const [s, t] = await Promise.all([getSchedule(db), getAllTopics(db)]);
@@ -53,10 +61,10 @@ export default function SettingsScreen() {
   }, [db]);
 
   async function handleTranslationChange(
-    translation: NotificationSchedule["translation"]
+    translation: NotificationSchedule["translation"],
   ) {
     await updateSchedule(db, { translation });
-    setSchedule((prev) => prev ? { ...prev, translation } : prev);
+    setSchedule((prev) => (prev ? { ...prev, translation } : prev));
     await scheduleNotifications(db);
   }
 
@@ -100,10 +108,7 @@ export default function SettingsScreen() {
 
   async function handleModeChange(mode: "random" | "topic") {
     if (!schedule) return;
-    const update =
-      mode === "random"
-        ? { mode, activeTopic: null }
-        : { mode };
+    const update = mode === "random" ? { mode, activeTopic: null } : { mode };
     await updateSchedule(db, update);
     setSchedule({ ...schedule, ...update });
     await scheduleNotifications(db);
@@ -117,8 +122,64 @@ export default function SettingsScreen() {
     await scheduleNotifications(db);
   }
 
+  async function handleGenerateTimes() {
+    if (!schedule) return;
+
+    const startH = parseInt(qsStartHour, 10);
+    const startM = parseInt(qsStartMinute, 10);
+    const endH = parseInt(qsEndHour, 10);
+    const endM = parseInt(qsEndMinute, 10);
+
+    if (isNaN(startH) || startH < 0 || startH > 23) {
+      setQsError("Start hour must be between 0 and 23.");
+      return;
+    }
+    if (isNaN(startM) || startM < 0 || startM > 59) {
+      setQsError("Start minute must be between 0 and 59.");
+      return;
+    }
+    if (isNaN(endH) || endH < 0 || endH > 23) {
+      setQsError("End hour must be between 0 and 23.");
+      return;
+    }
+    if (isNaN(endM) || endM < 0 || endM > 59) {
+      setQsError("End minute must be between 0 and 59.");
+      return;
+    }
+    if (startH * 60 + startM >= endH * 60 + endM) {
+      setQsError("End time must be after start time.");
+      return;
+    }
+    if (!qsInterval) {
+      setQsError("Select an interval.");
+      return;
+    }
+
+    setQsError(null);
+
+    const generated: string[] = [];
+    let currentMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+
+    while (currentMinutes <= endMinutes) {
+      const h = Math.floor(currentMinutes / 60);
+      const m = currentMinutes % 60;
+      generated.push(
+        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+      );
+      currentMinutes += qsInterval * 60;
+    }
+
+    const merged = Array.from(
+      new Set([...schedule.times, ...generated]),
+    ).sort();
+    await updateSchedule(db, { times: merged });
+    setSchedule({ ...schedule, times: merged });
+    await scheduleNotifications(db);
+  }
+
   async function handleSelectionOrderChange(
-    selectionOrder: "random" | "sequential"
+    selectionOrder: "random" | "sequential",
   ) {
     if (!schedule) return;
     await updateSchedule(db, { selectionOrder });
@@ -134,10 +195,10 @@ export default function SettingsScreen() {
     );
   }
 
-  const activeTopicName =
-    schedule.activeTopic
-      ? topics.find((t) => t.id === schedule.activeTopic)?.name ?? "Unknown topic"
-      : null;
+  const activeTopicName = schedule.activeTopic
+    ? (topics.find((t) => t.id === schedule.activeTopic)?.name ??
+      "Unknown topic")
+    : null;
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }}>
@@ -146,9 +207,68 @@ export default function SettingsScreen() {
       <Text>Applies to new snippets only</Text>
       {TRANSLATIONS.map((t) => (
         <TouchableOpacity key={t} onPress={() => handleTranslationChange(t)}>
-          <Text>{schedule.translation === t ? "[x]" : "[ ]"} {t}</Text>
+          <Text>
+            {schedule.translation === t ? "[x]" : "[ ]"} {t}
+          </Text>
         </TouchableOpacity>
       ))}
+
+      {/* Quick Setup */}
+      <Text>Quick Setup</Text>
+
+      <Text>Start Time</Text>
+      <View>
+        <Text>Hour (0–23)</Text>
+        <TextInput
+          value={qsStartHour}
+          onChangeText={setQsStartHour}
+          keyboardType="number-pad"
+          placeholder="8"
+        />
+        <Text>Minute (0–59)</Text>
+        <TextInput
+          value={qsStartMinute}
+          onChangeText={setQsStartMinute}
+          keyboardType="number-pad"
+          placeholder="0"
+        />
+      </View>
+
+      <Text>End Time</Text>
+      <View>
+        <Text>Hour (0–23)</Text>
+        <TextInput
+          value={qsEndHour}
+          onChangeText={setQsEndHour}
+          keyboardType="number-pad"
+          placeholder="22"
+        />
+        <Text>Minute (0–59)</Text>
+        <TextInput
+          value={qsEndMinute}
+          onChangeText={setQsEndMinute}
+          keyboardType="number-pad"
+          placeholder="0"
+        />
+      </View>
+
+      <Text>Interval</Text>
+      <View>
+        {([1, 2, 3, 4] as const).map((h) => (
+          <TouchableOpacity key={h} onPress={() => setQsInterval(h)}>
+            <Text>
+              {qsInterval === h ? "[x]" : "[ ]"} Every {h}h
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {qsError ? <Text>{qsError}</Text> : null}
+
+      <TouchableOpacity onPress={handleGenerateTimes}>
+        <Text>Generate Times</Text>
+      </TouchableOpacity>
+      <Text>Generated times are added to your existing schedule</Text>
 
       {/* Notification Times */}
       <Text>Notification Times</Text>
@@ -215,9 +335,7 @@ export default function SettingsScreen() {
 
       {schedule.mode === "topic" ? (
         <View>
-          <Text>
-            Active topic: {activeTopicName ?? "None selected"}
-          </Text>
+          <Text>Active topic: {activeTopicName ?? "None selected"}</Text>
           <TouchableOpacity onPress={() => setTopicPickerVisible(true)}>
             <Text>Select Topic</Text>
           </TouchableOpacity>
