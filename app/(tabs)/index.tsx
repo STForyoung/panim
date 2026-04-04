@@ -11,16 +11,19 @@ import {
 import { type Topic } from "@/src/db/topics";
 import { getNextReminderTime } from "@/src/notifications/scheduler";
 import { getDisplayReference } from "@/src/utils/displayReference";
+import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -148,112 +151,318 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View>
-        <Text>Loading…</Text>
-      </View>
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading…</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (allSnippets.length === 0) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text>{getGreeting()}</Text>
-        <Text>Welcome to Panim</Text>
-        <Text>
-          Panim helps you meditate on scripture. Create snippets from Bible
-          passages, reflect on them, and receive them as reminders throughout
-          your day.
-        </Text>
-        <TouchableOpacity onPress={() => router.push("/snippet/create")}>
-          <Text>Create Your First Snippet</Text>
-        </TouchableOpacity>
-      </ScrollView>
+      <SafeAreaView style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.emptyContainer}>
+          <Text style={styles.emptyHeading}>Panim</Text>
+          <Text style={styles.emptyBody}>
+            Panim helps you meditate on scripture. Create snippets from Bible
+            passages, reflect on them, and receive them as reminders throughout
+            your day.
+          </Text>
+          <TouchableOpacity
+            style={styles.newSnippetButton}
+            onPress={() => router.push("/snippet/create")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.newSnippetButtonText}>Create Your First Snippet</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }}>
-      <Text>{getGreeting()}</Text>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.scroll}>
 
-      <TouchableOpacity onPress={() => router.push("/snippet/create")}>
-        <Text>+ New Snippet</Text>
-      </TouchableOpacity>
+        <Text style={styles.greeting}>{getGreeting()}</Text>
 
-      {/* Next in Playlist */}
-      {current ? (
-        <View>
-          <Text>Next in Playlist</Text>
-          {nextReminder ? (
-            <Text>{nextReminder}</Text>
-          ) : (
-            <Text>Set a schedule in Settings to start receiving reminders</Text>
-          )}
-          <Text>{getDisplayReference(current)}</Text>
-          {currentTopics.length > 0 ? (
-            <View>
-              {currentTopics.map((t) => (
-                <Text key={t.id}>{t.name}</Text>
-              ))}
+        <TouchableOpacity
+          style={styles.newSnippetButton}
+          onPress={() => router.push("/snippet/create")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.newSnippetButtonText}>+ New Snippet</Text>
+        </TouchableOpacity>
+
+        {/* Next in Playlist */}
+        {current ? (
+          <View>
+            <Text style={styles.sectionLabel}>NEXT IN PLAYLIST</Text>
+            <View style={styles.card}>
+              <Text style={styles.cardReference}>
+                {getDisplayReference(current).toUpperCase()}
+              </Text>
+
+              {currentTopics.length > 0 ? (
+                <View style={styles.topicsRow}>
+                  {currentTopics.map((t) => (
+                    <Text key={t.id} style={styles.topicName}>{t.name}</Text>
+                  ))}
+                </View>
+              ) : null}
+
+              <Text style={styles.reminderText}>
+                {nextReminder ?? "Set a schedule in Settings to start receiving reminders"}
+              </Text>
+
+              <View style={styles.divider} />
+
+              <Text style={styles.cardReflection} numberOfLines={5}>{current.reflection}</Text>
+
+              <View style={styles.divider} />
+
+              <Text style={styles.cardPassage} numberOfLines={5}>{current.passage}</Text>
+
+              <View style={styles.cardButtons}>
+                {allSnippets.length > 1 ? (
+                  <TouchableOpacity
+                    style={styles.buttonOutline}
+                    onPress={handleNewSnippet}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.buttonOutlineText}>New Snippet</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity
+                  style={styles.buttonFilled}
+                  onPress={() => router.push(`/snippet/${current.id}`)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.buttonFilledText}>View Snippet</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          ) : null}
-          <Text>{current.passage}</Text>
-          <Text>{current.reflection}</Text>
+          </View>
+        ) : null}
 
-          <TouchableOpacity
-            onPress={() => router.push(`/snippet/${current.id}`)}
-          >
-            <Text>View Snippet</Text>
-          </TouchableOpacity>
+        {/* Coming Up */}
+        {comingUp.length > 0 ? (
+          <View>
+            <Text style={styles.sectionLabel}>COMING UP</Text>
+            <FlatList
+              horizontal
+              data={comingUp}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.miniCard}
+                  onPress={() => router.push(`/snippet/${item.id}`)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.miniCardReference}>{getDisplayReference(item)}</Text>
+                  <Text style={styles.miniCardPassage} numberOfLines={1}>
+                    {item.passage}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        ) : null}
 
-          {allSnippets.length > 1 ? (
-            <TouchableOpacity onPress={handleNewSnippet}>
-              <Text>New Snippet</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* Coming Up */}
-      {comingUp.length > 0 ? (
+        {/* Favourites */}
         <View>
-          <Text>Coming Up</Text>
-          <FlatList
-            horizontal
-            data={comingUp}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => router.push(`/snippet/${item.id}`)}>
-                <Text>{getDisplayReference(item)}</Text>
-                <Text numberOfLines={1}>{item.passage}</Text>
-              </TouchableOpacity>
-            )}
-          />
+          <Text style={styles.sectionLabel}>FAVOURITES</Text>
+          {favourites.length === 0 ? (
+            <Text style={styles.emptyFavourites}>
+              Tap a snippet and use the favourite button to save it here.
+            </Text>
+          ) : (
+            <FlatList
+              horizontal
+              data={favourites}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.miniCard}
+                  onPress={() => router.push(`/snippet/${item.id}`)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.miniCardReference}>{getDisplayReference(item)}</Text>
+                  <Text style={styles.miniCardPassage} numberOfLines={1}>
+                    {item.passage}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
         </View>
-      ) : null}
 
-      {/* Favourites */}
-      <View>
-        <Text>Favourites</Text>
-        {favourites.length === 0 ? (
-          <Text>
-            Tap a snippet and use the favourite button to save it here.
-          </Text>
-        ) : (
-          <FlatList
-            horizontal
-            data={favourites}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => router.push(`/snippet/${item.id}`)}
-              >
-                <Text>{getDisplayReference(item)}</Text>
-                <Text numberOfLines={1}>{item.passage}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scroll: {
+    padding: spacing.lg,
+  },
+
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+
+  // Empty state
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  emptyHeading: {
+    ...typography.heading,
+    marginBottom: spacing.xl,
+  },
+  emptyBody: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginBottom: spacing.lg,
+  },
+
+  // Greeting
+  greeting: {
+    ...typography.heading,
+    paddingTop: spacing.xl,
+    marginBottom: spacing.xs,
+  },
+
+  // New Snippet button
+  newSnippetButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  newSnippetButtonText: {
+    ...typography.button,
+    color: colors.surface,
+  },
+
+  // Section label
+  sectionLabel: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+
+  // Main playlist card
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    ...shadows.card,
+  },
+  cardReference: {
+    ...typography.reference,
+  },
+  topicsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  topicName: {
+    ...typography.label,
+    color: colors.accent,
+  },
+  reminderText: {
+    ...typography.label,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
+  },
+  cardPassage: {
+    ...typography.scriptureItalic,
+    marginTop: spacing.sm,
+  },
+  cardReflection: {
+    ...typography.scripture,
+  },
+  cardButtons: {
+    flexDirection: "row",
+    marginTop: spacing.md,
+  },
+  buttonOutline: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+    marginRight: spacing.sm,
+  },
+  buttonOutlineText: {
+    ...typography.button,
+    color: colors.accent,
+  },
+  buttonFilled: {
+    flex: 1,
+    backgroundColor: colors.accent,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+  },
+  buttonFilledText: {
+    ...typography.button,
+    color: colors.surface,
+  },
+
+  // Mini cards (Coming Up + Favourites)
+  miniCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    width: 180,
+    ...shadows.card,
+  },
+  miniCardReference: {
+    ...typography.reference,
+  },
+  miniCardPassage: {
+    ...typography.scripture,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: spacing.xs,
+  },
+
+  // Favourites empty
+  emptyFavourites: {
+    ...typography.label,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: spacing.md,
+  },
+});
