@@ -120,7 +120,6 @@ const styles = StyleSheet.create({
   // Title
   title: {
     ...typography.heading,
-    paddingTop: spacing.xl,
     marginBottom: spacing.lg,
   },
 

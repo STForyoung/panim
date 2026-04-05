@@ -564,7 +564,6 @@ const styles = StyleSheet.create({
   // Screen title
   screenTitle: {
     ...typography.heading,
-    paddingTop: spacing.xl,
     marginBottom: spacing.lg,
   },
 

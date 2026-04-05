@@ -342,7 +342,6 @@ const styles = StyleSheet.create({
   // Greeting
   greeting: {
     ...typography.heading,
-    paddingTop: spacing.xl,
     marginBottom: spacing.xs,
   },
 
