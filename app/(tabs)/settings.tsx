@@ -5,11 +5,13 @@ import {
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
+import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
   Modal,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -26,6 +28,15 @@ const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "KJV",
 ];
 
+const TRANSLATION_NAMES: Record<NotificationSchedule["translation"], string> = {
+  NKJV: "New King James Version",
+  NIV: "New International Version",
+  ESV: "English Standard Version",
+  NASB: "New American Standard Bible",
+  NLT: "New Living Translation",
+  KJV: "King James Version",
+};
+
 export default function SettingsScreen() {
   const db = useSQLiteContext();
 
@@ -36,12 +47,8 @@ export default function SettingsScreen() {
   // Pending schedule state — not saved until Apply is tapped
   const [pendingTimes, setPendingTimes] = useState<string[]>([]);
   const [pendingMode, setPendingMode] = useState<"random" | "topic">("random");
-  const [pendingActiveTopic, setPendingActiveTopic] = useState<string | null>(
-    null,
-  );
-  const [pendingSelectionOrder, setPendingSelectionOrder] = useState<
-    "random" | "sequential"
-  >("random");
+  const [pendingActiveTopic, setPendingActiveTopic] = useState<string | null>(null);
+  const [pendingSelectionOrder, setPendingSelectionOrder] = useState<"random" | "sequential">("random");
 
   // Apply state
   const [isApplying, setIsApplying] = useState(false);
@@ -80,9 +87,7 @@ export default function SettingsScreen() {
   }, [db]);
 
   // Translation saves immediately — independent of schedule
-  async function handleTranslationChange(
-    translation: NotificationSchedule["translation"],
-  ) {
+  async function handleTranslationChange(translation: NotificationSchedule["translation"]) {
     await updateSchedule(db, { translation });
     setSchedule((prev) => (prev ? { ...prev, translation } : prev));
     await scheduleNotifications(db);
@@ -172,9 +177,7 @@ export default function SettingsScreen() {
     while (currentMinutes <= endMinutes) {
       const h = Math.floor(currentMinutes / 60);
       const m = currentMinutes % 60;
-      generated.push(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-      );
+      generated.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
       currentMinutes += qsInterval * 60;
     }
 
@@ -213,9 +216,7 @@ export default function SettingsScreen() {
       await scheduleNotifications(db);
       setApplyMessage("Schedule updated");
     } catch (e) {
-      setApplyError(
-        e instanceof Error ? e.message : "Failed to save schedule.",
-      );
+      setApplyError(e instanceof Error ? e.message : "Failed to save schedule.");
     } finally {
       setIsApplying(false);
     }
@@ -223,9 +224,11 @@ export default function SettingsScreen() {
 
   if (loading || !schedule) {
     return (
-      <View>
-        <Text>Loading…</Text>
-      </View>
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.centeredState}>
+          <Text style={styles.mutedText}>Loading…</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -234,192 +237,620 @@ export default function SettingsScreen() {
     : null;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }}>
-      {/* Translation — saves immediately */}
-      <Text>Translation</Text>
-      <Text>Applies to new snippets only</Text>
-      {TRANSLATIONS.map((t) => (
-        <TouchableOpacity key={t} onPress={() => handleTranslationChange(t)}>
-          <Text>
-            {schedule.translation === t ? "[x]" : "[ ]"} {t}
-          </Text>
-        </TouchableOpacity>
-      ))}
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.scroll}>
 
-      {/* Quick Setup */}
-      <Text>Quick Setup</Text>
+        <Text style={styles.title}>Settings</Text>
 
-      <Text>Start Time</Text>
-      <View>
-        <Text>Hour (0–23)</Text>
-        <TextInput
-          value={qsStartHour}
-          onChangeText={setQsStartHour}
-          keyboardType="number-pad"
-          placeholder="8"
-        />
-        <Text>Minute (0–59)</Text>
-        <TextInput
-          value={qsStartMinute}
-          onChangeText={setQsStartMinute}
-          keyboardType="number-pad"
-          placeholder="0"
-        />
-      </View>
-
-      <Text>End Time</Text>
-      <View>
-        <Text>Hour (0–23)</Text>
-        <TextInput
-          value={qsEndHour}
-          onChangeText={setQsEndHour}
-          keyboardType="number-pad"
-          placeholder="22"
-        />
-        <Text>Minute (0–59)</Text>
-        <TextInput
-          value={qsEndMinute}
-          onChangeText={setQsEndMinute}
-          keyboardType="number-pad"
-          placeholder="0"
-        />
-      </View>
-
-      <Text>Interval</Text>
-      <View>
-        {([1, 2, 3, 4] as const).map((h) => (
-          <TouchableOpacity key={h} onPress={() => setQsInterval(h)}>
-            <Text>
-              {qsInterval === h ? "[x]" : "[ ]"} Every {h}h
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {qsError ? <Text>{qsError}</Text> : null}
-
-      <TouchableOpacity onPress={handleGenerateTimes}>
-        <Text>Generate Times</Text>
-      </TouchableOpacity>
-      <Text>Generated times are added to your existing schedule</Text>
-
-      {/* Notification Times */}
-      <Text>Notification Times</Text>
-      {pendingTimes.length === 0 ? (
-        <Text>No times set.</Text>
-      ) : (
-        pendingTimes.map((time) => (
-          <View key={time}>
-            <Text>{time}</Text>
-            <TouchableOpacity onPress={() => handleRemoveTime(time)}>
-              <Text>Remove</Text>
-            </TouchableOpacity>
-          </View>
-        ))
-      )}
-      <TouchableOpacity
-        onPress={() => {
-          setHourInput("");
-          setMinuteInput("");
-          setTimeError(null);
-          setAddTimeVisible(true);
-        }}
-      >
-        <Text>Add Time</Text>
-      </TouchableOpacity>
-
-      <Modal visible={addTimeVisible} animationType="slide">
-        <SafeAreaView style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <Text>Add Notification Time</Text>
-            <Text>Hour (0–23)</Text>
-            <TextInput
-              value={hourInput}
-              onChangeText={setHourInput}
-              keyboardType="number-pad"
-              placeholder="7"
-            />
-            <Text>Minute (0–59)</Text>
-            <TextInput
-              value={minuteInput}
-              onChangeText={setMinuteInput}
-              keyboardType="number-pad"
-              placeholder="0"
-            />
-            {timeError ? <Text>{timeError}</Text> : null}
-            <TouchableOpacity onPress={handleAddTime}>
-              <Text>Add</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setAddTimeVisible(false)}>
-              <Text>Cancel</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Notification Mode */}
-      <Text>Notification Mode</Text>
-      <TouchableOpacity onPress={() => handleModeChange("random")}>
-        <Text>{pendingMode === "random" ? "[x]" : "[ ]"} Random</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => handleModeChange("topic")}>
-        <Text>{pendingMode === "topic" ? "[x]" : "[ ]"} Topic Focus</Text>
-      </TouchableOpacity>
-
-      {pendingMode === "topic" ? (
-        <View>
-          <Text>Active topic: {activeTopicName ?? "None selected"}</Text>
-          <TouchableOpacity onPress={() => setTopicPickerVisible(true)}>
-            <Text>Select Topic</Text>
-          </TouchableOpacity>
+        {/* Translation */}
+        <Text style={styles.sectionHeader}>TRANSLATION</Text>
+        <Text style={styles.sectionNote}>Applies to new snippets only</Text>
+        <View style={styles.sectionCard}>
+          {TRANSLATIONS.map((t, i) => {
+            const selected = schedule.translation === t;
+            return (
+              <TouchableOpacity
+                key={t}
+                style={[
+                  styles.row,
+                  selected && styles.rowSelected,
+                  i === TRANSLATIONS.length - 1 && styles.rowLast,
+                ]}
+                onPress={() => handleTranslationChange(t)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
+                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      ) : null}
 
-      <Modal visible={topicPickerVisible} animationType="slide">
-        <SafeAreaView style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <TouchableOpacity onPress={() => setTopicPickerVisible(false)}>
-              <Text>Cancel</Text>
-            </TouchableOpacity>
-            <Text>Select Active Topic</Text>
-            {topics.length === 0 ? (
-              <Text>No topics yet.</Text>
-            ) : (
-              topics.map((topic) => (
+        {/* Quick Setup */}
+        <Text style={styles.sectionHeader}>QUICK SETUP</Text>
+        <View style={styles.sectionCard}>
+          {/* Start time */}
+          <View style={[styles.row, styles.rowSpaceBetween]}>
+            <Text style={styles.rowLabel}>Start time</Text>
+            <View style={styles.timeInputs}>
+              <TextInput
+                style={styles.timeInput}
+                value={qsStartHour}
+                onChangeText={setQsStartHour}
+                keyboardType="number-pad"
+                placeholder="8"
+                placeholderTextColor={colors.textSecondary + "80"}
+                textAlign="center"
+              />
+              <Text style={styles.timeSeparator}>:</Text>
+              <TextInput
+                style={styles.timeInput}
+                value={qsStartMinute}
+                onChangeText={setQsStartMinute}
+                keyboardType="number-pad"
+                placeholder="00"
+                placeholderTextColor={colors.textSecondary + "80"}
+                textAlign="center"
+              />
+            </View>
+          </View>
+
+          {/* End time */}
+          <View style={[styles.row, styles.rowSpaceBetween]}>
+            <Text style={styles.rowLabel}>End time</Text>
+            <View style={styles.timeInputs}>
+              <TextInput
+                style={styles.timeInput}
+                value={qsEndHour}
+                onChangeText={setQsEndHour}
+                keyboardType="number-pad"
+                placeholder="22"
+                placeholderTextColor={colors.textSecondary + "80"}
+                textAlign="center"
+              />
+              <Text style={styles.timeSeparator}>:</Text>
+              <TextInput
+                style={styles.timeInput}
+                value={qsEndMinute}
+                onChangeText={setQsEndMinute}
+                keyboardType="number-pad"
+                placeholder="00"
+                placeholderTextColor={colors.textSecondary + "80"}
+                textAlign="center"
+              />
+            </View>
+          </View>
+
+          {/* Interval */}
+          <View style={[styles.row, styles.rowLast, styles.rowSpaceBetween]}>
+            <Text style={styles.rowLabel}>Interval</Text>
+            <View style={styles.intervalButtons}>
+              {([1, 2, 3, 4] as const).map((h) => (
                 <TouchableOpacity
-                  key={topic.id}
-                  onPress={() => handleTopicSelect(topic.id)}
+                  key={h}
+                  style={[
+                    styles.intervalButton,
+                    qsInterval === h && styles.intervalButtonActive,
+                  ]}
+                  onPress={() => setQsInterval(h)}
+                  activeOpacity={0.7}
                 >
-                  <Text>
-                    {pendingActiveTopic === topic.id ? "[x]" : "[ ]"}{" "}
-                    {topic.name} ({topic.type})
+                  <Text
+                    style={[
+                      styles.intervalButtonText,
+                      qsInterval === h && styles.intervalButtonTextActive,
+                    ]}
+                  >
+                    {h}h
                   </Text>
                 </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+              ))}
+            </View>
+          </View>
+        </View>
 
-      {/* Selection Order */}
-      <Text>Selection Order</Text>
-      <TouchableOpacity onPress={() => handleSelectionOrderChange("random")}>
-        <Text>{pendingSelectionOrder === "random" ? "[x]" : "[ ]"} Random</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => handleSelectionOrderChange("sequential")}
-      >
-        <Text>
-          {pendingSelectionOrder === "sequential" ? "[x]" : "[ ]"} Sequential
-        </Text>
-      </TouchableOpacity>
+        {qsError ? <Text style={styles.errorText}>{qsError}</Text> : null}
 
-      {/* Apply */}
-      {applyMessage ? <Text>{applyMessage}</Text> : null}
-      {applyError ? <Text>{applyError}</Text> : null}
-      <TouchableOpacity onPress={handleApply} disabled={isApplying}>
-        <Text>{isApplying ? "Applying…" : "Apply Schedule"}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity
+          style={styles.generateButton}
+          onPress={handleGenerateTimes}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.primaryButtonText}>Generate Times</Text>
+        </TouchableOpacity>
+        <Text style={styles.generateNote}>Generated times are added to your existing schedule</Text>
+
+        {/* Scheduled Times */}
+        <Text style={styles.sectionHeader}>SCHEDULED TIMES</Text>
+        <View style={styles.sectionCard}>
+          {pendingTimes.length === 0 ? (
+            <View style={[styles.row, styles.rowLast]}>
+              <Text style={styles.mutedText}>No times set.</Text>
+            </View>
+          ) : (
+            pendingTimes.map((time, i) => (
+              <View
+                key={time}
+                style={[
+                  styles.row,
+                  styles.rowSpaceBetween,
+                  i === pendingTimes.length - 1 && styles.rowLast,
+                ]}
+              >
+                <Text style={styles.rowLabel}>{time}</Text>
+                <TouchableOpacity onPress={() => handleRemoveTime(time)} hitSlop={8}>
+                  <Text style={styles.removeButton}>×</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </View>
+        <TouchableOpacity
+          style={styles.outlineButton}
+          onPress={() => {
+            setHourInput("");
+            setMinuteInput("");
+            setTimeError(null);
+            setAddTimeVisible(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.outlineButtonText}>+ Add Time</Text>
+        </TouchableOpacity>
+
+        {/* Add Time Modal */}
+        <Modal visible={addTimeVisible} animationType="slide">
+          <SafeAreaView style={styles.screen}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={() => setAddTimeVisible(false)}
+              >
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Add Time</Text>
+              <View style={styles.modalCancelArea} />
+            </View>
+            <View style={styles.modalBody}>
+              <View style={styles.modalTimeRow}>
+                <View style={styles.modalTimeField}>
+                  <Text style={styles.modalTimeLabel}>HOUR (0–23)</Text>
+                  <TextInput
+                    style={styles.modalTimeInput}
+                    value={hourInput}
+                    onChangeText={setHourInput}
+                    keyboardType="number-pad"
+                    placeholder="7"
+                    placeholderTextColor={colors.textSecondary + "80"}
+                    textAlign="center"
+                    autoFocus
+                  />
+                </View>
+                <Text style={styles.modalTimeSeparator}>:</Text>
+                <View style={styles.modalTimeField}>
+                  <Text style={styles.modalTimeLabel}>MINUTE (0–59)</Text>
+                  <TextInput
+                    style={styles.modalTimeInput}
+                    value={minuteInput}
+                    onChangeText={setMinuteInput}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor={colors.textSecondary + "80"}
+                    textAlign="center"
+                  />
+                </View>
+              </View>
+              {timeError ? <Text style={styles.errorText}>{timeError}</Text> : null}
+              <TouchableOpacity
+                style={[styles.generateButton, { marginTop: spacing.lg }]}
+                onPress={handleAddTime}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.primaryButtonText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </Modal>
+
+        {/* Notification Mode */}
+        <Text style={styles.sectionHeader}>NOTIFICATION MODE</Text>
+        <View style={styles.sectionCard}>
+          {(["random", "topic"] as const).map((mode, i) => {
+            const selected = pendingMode === mode;
+            const label = mode === "random" ? "Random" : "Topic Focus";
+            const isLast = mode === "topic" && pendingMode !== "topic";
+            return (
+              <View key={mode}>
+                <TouchableOpacity
+                  style={[
+                    styles.row,
+                    styles.rowSpaceBetween,
+                    selected && styles.rowSelected,
+                    isLast && styles.rowLast,
+                    mode === "topic" && pendingMode === "topic" && styles.rowLast,
+                    i === 0 && pendingMode !== "topic" ? {} : {},
+                  ]}
+                  onPress={() => handleModeChange(mode)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.rowLabel}>{label}</Text>
+                  {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                </TouchableOpacity>
+
+                {mode === "topic" && pendingMode === "topic" ? (
+                  <TouchableOpacity
+                    style={[styles.row, styles.rowLast, styles.topicPickerRow]}
+                    onPress={() => setTopicPickerVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.topicPickerText}>
+                      {activeTopicName ?? "Select a topic…"}
+                    </Text>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Topic Picker Modal */}
+        <Modal visible={topicPickerVisible} animationType="slide">
+          <SafeAreaView style={styles.screen}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={() => setTopicPickerVisible(false)}
+              >
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Select Topic</Text>
+              <View style={styles.modalCancelArea} />
+            </View>
+            <ScrollView>
+              {topics.length === 0 ? (
+                <View style={styles.centeredState}>
+                  <Text style={styles.mutedText}>No topics yet.</Text>
+                </View>
+              ) : (
+                topics.map((topic, i) => {
+                  const selected = pendingActiveTopic === topic.id;
+                  return (
+                    <TouchableOpacity
+                      key={topic.id}
+                      style={[
+                        styles.modalRow,
+                        selected && styles.rowSelected,
+                        i === topics.length - 1 && styles.rowLast,
+                      ]}
+                      onPress={() => handleTopicSelect(topic.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View>
+                        <Text style={styles.rowLabel}>{topic.name}</Text>
+                        <Text style={styles.topicTypeTag}>{topic.type}</Text>
+                      </View>
+                      {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
+        {/* Selection Order */}
+        <Text style={styles.sectionHeader}>SELECTION ORDER</Text>
+        <View style={styles.sectionCard}>
+          {(["random", "sequential"] as const).map((order, i) => {
+            const selected = pendingSelectionOrder === order;
+            const label = order === "random" ? "Random" : "Sequential";
+            return (
+              <TouchableOpacity
+                key={order}
+                style={[
+                  styles.row,
+                  styles.rowSpaceBetween,
+                  selected && styles.rowSelected,
+                  i === 1 && styles.rowLast,
+                ]}
+                onPress={() => handleSelectionOrderChange(order)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.rowLabel}>{label}</Text>
+                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Apply */}
+        <TouchableOpacity
+          style={[styles.applyButton, isApplying && styles.buttonDisabled]}
+          onPress={handleApply}
+          disabled={isApplying}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isApplying ? "Applying…" : "Apply Schedule"}
+          </Text>
+        </TouchableOpacity>
+
+        {applyMessage ? (
+          <Text style={styles.applySuccess}>{applyMessage}</Text>
+        ) : null}
+        {applyError ? (
+          <Text style={styles.errorText}>{applyError}</Text>
+        ) : null}
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scroll: {
+    padding: spacing.lg,
+  },
+  centeredState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  mutedText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+
+  // Title
+  title: {
+    ...typography.heading,
+    marginBottom: spacing.lg,
+  },
+
+  // Section pattern
+  sectionHeader: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sectionNote: {
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    overflow: "hidden",
+    ...shadows.card,
+  },
+
+  // Rows
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  rowSpaceBetween: {
+    justifyContent: "space-between",
+  },
+  rowSelected: {
+    backgroundColor: colors.accent + "33", // ~20% opacity
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+  },
+  rowLabel: {
+    ...typography.body,
+  },
+  checkmark: {
+    ...typography.body,
+    color: colors.accent,
+  },
+
+  // Quick setup time inputs
+  timeInputs: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  timeInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs,
+    width: 40,
+    ...typography.body,
+  },
+  timeSeparator: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+
+  // Interval buttons
+  intervalButtons: {
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  intervalButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  intervalButtonActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  intervalButtonText: {
+    ...typography.label,
+    color: colors.textSecondary,
+  },
+  intervalButtonTextActive: {
+    color: colors.surface,
+  },
+
+  // Generate button + note
+  generateButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.md,
+  },
+  primaryButtonText: {
+    ...typography.button,
+    color: colors.surface,
+  },
+  generateNote: {
+    ...typography.label,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: spacing.xs,
+  },
+
+  // Remove time button
+  removeButton: {
+    ...typography.body,
+    color: colors.danger,
+  },
+
+  // Add Time outline button
+  outlineButton: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.sm,
+  },
+  outlineButtonText: {
+    ...typography.button,
+    color: colors.accent,
+  },
+
+  // Topic picker row (inside mode card)
+  topicPickerRow: {
+    backgroundColor: colors.background,
+    paddingLeft: spacing.lg,
+    justifyContent: "space-between",
+  },
+  topicPickerText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  chevron: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  topicTypeTag: {
+    ...typography.label,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+
+  // Error
+  errorText: {
+    ...typography.label,
+    color: colors.danger,
+    marginTop: spacing.sm,
+  },
+
+  // Apply button
+  applyButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.xl,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  applySuccess: {
+    ...typography.label,
+    color: colors.accent,
+    textAlign: "center",
+    marginTop: spacing.sm,
+  },
+
+  // Modal
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCancelArea: {
+    minWidth: 60,
+  },
+  modalCancel: {
+    ...typography.button,
+    color: colors.accent,
+  },
+  modalTitle: {
+    ...typography.heading,
+    flex: 1,
+    textAlign: "center",
+    fontSize: 17,
+  },
+  modalBody: {
+    padding: spacing.lg,
+  },
+  modalTimeRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  modalTimeField: {
+    alignItems: "center",
+  },
+  modalTimeLabel: {
+    ...typography.label,
+    letterSpacing: 1.2,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  modalTimeInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    width: 80,
+    ...typography.heading,
+    textAlign: "center",
+  },
+  modalTimeSeparator: {
+    ...typography.heading,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  modalRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+});
