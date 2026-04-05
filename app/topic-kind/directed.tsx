@@ -14,13 +14,14 @@ import { useSQLiteContext } from "expo-sqlite";
 import { type Topic, createTopic, deleteTopic, getAllTopics } from "@/src/db/topics";
 import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 type TopicWithCount = Topic & { snippetCount: number };
 
 export default function DirectedTopicsScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [topics, setTopics] = useState<TopicWithCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,9 +144,9 @@ export default function DirectedTopicsScreen() {
       />
 
       <Modal visible={modalVisible} animationType="slide">
-        <SafeAreaView style={styles.screen}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={closeModal} disabled={isSaving}>
+        <View style={styles.screen}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
+            <TouchableOpacity style={styles.modalCancelArea} onPress={closeModal} disabled={isSaving} hitSlop={8}>
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>New Topic</Text>
@@ -171,7 +172,7 @@ export default function DirectedTopicsScreen() {
               <Text style={styles.newButtonText}>{isSaving ? "Saving…" : "Save"}</Text>
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -253,10 +254,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  modalCancelArea: {
+    minWidth: 60,
+  },
   modalCancel: {
     ...typography.button,
     color: colors.accent,
-    minWidth: 60,
   },
   modalTitle: {
     ...typography.heading,
