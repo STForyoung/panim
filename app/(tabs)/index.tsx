@@ -53,15 +53,11 @@ export default function HomeScreen() {
   const [currentTopics, setCurrentTopics] = useState<Topic[]>([]);
   const [comingUp, setComingUp] = useState<Snippet[]>([]);
   const [favourites, setFavourites] = useState<Snippet[]>([]);
-  // Fingerprint of schedule settings used for the last pick
-  const [scheduleKey, setScheduleKey] = useState<string>("");
   const [nextReminder, setNextReminder] = useState<string | null>(null);
 
   const pickFromSchedule = useCallback(
     async (snippets: Snippet[]) => {
       const schedule = await getSchedule(db);
-      const key = `${schedule.mode}:${schedule.activeTopic}:${schedule.selectionOrder}`;
-
       let pool: Snippet[] = snippets;
       if (schedule.mode === "topic") {
         if (!schedule.activeTopic) {
@@ -81,7 +77,6 @@ export default function HomeScreen() {
       const topics = await getTopicsForSnippet(db, picked.id);
       setCurrent(picked);
       setCurrentTopics(topics);
-      setScheduleKey(key);
       setNextReminder(getNextReminderTime(schedule.times));
 
       if (schedule.selectionOrder === "sequential") {
@@ -129,15 +124,14 @@ export default function HomeScreen() {
         setAllSnippets(snippets);
         setFavourites(favs);
 
-        const key = `${schedule.mode}:${schedule.activeTopic}:${schedule.selectionOrder}`;
-        if (key !== scheduleKey && snippets.length > 0) {
+        if (snippets.length > 0) {
           await pickFromSchedule(snippets);
         } else {
           setNextReminder(getNextReminderTime(schedule.times));
         }
       }
       onFocus();
-    }, [db, scheduleKey, pickFromSchedule]),
+    }, [db, pickFromSchedule]),
   );
 
   async function handleNewSnippet() {
