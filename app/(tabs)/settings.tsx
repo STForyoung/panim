@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "NKJV",
@@ -40,6 +40,7 @@ const TRANSLATION_NAMES: Record<NotificationSchedule["translation"], string> = {
 export default function SettingsScreen() {
   const db = useSQLiteContext();
 
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState<NotificationSchedule | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -400,8 +401,8 @@ export default function SettingsScreen() {
 
         {/* Add Time Modal */}
         <Modal visible={addTimeVisible} animationType="slide">
-          <SafeAreaView style={styles.screen}>
-            <View style={styles.modalHeader}>
+          <View style={styles.screen}>
+            <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity
                 style={styles.modalCancelArea}
                 onPress={() => setAddTimeVisible(false)}
@@ -449,7 +450,7 @@ export default function SettingsScreen() {
                 <Text style={styles.primaryButtonText}>Add</Text>
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
+          </View>
         </Modal>
 
         {/* Notification Mode */}
@@ -496,8 +497,8 @@ export default function SettingsScreen() {
 
         {/* Topic Picker Modal */}
         <Modal visible={topicPickerVisible} animationType="slide">
-          <SafeAreaView style={styles.screen}>
-            <View style={styles.modalHeader}>
+          <View style={styles.screen}>
+            <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
               <TouchableOpacity
                 style={styles.modalCancelArea}
                 onPress={() => setTopicPickerVisible(false)}
@@ -536,7 +537,7 @@ export default function SettingsScreen() {
                 })
               )}
             </ScrollView>
-          </SafeAreaView>
+          </View>
         </Modal>
 
         {/* Selection Order */}
