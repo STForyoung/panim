@@ -1,11 +1,17 @@
 import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
+import {
   type NotificationSchedule,
   getSchedule,
   updateSchedule,
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
-import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
@@ -17,7 +23,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "NKJV",
@@ -48,8 +57,12 @@ export default function SettingsScreen() {
   // Pending schedule state — not saved until Apply is tapped
   const [pendingTimes, setPendingTimes] = useState<string[]>([]);
   const [pendingMode, setPendingMode] = useState<"random" | "topic">("random");
-  const [pendingActiveTopic, setPendingActiveTopic] = useState<string | null>(null);
-  const [pendingSelectionOrder, setPendingSelectionOrder] = useState<"random" | "sequential">("random");
+  const [pendingActiveTopic, setPendingActiveTopic] = useState<string | null>(
+    null,
+  );
+  const [pendingSelectionOrder, setPendingSelectionOrder] = useState<
+    "random" | "sequential"
+  >("random");
 
   // Apply state
   const [isApplying, setIsApplying] = useState(false);
@@ -88,7 +101,9 @@ export default function SettingsScreen() {
   }, [db]);
 
   // Translation saves immediately — independent of schedule
-  async function handleTranslationChange(translation: NotificationSchedule["translation"]) {
+  async function handleTranslationChange(
+    translation: NotificationSchedule["translation"],
+  ) {
     await updateSchedule(db, { translation });
     setSchedule((prev) => (prev ? { ...prev, translation } : prev));
     await scheduleNotifications(db);
@@ -178,7 +193,9 @@ export default function SettingsScreen() {
     while (currentMinutes <= endMinutes) {
       const h = Math.floor(currentMinutes / 60);
       const m = currentMinutes % 60;
-      generated.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+      generated.push(
+        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+      );
       currentMinutes += qsInterval * 60;
     }
 
@@ -217,7 +234,9 @@ export default function SettingsScreen() {
       await scheduleNotifications(db);
       setApplyMessage("Schedule updated");
     } catch (e) {
-      setApplyError(e instanceof Error ? e.message : "Failed to save schedule.");
+      setApplyError(
+        e instanceof Error ? e.message : "Failed to save schedule.",
+      );
     } finally {
       setIsApplying(false);
     }
@@ -225,7 +244,7 @@ export default function SettingsScreen() {
 
   if (loading || !schedule) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
         <View style={styles.centeredState}>
           <Text style={styles.mutedText}>Loading…</Text>
         </View>
@@ -238,9 +257,8 @@ export default function SettingsScreen() {
     : null;
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
-
         <Text style={styles.title}>Settings</Text>
 
         {/* Translation */}
@@ -359,7 +377,9 @@ export default function SettingsScreen() {
         >
           <Text style={styles.primaryButtonText}>Generate Times</Text>
         </TouchableOpacity>
-        <Text style={styles.generateNote}>Generated times are added to your existing schedule</Text>
+        <Text style={styles.generateNote}>
+          Generated times are added to your existing schedule
+        </Text>
 
         {/* Scheduled Times */}
         <Text style={styles.sectionHeader}>SCHEDULED TIMES</Text>
@@ -379,7 +399,10 @@ export default function SettingsScreen() {
                 ]}
               >
                 <Text style={styles.rowLabel}>{time}</Text>
-                <TouchableOpacity onPress={() => handleRemoveTime(time)} hitSlop={8}>
+                <TouchableOpacity
+                  onPress={() => handleRemoveTime(time)}
+                  hitSlop={8}
+                >
                   <Text style={styles.removeButton}>×</Text>
                 </TouchableOpacity>
               </View>
@@ -402,7 +425,12 @@ export default function SettingsScreen() {
         {/* Add Time Modal */}
         <Modal visible={addTimeVisible} animationType="slide">
           <View style={styles.screen}>
-            <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
+            <View
+              style={[
+                styles.modalHeader,
+                { paddingTop: insets.top + spacing.md },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.modalCancelArea}
                 onPress={() => setAddTimeVisible(false)}
@@ -441,7 +469,9 @@ export default function SettingsScreen() {
                   />
                 </View>
               </View>
-              {timeError ? <Text style={styles.errorText}>{timeError}</Text> : null}
+              {timeError ? (
+                <Text style={styles.errorText}>{timeError}</Text>
+              ) : null}
               <TouchableOpacity
                 style={[styles.generateButton, { marginTop: spacing.lg }]}
                 onPress={handleAddTime}
@@ -468,7 +498,9 @@ export default function SettingsScreen() {
                     styles.rowSpaceBetween,
                     selected && styles.rowSelected,
                     isLast && styles.rowLast,
-                    mode === "topic" && pendingMode === "topic" && styles.rowLast,
+                    mode === "topic" &&
+                      pendingMode === "topic" &&
+                      styles.rowLast,
                     i === 0 && pendingMode !== "topic" ? {} : {},
                   ]}
                   onPress={() => handleModeChange(mode)}
@@ -498,7 +530,12 @@ export default function SettingsScreen() {
         {/* Topic Picker Modal */}
         <Modal visible={topicPickerVisible} animationType="slide">
           <View style={styles.screen}>
-            <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
+            <View
+              style={[
+                styles.modalHeader,
+                { paddingTop: insets.top + spacing.md },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.modalCancelArea}
                 onPress={() => setTopicPickerVisible(false)}
@@ -531,7 +568,9 @@ export default function SettingsScreen() {
                         <Text style={styles.rowLabel}>{topic.name}</Text>
                         <Text style={styles.topicTypeTag}>{topic.type}</Text>
                       </View>
-                      {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                      {selected ? (
+                        <Text style={styles.checkmark}>✓</Text>
+                      ) : null}
                     </TouchableOpacity>
                   );
                 })
@@ -580,10 +619,7 @@ export default function SettingsScreen() {
         {applyMessage ? (
           <Text style={styles.applySuccess}>{applyMessage}</Text>
         ) : null}
-        {applyError ? (
-          <Text style={styles.errorText}>{applyError}</Text>
-        ) : null}
-
+        {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
       </ScrollView>
     </SafeAreaView>
   );

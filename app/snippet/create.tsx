@@ -1,10 +1,16 @@
+import { TopicChip } from "@/src/components/TopicChip";
+import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
 import { createSnippet } from "@/src/db/snippets";
 import { addSnippetToTopic } from "@/src/db/snippetTopics";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
-import { BOOK_IDS, fetchPassage } from "@/src/services/bibleService";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
-import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
-import { TopicChip } from "@/src/components/TopicChip";
+import { BOOK_IDS, fetchPassage } from "@/src/services/bibleService";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -235,6 +241,9 @@ export default function CreateSnippetScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.scroll}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Text style={styles.cancelText}>←</Text>
+          </TouchableOpacity>
 
           <Text style={styles.screenTitle}>New Snippet</Text>
 
@@ -245,7 +254,11 @@ export default function CreateSnippetScreen() {
             onPress={() => setBookPickerVisible(true)}
             activeOpacity={0.7}
           >
-            <Text style={book ? styles.bookButtonText : styles.bookButtonPlaceholder}>
+            <Text
+              style={
+                book ? styles.bookButtonText : styles.bookButtonPlaceholder
+              }
+            >
               {book || "Select a book"}
             </Text>
             <Text style={styles.chevron}>›</Text>
@@ -273,7 +286,12 @@ export default function CreateSnippetScreen() {
                     onPress={() => selectBook(name)}
                     activeOpacity={0.6}
                   >
-                    <Text style={[styles.bookRowText, book === name && styles.bookRowTextSelected]}>
+                    <Text
+                      style={[
+                        styles.bookRowText,
+                        book === name && styles.bookRowTextSelected,
+                      ]}
+                    >
                       {name}
                     </Text>
                   </TouchableOpacity>
@@ -286,7 +304,12 @@ export default function CreateSnippetScreen() {
                     onPress={() => selectBook(name)}
                     activeOpacity={0.6}
                   >
-                    <Text style={[styles.bookRowText, book === name && styles.bookRowTextSelected]}>
+                    <Text
+                      style={[
+                        styles.bookRowText,
+                        book === name && styles.bookRowTextSelected,
+                      ]}
+                    >
                       {name}
                     </Text>
                   </TouchableOpacity>
@@ -393,7 +416,9 @@ export default function CreateSnippetScreen() {
           ) : null}
 
           {/* Reflection */}
-          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>MY REFLECTION</Text>
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
+            MY REFLECTION
+          </Text>
           <TextInput
             style={[styles.reflectionInput, inputBorder("reflection")]}
             value={reflection}
@@ -407,7 +432,9 @@ export default function CreateSnippetScreen() {
           />
 
           {/* Topics */}
-          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>TOPICS</Text>
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
+            TOPICS
+          </Text>
 
           {assignedTopics.length > 0 ? (
             <View style={styles.chipsRow}>
@@ -473,7 +500,11 @@ export default function CreateSnippetScreen() {
           {/* Inline create new topic */}
           <Text style={styles.inlineCreateLabel}>NEW TOPIC</Text>
           <TextInput
-            style={[styles.input, inputBorder("newTopic"), styles.newTopicInput]}
+            style={[
+              styles.input,
+              inputBorder("newTopic"),
+              styles.newTopicInput,
+            ]}
             value={newTopicName}
             onChangeText={setNewTopicName}
             placeholder="Topic name"
@@ -521,7 +552,10 @@ export default function CreateSnippetScreen() {
             <Text style={styles.errorText}>{newTopicError}</Text>
           ) : null}
           <TouchableOpacity
-            style={[styles.addTopicButton, isAddingTopic && styles.buttonDisabled]}
+            style={[
+              styles.addTopicButton,
+              isAddingTopic && styles.buttonDisabled,
+            ]}
             onPress={handleAddNewTopic}
             disabled={isAddingTopic}
             activeOpacity={0.7}
@@ -542,7 +576,6 @@ export default function CreateSnippetScreen() {
               {isSaving ? "Saving…" : "Save Snippet"}
             </Text>
           </TouchableOpacity>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -559,6 +592,12 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: spacing.lg,
+  },
+
+  cancelText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
 
   // Screen title

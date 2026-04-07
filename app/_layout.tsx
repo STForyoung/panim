@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react';
-import { Stack, router, useRootNavigationState } from 'expo-router';
-import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
-import { useFonts } from 'expo-font';
+import { migrateDb } from "@/src/db/database";
+import {
+  handleNotificationTap,
+  scheduleNotifications,
+} from "@/src/notifications/scheduler";
 import {
   Lora_400Regular,
   Lora_400Regular_Italic,
   Lora_600SemiBold,
   Lora_700Bold,
-} from '@expo-google-fonts/lora';
-import { migrateDb } from '@/src/db/database';
-import { scheduleNotifications, handleNotificationTap } from '@/src/notifications/scheduler';
+} from "@expo-google-fonts/lora";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFonts } from "expo-font";
+import * as Notifications from "expo-notifications";
+import { Stack, router, useRootNavigationState } from "expo-router";
+import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
+import { useEffect, useState } from "react";
 
 // Rendered inside SQLiteProvider so it can access the db via useSQLiteContext
 function AppInitializer() {
@@ -23,7 +26,7 @@ function AppInitializer() {
     });
 
     const subscription = Notifications.addNotificationResponseReceivedListener(
-      handleNotificationTap
+      handleNotificationTap,
     );
     return () => subscription.remove();
   }, [db]);
@@ -45,7 +48,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    AsyncStorage.getItem('hasLaunched').then((value) => {
+    AsyncStorage.getItem("hasLaunched").then((value) => {
       setHasLaunched(value !== null);
     });
   }, []);
@@ -53,7 +56,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!navigationState?.key || hasLaunched === null) return;
     if (!hasLaunched) {
-      router.replace('/onboarding');
+      router.replace("/onboarding");
     }
   }, [navigationState?.key, hasLaunched]);
 
@@ -62,7 +65,7 @@ export default function RootLayout() {
   return (
     <SQLiteProvider databaseName="panim.db" onInit={migrateDb}>
       <AppInitializer />
-      <Stack />
+      <Stack screenOptions={{ headerShown: false }} />
     </SQLiteProvider>
   );
 }

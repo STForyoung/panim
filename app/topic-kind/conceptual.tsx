@@ -1,3 +1,19 @@
+import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
+import { getSnippetsForTopic } from "@/src/db/snippetTopics";
+import {
+  type Topic,
+  createTopic,
+  deleteTopic,
+  getAllTopics,
+} from "@/src/db/topics";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import {
   Alert,
@@ -9,12 +25,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { type Topic, createTopic, deleteTopic, getAllTopics } from "@/src/db/topics";
-import { getSnippetsForTopic } from "@/src/db/snippetTopics";
-import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 type TopicWithCount = Topic & { snippetCount: number };
 
@@ -37,7 +51,7 @@ export default function ConceptualTopicsScreen() {
       conceptual.map(async (t) => {
         const snippets = await getSnippetsForTopic(db, t.id);
         return { ...t, snippetCount: snippets.length };
-      })
+      }),
     );
     setTopics(withCounts);
     setLoading(false);
@@ -46,7 +60,7 @@ export default function ConceptualTopicsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadTopics();
-    }, [loadTopics])
+    }, [loadTopics]),
   );
 
   function openModal() {
@@ -114,8 +128,15 @@ export default function ConceptualTopicsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+              <Text style={styles.backText}>←</Text>
+            </TouchableOpacity>
             <Text style={styles.title}>Conceptual Topics</Text>
-            <TouchableOpacity style={styles.newButton} onPress={openModal} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.newButton}
+              onPress={openModal}
+              activeOpacity={0.8}
+            >
               <Text style={styles.newButtonText}>+ New Conceptual Topic</Text>
             </TouchableOpacity>
           </View>
@@ -130,7 +151,9 @@ export default function ConceptualTopicsScreen() {
             <View style={styles.cardLeft}>
               <Text style={styles.cardTitle}>{item.name}</Text>
               <Text style={styles.cardCount}>
-                {item.snippetCount === 1 ? "1 snippet" : `${item.snippetCount} snippets`}
+                {item.snippetCount === 1
+                  ? "1 snippet"
+                  : `${item.snippetCount} snippets`}
               </Text>
             </View>
             <Text style={styles.chevron}>›</Text>
@@ -145,8 +168,18 @@ export default function ConceptualTopicsScreen() {
 
       <Modal visible={modalVisible} animationType="slide">
         <View style={styles.screen}>
-          <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
-            <TouchableOpacity style={styles.modalCancelArea} onPress={closeModal} disabled={isSaving} hitSlop={8}>
+          <View
+            style={[
+              styles.modalHeader,
+              { paddingTop: insets.top + spacing.md },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.modalCancelArea}
+              onPress={closeModal}
+              disabled={isSaving}
+              hitSlop={8}
+            >
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>New Topic</Text>
@@ -164,12 +197,18 @@ export default function ConceptualTopicsScreen() {
             />
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
             <TouchableOpacity
-              style={[styles.newButton, styles.modalSaveButton, isSaving && styles.buttonDisabled]}
+              style={[
+                styles.newButton,
+                styles.modalSaveButton,
+                isSaving && styles.buttonDisabled,
+              ]}
               onPress={handleSave}
               disabled={isSaving}
               activeOpacity={0.8}
             >
-              <Text style={styles.newButtonText}>{isSaving ? "Saving…" : "Save"}</Text>
+              <Text style={styles.newButtonText}>
+                {isSaving ? "Saving…" : "Save"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -285,6 +324,11 @@ const styles = StyleSheet.create({
   modalSaveButton: {
     marginTop: spacing.lg,
     marginBottom: 0,
+  },
+  backText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   errorText: {
     ...typography.label,

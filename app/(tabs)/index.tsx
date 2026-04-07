@@ -1,3 +1,10 @@
+import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
 import { getSchedule } from "@/src/db/notificationSchedule";
 import {
   type Snippet,
@@ -11,7 +18,6 @@ import {
 import { type Topic } from "@/src/db/topics";
 import { getNextReminderTime } from "@/src/notifications/scheduler";
 import { getDisplayReference } from "@/src/utils/displayReference";
-import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
@@ -145,7 +151,7 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading…</Text>
         </View>
@@ -155,7 +161,7 @@ export default function HomeScreen() {
 
   if (allSnippets.length === 0) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
         <ScrollView contentContainerStyle={styles.emptyContainer}>
           <Text style={styles.emptyHeading}>Panim</Text>
           <Text style={styles.emptyBody}>
@@ -168,7 +174,9 @@ export default function HomeScreen() {
             onPress={() => router.push("/snippet/create")}
             activeOpacity={0.8}
           >
-            <Text style={styles.newSnippetButtonText}>Create Your First Snippet</Text>
+            <Text style={styles.newSnippetButtonText}>
+              Create Your First Snippet
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -176,9 +184,8 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
-
         <Text style={styles.greeting}>{getGreeting()}</Text>
 
         <TouchableOpacity
@@ -201,22 +208,29 @@ export default function HomeScreen() {
               {currentTopics.length > 0 ? (
                 <View style={styles.topicsRow}>
                   {currentTopics.map((t) => (
-                    <Text key={t.id} style={styles.topicName}>{t.name}</Text>
+                    <Text key={t.id} style={styles.topicName}>
+                      {t.name}
+                    </Text>
                   ))}
                 </View>
               ) : null}
 
               <Text style={styles.reminderText}>
-                {nextReminder ?? "Set a schedule in Settings to start receiving reminders"}
+                {nextReminder ??
+                  "Set a schedule in Settings to start receiving reminders"}
               </Text>
 
               <View style={styles.divider} />
 
-              <Text style={styles.cardReflection} numberOfLines={5}>{current.reflection}</Text>
+              <Text style={styles.cardReflection} numberOfLines={5}>
+                {current.reflection}
+              </Text>
 
               <View style={styles.divider} />
 
-              <Text style={styles.cardPassage} numberOfLines={5}>{current.passage}</Text>
+              <Text style={styles.cardPassage} numberOfLines={5}>
+                {current.passage}
+              </Text>
 
               <View style={styles.cardButtons}>
                 {allSnippets.length > 1 ? (
@@ -249,14 +263,18 @@ export default function HomeScreen() {
               data={comingUp}
               keyExtractor={(item) => item.id}
               showsHorizontalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
+              ItemSeparatorComponent={() => (
+                <View style={{ width: spacing.md }} />
+              )}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.miniCard}
                   onPress={() => router.push(`/snippet/${item.id}`)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.miniCardReference}>{getDisplayReference(item)}</Text>
+                  <Text style={styles.miniCardReference}>
+                    {getDisplayReference(item)}
+                  </Text>
                   <Text style={styles.miniCardPassage} numberOfLines={1}>
                     {item.passage}
                   </Text>
@@ -279,14 +297,18 @@ export default function HomeScreen() {
               data={favourites}
               keyExtractor={(item) => item.id}
               showsHorizontalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
+              ItemSeparatorComponent={() => (
+                <View style={{ width: spacing.md }} />
+              )}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.miniCard}
                   onPress={() => router.push(`/snippet/${item.id}`)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.miniCardReference}>{getDisplayReference(item)}</Text>
+                  <Text style={styles.miniCardReference}>
+                    {getDisplayReference(item)}
+                  </Text>
                   <Text style={styles.miniCardPassage} numberOfLines={1}>
                     {item.passage}
                   </Text>
@@ -295,7 +317,6 @@ export default function HomeScreen() {
             />
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );

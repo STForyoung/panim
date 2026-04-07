@@ -1,11 +1,17 @@
-import { useCallback, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { type Snippet, getAllSnippets } from "@/src/db/snippets";
-import { getTopicsForSnippet } from "@/src/db/snippetTopics";
 import { SnippetCard } from "@/src/components/SnippetCard";
 import { colors, spacing, typography } from "@/src/constants/theme";
+import { type Snippet, getAllSnippets } from "@/src/db/snippets";
+import { getTopicsForSnippet } from "@/src/db/snippetTopics";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { useCallback, useState } from "react";
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function UnassignedSnippetsScreen() {
@@ -18,7 +24,7 @@ export default function UnassignedSnippetsScreen() {
   const loadSnippets = useCallback(async () => {
     const all = await getAllSnippets(db);
     const topicChecks = await Promise.all(
-      all.map((s) => getTopicsForSnippet(db, s.id))
+      all.map((s) => getTopicsForSnippet(db, s.id)),
     );
     setSnippets(all.filter((_, i) => topicChecks[i].length === 0));
     setLoading(false);
@@ -27,7 +33,7 @@ export default function UnassignedSnippetsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadSnippets();
-    }, [loadSnippets])
+    }, [loadSnippets]),
   );
 
   if (loading) {
@@ -47,7 +53,12 @@ export default function UnassignedSnippetsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
-          <Text style={styles.title}>Unassigned Snippets</Text>
+          <View>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+              <Text style={styles.backText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.title}>Unassigned Snippets</Text>
+          </View>
         }
         renderItem={({ item }) => (
           <View style={styles.cardWrapper}>
@@ -86,6 +97,11 @@ const styles = StyleSheet.create({
   title: {
     ...typography.heading,
     marginBottom: spacing.lg,
+  },
+  backText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   cardWrapper: {
     marginBottom: spacing.sm,

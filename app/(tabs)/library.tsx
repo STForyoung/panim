@@ -1,17 +1,32 @@
-import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { getAllTopics } from "@/src/db/topics";
+import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
 import { getAllSnippets } from "@/src/db/snippets";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
-import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
+import { getAllTopics } from "@/src/db/topics";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { useCallback, useState } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type SectionItem = {
   key: string;
   label: string;
-  route: "/topic-kind/conceptual" | "/topic-kind/directed" | "/topic-kind/unassigned";
+  route:
+    | "/topic-kind/conceptual"
+    | "/topic-kind/directed"
+    | "/topic-kind/unassigned";
   count: number;
   countLabel: string;
 };
@@ -22,9 +37,27 @@ export default function LibraryScreen() {
   const [loading, setLoading] = useState(true);
 
   const [sections, setSections] = useState<SectionItem[]>([
-    { key: "conceptual", label: "Conceptual Topics", route: "/topic-kind/conceptual", count: 0, countLabel: "0 topics" },
-    { key: "directed", label: "Directed Topics", route: "/topic-kind/directed", count: 0, countLabel: "0 topics" },
-    { key: "unassigned", label: "Unassigned Snippets", route: "/topic-kind/unassigned", count: 0, countLabel: "0 snippets" },
+    {
+      key: "conceptual",
+      label: "Conceptual Topics",
+      route: "/topic-kind/conceptual",
+      count: 0,
+      countLabel: "0 topics",
+    },
+    {
+      key: "directed",
+      label: "Directed Topics",
+      route: "/topic-kind/directed",
+      count: 0,
+      countLabel: "0 topics",
+    },
+    {
+      key: "unassigned",
+      label: "Unassigned Snippets",
+      route: "/topic-kind/unassigned",
+      count: 0,
+      countLabel: "0 snippets",
+    },
   ]);
 
   const loadCounts = useCallback(async () => {
@@ -33,18 +66,40 @@ export default function LibraryScreen() {
       getAllSnippets(db),
     ]);
 
-    const conceptualCount = topics.filter((t) => t.type === "conceptual").length;
+    const conceptualCount = topics.filter(
+      (t) => t.type === "conceptual",
+    ).length;
     const directedCount = topics.filter((t) => t.type === "directed").length;
 
     const topicChecks = await Promise.all(
-      snippets.map((s) => getTopicsForSnippet(db, s.id))
+      snippets.map((s) => getTopicsForSnippet(db, s.id)),
     );
     const unassignedCount = topicChecks.filter((t) => t.length === 0).length;
 
     setSections([
-      { key: "conceptual", label: "Conceptual Topics", route: "/topic-kind/conceptual", count: conceptualCount, countLabel: conceptualCount === 1 ? "1 topic" : `${conceptualCount} topics` },
-      { key: "directed", label: "Directed Topics", route: "/topic-kind/directed", count: directedCount, countLabel: directedCount === 1 ? "1 topic" : `${directedCount} topics` },
-      { key: "unassigned", label: "Unassigned Snippets", route: "/topic-kind/unassigned", count: unassignedCount, countLabel: unassignedCount === 1 ? "1 snippet" : `${unassignedCount} snippets` },
+      {
+        key: "conceptual",
+        label: "Conceptual Topics",
+        route: "/topic-kind/conceptual",
+        count: conceptualCount,
+        countLabel:
+          conceptualCount === 1 ? "1 topic" : `${conceptualCount} topics`,
+      },
+      {
+        key: "directed",
+        label: "Directed Topics",
+        route: "/topic-kind/directed",
+        count: directedCount,
+        countLabel: directedCount === 1 ? "1 topic" : `${directedCount} topics`,
+      },
+      {
+        key: "unassigned",
+        label: "Unassigned Snippets",
+        route: "/topic-kind/unassigned",
+        count: unassignedCount,
+        countLabel:
+          unassignedCount === 1 ? "1 snippet" : `${unassignedCount} snippets`,
+      },
     ]);
     setLoading(false);
   }, [db]);
@@ -52,12 +107,12 @@ export default function LibraryScreen() {
   useFocusEffect(
     useCallback(() => {
       loadCounts();
-    }, [loadCounts])
+    }, [loadCounts]),
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading…</Text>
         </View>
@@ -66,7 +121,7 @@ export default function LibraryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Library</Text>
 
