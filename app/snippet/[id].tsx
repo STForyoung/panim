@@ -1,21 +1,13 @@
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, deleteSnippet, getSnippet, toggleFavourite } from "@/src/db/snippets";
 import { type Topic } from "@/src/db/topics";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
-
-function formatReference(snippet: Snippet): string {
-  const { book, chapterStart, verseStart, chapterEnd, verseEnd } = snippet;
-  if (chapterEnd !== null && verseEnd !== null && chapterEnd !== chapterStart) {
-    return `${book} ${chapterStart}:${verseStart}-${chapterEnd}:${verseEnd}`;
-  }
-  if (verseEnd !== null) {
-    return `${book} ${chapterStart}:${verseStart}-${verseEnd}`;
-  }
-  return `${book} ${chapterStart}:${verseStart}`;
-}
+import { getDisplayReference } from "@/src/utils/displayReference";
+import { colors, radius, spacing, typography } from "@/src/constants/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SnippetDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -63,56 +55,233 @@ export default function SnippetDetailScreen() {
 
   if (loading) {
     return (
-      <View>
-        <Text>Loading…</Text>
-      </View>
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.centeredState}>
+          <Text style={styles.stateText}>Loading…</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (notFound || !snippet) {
     return (
-      <View>
-        <Text>Snippet not found.</Text>
-      </View>
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.centeredState}>
+          <Text style={styles.stateText}>Snippet not found.</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButtonState}>
+            <Text style={styles.backText}>← Go back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
+  const isFavourite = !!snippet.isFavourite;
+
   return (
-    <ScrollView>
-      <Text>{formatReference(snippet)}</Text>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.scroll}>
 
-      <Text>Passage</Text>
-      <Text>{snippet.passage}</Text>
-
-      <Text>Reflection</Text>
-      <Text>{snippet.reflection}</Text>
-
-      {topics.length > 0 ? (
-        <View>
-          <Text>Topics</Text>
-          {topics.map((t) => (
-            <Text key={t.id}>{t.name}</Text>
-          ))}
+        {/* Header row */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Text style={styles.backText}>←</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push(`/snippet/edit/${id}`)} hitSlop={8}>
+            <Text style={styles.editText}>Edit</Text>
+          </TouchableOpacity>
         </View>
-      ) : null}
 
-      <TouchableOpacity
-        onPress={async () => {
-          const next = !!(snippet.isFavourite);
-          await toggleFavourite(db, id, !next);
-          setSnippet({ ...snippet, isFavourite: !next });
-        }}
-      >
-        <Text>{!!snippet.isFavourite ? "Remove from Favourites" : "Add to Favourites"}</Text>
-      </TouchableOpacity>
+        {/* Reference */}
+        <Text style={styles.reference}>
+          {getDisplayReference(snippet).toUpperCase()}
+        </Text>
 
-      <TouchableOpacity onPress={() => router.push(`/snippet/edit/${id}`)}>
-        <Text>Edit</Text>
-      </TouchableOpacity>
+        {/* Topic chips */}
+        {topics.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipsScroll}
+            contentContainerStyle={styles.chipsContent}
+          >
+            {topics.map((t) => (
+              <View key={t.id} style={styles.chip}>
+                <Text style={styles.chipText}>{t.name}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
 
-      <TouchableOpacity onPress={handleDelete}>
-        <Text>Delete</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={styles.divider} />
+
+        {/* Reflection */}
+        <Text style={styles.sectionLabel}>MY REFLECTION</Text>
+        <Text style={styles.reflectionText}>{snippet.reflection}</Text>
+
+        <View style={styles.divider} />
+
+        {/* Passage */}
+        <Text style={styles.sectionLabel}>PASSAGE</Text>
+        <Text style={styles.passageText}>{snippet.passage}</Text>
+
+        {/* Favourite button */}
+        <TouchableOpacity
+          style={isFavourite ? styles.favButtonFilled : styles.favButtonOutline}
+          activeOpacity={0.8}
+          onPress={async () => {
+            const next = !isFavourite;
+            await toggleFavourite(db, id, next);
+            setSnippet({ ...snippet, isFavourite: next });
+          }}
+        >
+          <Text style={isFavourite ? styles.favButtonFilledText : styles.favButtonOutlineText}>
+            {isFavourite ? "★ Remove from Favourites" : "☆ Add to Favourites"}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Delete button */}
+        <TouchableOpacity
+          style={styles.deleteButton}
+          activeOpacity={0.8}
+          onPress={handleDelete}
+        >
+          <Text style={styles.deleteText}>Delete Snippet</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scroll: {
+    padding: spacing.lg,
+  },
+
+  // Loading / not found
+  centeredState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stateText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  backButtonState: {
+    marginTop: spacing.md,
+  },
+
+  // Header
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  backText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  editText: {
+    ...typography.button,
+    color: colors.accent,
+  },
+
+  // Reference
+  reference: {
+    ...typography.reference,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
+    marginBottom: spacing.xs,
+  },
+
+  // Topic chips
+  chipsScroll: {
+    marginBottom: spacing.sm,
+  },
+  chipsContent: {
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  chip: {
+    backgroundColor: colors.accent + "26", // 15% opacity
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  chipText: {
+    ...typography.label,
+    color: colors.accent,
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.lg,
+  },
+
+  // Section label
+  sectionLabel: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+
+  // Reflection
+  reflectionText: {
+    ...typography.reflection,
+  },
+
+  // Passage
+  passageText: {
+    ...typography.scripture,
+    color: colors.textSecondary,
+  },
+
+  // Favourite button
+  favButtonFilled: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
+  favButtonFilledText: {
+    ...typography.button,
+    color: colors.surface,
+  },
+  favButtonOutline: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
+  favButtonOutlineText: {
+    ...typography.button,
+    color: colors.accent,
+  },
+
+  // Delete button
+  deleteButton: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.sm,
+  },
+  deleteText: {
+    ...typography.button,
+    color: colors.danger,
+  },
+});

@@ -1,30 +1,15 @@
+import { TabBar } from "@/src/components/TabBar";
 import { Tabs } from "expo-router";
-import { Text } from "react-native";
 
 export default function TabLayout() {
   return (
-    <Tabs>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Home",
-          tabBarIcon: () => <Text>🏠</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: "Library",
-          tabBarIcon: () => <Text>📖</Text>,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: () => <Text>⚙️</Text>,
-        }}
-      />
+    <Tabs
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => <TabBar {...props} />}
+    >
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="library" options={{ title: "Library" }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings" }} />
     </Tabs>
   );
 }

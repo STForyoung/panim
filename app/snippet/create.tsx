@@ -1,14 +1,25 @@
+import { TopicChip } from "@/src/components/TopicChip";
+import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
 import { createSnippet } from "@/src/db/snippets";
 import { addSnippetToTopic } from "@/src/db/snippetTopics";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
-import { BOOK_IDS, fetchPassage } from "@/src/services/bibleService";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
+import { BOOK_IDS, fetchPassage } from "@/src/services/bibleService";
 import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -39,6 +50,7 @@ export default function CreateSnippetScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRetry, setShowRetry] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Topic assignment
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
@@ -72,12 +84,14 @@ export default function CreateSnippetScreen() {
     setBook(name);
     setBookPickerVisible(false);
     setPassage("");
+    setError(null);
   }
 
   function handleReferenceChange(setter: (v: string) => void) {
     return (v: string) => {
       setter(v);
       setPassage("");
+      setError(null);
     };
   }
 
@@ -216,193 +230,640 @@ export default function CreateSnippetScreen() {
     (t) => !assignedTopics.some((a) => a.id === t.id),
   );
 
+  function inputBorder(field: string) {
+    return focusedField === field ? styles.inputFocused : null;
+  }
+
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 16 }}
-    >
-      <View>
-        <Text>Book</Text>
-        <TouchableOpacity onPress={() => setBookPickerVisible(true)}>
-          <Text>{book || "Select a book"}</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={styles.screen}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Text style={styles.cancelText}>←</Text>
+          </TouchableOpacity>
 
-      <Modal visible={bookPickerVisible} animationType="slide">
-        <SafeAreaView style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <TouchableOpacity onPress={() => setBookPickerVisible(false)}>
-              <Text>Cancel</Text>
-            </TouchableOpacity>
+          <Text style={styles.screenTitle}>New Snippet</Text>
 
-            <Text>Old Testament</Text>
-            {OT_BOOKS.map((name) => (
-              <TouchableOpacity key={name} onPress={() => selectBook(name)}>
-                <Text>{name}</Text>
-              </TouchableOpacity>
-            ))}
-
-            <Text>New Testament</Text>
-            {NT_BOOKS.map((name) => (
-              <TouchableOpacity key={name} onPress={() => selectBook(name)}>
-                <Text>{name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      <View>
-        <View>
-          <Text>Chapter</Text>
-          <TextInput
-            value={chapterStart}
-            onChangeText={handleReferenceChange(setChapterStart)}
-            keyboardType="number-pad"
-            placeholder="1"
-          />
-        </View>
-        <View>
-          <Text>Verse</Text>
-          <TextInput
-            value={verseStart}
-            onChangeText={handleReferenceChange(setVerseStart)}
-            keyboardType="number-pad"
-            placeholder="1"
-          />
-        </View>
-      </View>
-
-      <View>
-        <View>
-          <Text>End Chapter (optional)</Text>
-          <TextInput
-            value={chapterEnd}
-            onChangeText={handleReferenceChange(setChapterEnd)}
-            keyboardType="number-pad"
-          />
-        </View>
-        <View>
-          <Text>End Verse (optional)</Text>
-          <TextInput
-            value={verseEnd}
-            onChangeText={handleReferenceChange(setVerseEnd)}
-            keyboardType="number-pad"
-          />
-        </View>
-      </View>
-
-      <TouchableOpacity onPress={handleFetchPassage} disabled={isFetching}>
-        <Text>{isFetching ? "Fetching…" : "Fetch Passage"}</Text>
-      </TouchableOpacity>
-
-      {passage ? (
-        <View>
-          <Text>{passage}</Text>
-        </View>
-      ) : null}
-
-      {error ? (
-        <View>
-          <Text>{error}</Text>
-          {showRetry ? (
-            <TouchableOpacity
-              onPress={handleFetchPassage}
-              disabled={isFetching}
+          {/* Book picker */}
+          <Text style={styles.sectionLabel}>BOOK</Text>
+          <TouchableOpacity
+            style={styles.bookButton}
+            onPress={() => setBookPickerVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={
+                book ? styles.bookButtonText : styles.bookButtonPlaceholder
+              }
             >
-              <Text>Retry</Text>
+              {book || "Select a book"}
+            </Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+
+          {/* Book picker modal */}
+          <Modal visible={bookPickerVisible} animationType="slide">
+            <SafeAreaView style={styles.screen}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity
+                  style={styles.modalCancelArea}
+                  onPress={() => setBookPickerVisible(false)}
+                >
+                  <Text style={styles.modalCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Select Book</Text>
+                <View style={styles.modalCancelArea} />
+              </View>
+              <ScrollView>
+                <Text style={styles.bookSectionHeader}>OLD TESTAMENT</Text>
+                {OT_BOOKS.map((name) => (
+                  <TouchableOpacity
+                    key={name}
+                    style={styles.bookRow}
+                    onPress={() => selectBook(name)}
+                    activeOpacity={0.6}
+                  >
+                    <Text
+                      style={[
+                        styles.bookRowText,
+                        book === name && styles.bookRowTextSelected,
+                      ]}
+                    >
+                      {name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <Text style={styles.bookSectionHeader}>NEW TESTAMENT</Text>
+                {NT_BOOKS.map((name) => (
+                  <TouchableOpacity
+                    key={name}
+                    style={styles.bookRow}
+                    onPress={() => selectBook(name)}
+                    activeOpacity={0.6}
+                  >
+                    <Text
+                      style={[
+                        styles.bookRowText,
+                        book === name && styles.bookRowTextSelected,
+                      ]}
+                    >
+                      {name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </SafeAreaView>
+          </Modal>
+
+          {/* Start chapter and verse */}
+          <View style={styles.inputRow}>
+            <View style={styles.inputColumn}>
+              <Text style={styles.sectionLabel}>CHAPTER</Text>
+              <TextInput
+                style={[styles.input, inputBorder("chapterStart")]}
+                value={chapterStart}
+                onChangeText={handleReferenceChange(setChapterStart)}
+                keyboardType="number-pad"
+                placeholder="e.g. 3"
+                placeholderTextColor={colors.textSecondary + "80"}
+                onFocus={() => setFocusedField("chapterStart")}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+            <View style={styles.inputColumn}>
+              <Text style={styles.sectionLabel}>VERSE</Text>
+              <TextInput
+                style={[styles.input, inputBorder("verseStart")]}
+                value={verseStart}
+                onChangeText={handleReferenceChange(setVerseStart)}
+                keyboardType="number-pad"
+                placeholder="e.g. 16"
+                placeholderTextColor={colors.textSecondary + "80"}
+                onFocus={() => setFocusedField("verseStart")}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+          </View>
+
+          {/* End chapter and verse */}
+          <View style={styles.inputRow}>
+            <View style={styles.inputColumn}>
+              <Text style={styles.sectionLabelOptional}>END CHAPTER</Text>
+              <TextInput
+                style={[styles.input, inputBorder("chapterEnd")]}
+                value={chapterEnd}
+                onChangeText={handleReferenceChange(setChapterEnd)}
+                keyboardType="number-pad"
+                placeholder="optional"
+                placeholderTextColor={colors.textSecondary + "80"}
+                onFocus={() => setFocusedField("chapterEnd")}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+            <View style={styles.inputColumn}>
+              <Text style={styles.sectionLabelOptional}>END VERSE</Text>
+              <TextInput
+                style={[styles.input, inputBorder("verseEnd")]}
+                value={verseEnd}
+                onChangeText={handleReferenceChange(setVerseEnd)}
+                keyboardType="number-pad"
+                placeholder="optional"
+                placeholderTextColor={colors.textSecondary + "80"}
+                onFocus={() => setFocusedField("verseEnd")}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+          </View>
+
+          {/* Fetch passage */}
+          <TouchableOpacity
+            style={[styles.primaryButton, isFetching && styles.buttonDisabled]}
+            onPress={handleFetchPassage}
+            disabled={isFetching}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isFetching ? "Fetching…" : "Fetch Passage"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Passage display */}
+          {passage ? (
+            <View style={styles.passageCard}>
+              <Text style={styles.sectionLabel}>PASSAGE</Text>
+              <Text style={styles.passageText}>{passage}</Text>
+            </View>
+          ) : null}
+
+          {/* Error */}
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              {showRetry ? (
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={handleFetchPassage}
+                  disabled={isFetching}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* Reflection */}
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
+            MY REFLECTION
+          </Text>
+          <TextInput
+            style={[styles.reflectionInput, inputBorder("reflection")]}
+            value={reflection}
+            onChangeText={setReflection}
+            placeholder="Your reflection on this passage..."
+            placeholderTextColor={colors.textSecondary + "80"}
+            multiline
+            textAlignVertical="top"
+            onFocus={() => setFocusedField("reflection")}
+            onBlur={() => setFocusedField(null)}
+          />
+
+          {/* Topics */}
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
+            TOPICS
+          </Text>
+
+          {assignedTopics.length > 0 ? (
+            <View style={styles.chipsRow}>
+              {assignedTopics.map((topic) => (
+                <TopicChip
+                  key={topic.id}
+                  name={topic.name}
+                  onRemove={() => handleRemoveTopic(topic.id)}
+                />
+              ))}
+            </View>
+          ) : null}
+
+          {showSuggestion ? (
+            <TouchableOpacity
+              style={styles.suggestionRow}
+              onPress={handleAcceptSuggestion}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.suggestionText}>+ {suggestedTopicName}</Text>
             </TouchableOpacity>
           ) : null}
-        </View>
-      ) : null}
 
-      <View>
-        <Text>Reflection</Text>
-        <TextInput
-          value={reflection}
-          onChangeText={setReflection}
-          placeholder="Your personal reflection…"
-          multiline
-        />
-      </View>
+          {unassignedTopics.length > 0 ? (
+            <TouchableOpacity
+              style={styles.topicPickerButton}
+              onPress={() => setTopicPickerVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.topicPickerText}>Add existing topic…</Text>
+            </TouchableOpacity>
+          ) : null}
 
-      {/* Topic Assignment */}
-      <View>
-        <Text>Topics</Text>
+          {/* Topic picker modal */}
+          <Modal visible={topicPickerVisible} animationType="slide">
+            <SafeAreaView style={styles.screen}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity
+                  style={styles.modalCancelArea}
+                  onPress={() => setTopicPickerVisible(false)}
+                >
+                  <Text style={styles.modalCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Select Topic</Text>
+                <View style={styles.modalCancelArea} />
+              </View>
+              <ScrollView>
+                {unassignedTopics.map((topic) => (
+                  <TouchableOpacity
+                    key={topic.id}
+                    style={styles.bookRow}
+                    onPress={() => handleAssignTopic(topic)}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.bookRowText}>{topic.name}</Text>
+                    <Text style={styles.topicTypeTag}>{topic.type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </SafeAreaView>
+          </Modal>
 
-        {/* Assigned topics */}
-        {assignedTopics.map((topic) => (
-          <View key={topic.id}>
-            <Text>
-              {topic.name} ({topic.type})
-            </Text>
-            <TouchableOpacity onPress={() => handleRemoveTopic(topic.id)}>
-              <Text>Remove</Text>
+          {/* Inline create new topic */}
+          <Text style={styles.inlineCreateLabel}>NEW TOPIC</Text>
+          <TextInput
+            style={[
+              styles.input,
+              inputBorder("newTopic"),
+              styles.newTopicInput,
+            ]}
+            value={newTopicName}
+            onChangeText={setNewTopicName}
+            placeholder="Topic name"
+            placeholderTextColor={colors.textSecondary + "80"}
+            onFocus={() => setFocusedField("newTopic")}
+            onBlur={() => setFocusedField(null)}
+          />
+          <View style={styles.typeToggleRow}>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                newTopicType === "conceptual" && styles.typeButtonActive,
+              ]}
+              onPress={() => setNewTopicType("conceptual")}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.typeButtonText,
+                  newTopicType === "conceptual" && styles.typeButtonTextActive,
+                ]}
+              >
+                Conceptual
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.typeButton,
+                newTopicType === "directed" && styles.typeButtonActive,
+              ]}
+              onPress={() => setNewTopicType("directed")}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.typeButtonText,
+                  newTopicType === "directed" && styles.typeButtonTextActive,
+                ]}
+              >
+                Directed
+              </Text>
             </TouchableOpacity>
           </View>
-        ))}
-
-        {/* Auto-suggestion */}
-        {showSuggestion ? (
-          <TouchableOpacity onPress={handleAcceptSuggestion}>
-            <Text>+ Suggest: {suggestedTopicName}</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {/* Picker for existing topics */}
-        {unassignedTopics.length > 0 ? (
-          <TouchableOpacity onPress={() => setTopicPickerVisible(true)}>
-            <Text>Add existing topic…</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        <Modal visible={topicPickerVisible} animationType="slide">
-          <SafeAreaView style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={{ padding: 16 }}>
-              <TouchableOpacity onPress={() => setTopicPickerVisible(false)}>
-                <Text>Cancel</Text>
-              </TouchableOpacity>
-              <Text>Select a topic</Text>
-              {unassignedTopics.map((topic) => (
-                <TouchableOpacity
-                  key={topic.id}
-                  onPress={() => handleAssignTopic(topic)}
-                >
-                  <Text>
-                    {topic.name} ({topic.type})
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
-
-        {/* Inline create new topic */}
-        <Text>New topic</Text>
-        <TextInput
-          value={newTopicName}
-          onChangeText={setNewTopicName}
-          placeholder="Topic name"
-        />
-        <View>
-          <TouchableOpacity onPress={() => setNewTopicType("conceptual")}>
-            <Text>
-              {newTopicType === "conceptual" ? "[x]" : "[ ]"} Conceptual
+          {newTopicError ? (
+            <Text style={styles.errorText}>{newTopicError}</Text>
+          ) : null}
+          <TouchableOpacity
+            style={[
+              styles.addTopicButton,
+              isAddingTopic && styles.buttonDisabled,
+            ]}
+            onPress={handleAddNewTopic}
+            disabled={isAddingTopic}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.addTopicText}>
+              {isAddingTopic ? "Adding…" : "Add Topic"}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setNewTopicType("directed")}>
-            <Text>{newTopicType === "directed" ? "[x]" : "[ ]"} Directed</Text>
-          </TouchableOpacity>
-        </View>
-        {newTopicError ? <Text>{newTopicError}</Text> : null}
-        <TouchableOpacity onPress={handleAddNewTopic} disabled={isAddingTopic}>
-          <Text>{isAddingTopic ? "Adding…" : "Add Topic"}</Text>
-        </TouchableOpacity>
-      </View>
 
-      <TouchableOpacity onPress={handleSave} disabled={isSaving}>
-        <Text>{isSaving ? "Saving…" : "Save Snippet"}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          {/* Save */}
+          <TouchableOpacity
+            style={[styles.saveButton, isSaving && styles.buttonDisabled]}
+            onPress={handleSave}
+            disabled={isSaving}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isSaving ? "Saving…" : "Save Snippet"}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  flex: {
+    flex: 1,
+  },
+  scroll: {
+    padding: spacing.lg,
+  },
+
+  cancelText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+
+  // Screen title
+  screenTitle: {
+    ...typography.heading,
+    marginBottom: spacing.lg,
+  },
+
+  // Section labels
+  sectionLabel: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  sectionLabelOptional: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    opacity: 0.6,
+  },
+  sectionLabelSpaced: {
+    marginTop: spacing.lg,
+  },
+
+  // Book picker button
+  bookButton: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    ...shadows.card,
+  },
+  bookButtonText: {
+    ...typography.body,
+  },
+  bookButtonPlaceholder: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  chevron: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+
+  // Book picker modal
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCancelArea: {
+    minWidth: 60,
+  },
+  modalCancel: {
+    ...typography.button,
+    color: colors.accent,
+  },
+  modalTitle: {
+    ...typography.heading,
+    flex: 1,
+    textAlign: "center",
+    fontSize: 17,
+  },
+  bookSectionHeader: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  bookRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  bookRowText: {
+    ...typography.body,
+  },
+  bookRowTextSelected: {
+    color: colors.accent,
+  },
+  topicTypeTag: {
+    ...typography.label,
+    color: colors.textSecondary,
+  },
+
+  // Inputs
+  inputRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  inputColumn: {
+    flex: 1,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    ...typography.body,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  inputFocused: {
+    borderColor: colors.accent,
+  },
+
+  // Fetch button
+  primaryButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
+  primaryButtonText: {
+    ...typography.button,
+    color: colors.surface,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
+  // Passage card
+  passageCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+    ...shadows.card,
+  },
+  passageText: {
+    ...typography.scripture,
+  },
+
+  // Error
+  errorContainer: {
+    marginTop: spacing.sm,
+  },
+  errorText: {
+    ...typography.label,
+    color: colors.danger,
+  },
+  retryButton: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
+    alignSelf: "flex-start",
+  },
+  retryText: {
+    ...typography.button,
+    color: colors.danger,
+  },
+
+  // Reflection input
+  reflectionInput: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    ...typography.reflection,
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  // Topic chips
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+
+  // Auto-suggestion
+  suggestionRow: {
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  suggestionText: {
+    ...typography.body,
+    color: colors.accent,
+  },
+
+  // Topic picker trigger
+  topicPickerButton: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  topicPickerText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+
+  // Inline create topic
+  inlineCreateLabel: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
+  },
+  newTopicInput: {
+    marginBottom: spacing.sm,
+  },
+  typeToggleRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  typeButton: {
+    flex: 1,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  typeButtonActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accent + "26", // 15% opacity
+  },
+  typeButtonText: {
+    ...typography.label,
+    color: colors.textSecondary,
+  },
+  typeButtonTextActive: {
+    color: colors.accent,
+  },
+  addTopicButton: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  addTopicText: {
+    ...typography.button,
+    color: colors.accent,
+  },
+
+  // Save button
+  saveButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.xl,
+    marginBottom: spacing.xl,
+  },
+});

@@ -292,6 +292,18 @@ Translation preference and notification schedule configuration.
 - Search filter in book picker
 - Re-fetching passages when translation changes
 
+## Design Tokens
+
+All colors, typography, spacing, radius, and shadow values live in `src/constants/theme.ts`.
+
+- Never hardcode colors, font sizes, or spacing values in screen files — always import from `theme.ts`
+- Scripture and reflection text always uses the Lora font family
+- UI labels, buttons, and navigation always use the system font (no `fontFamily` set)
+
+## Utilities
+
+- `src/utils/displayReference.ts` — `getDisplayReference(snippet)` derives the display reference string from structured fields per Reference Display Logic. Use this everywhere a reference is displayed — never derive inline.
+
 ## Lessons
 
 - newArchEnabled in app.json — if useSQLiteContext throws "Property doesn't exist",
