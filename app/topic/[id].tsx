@@ -1,12 +1,19 @@
-import { useCallback, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { type Topic, deleteTopic, getTopic } from "@/src/db/topics";
-import { type Snippet } from "@/src/db/snippets";
-import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import { SnippetCard } from "@/src/components/SnippetCard";
 import { colors, radius, spacing, typography } from "@/src/constants/theme";
+import { type Snippet } from "@/src/db/snippets";
+import { getSnippetsForTopic } from "@/src/db/snippetTopics";
+import { type Topic, deleteTopic, getTopic } from "@/src/db/topics";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { useCallback, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TopicDetailScreen() {
@@ -34,7 +41,7 @@ export default function TopicDetailScreen() {
         setLoading(false);
       }
       load();
-    }, [db, id])
+    }, [db, id]),
   );
 
   function handleDelete() {
@@ -73,7 +80,10 @@ export default function TopicDetailScreen() {
       <SafeAreaView style={styles.screen}>
         <View style={styles.centeredState}>
           <Text style={styles.mutedText}>Topic not found.</Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButtonState}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButtonState}
+          >
             <Text style={styles.backText}>← Go back</Text>
           </TouchableOpacity>
         </View>
@@ -81,7 +91,8 @@ export default function TopicDetailScreen() {
     );
   }
 
-  const snippetCountLabel = snippets.length === 1 ? "1 snippet" : `${snippets.length} snippets`;
+  const snippetCountLabel =
+    snippets.length === 1 ? "1 snippet" : `${snippets.length} snippets`;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -104,6 +115,14 @@ export default function TopicDetailScreen() {
             <Text style={styles.snippetCount}>{snippetCountLabel}</Text>
 
             <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.newSnippetButton}
+              onPress={() => router.push("/snippet/create")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.newSnippetButtonText}>+ New Snippet</Text>
+            </TouchableOpacity>
           </View>
         }
         renderItem={({ item }) => (
@@ -117,7 +136,9 @@ export default function TopicDetailScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={styles.mutedText}>No snippets in this topic.</Text>
-            <Text style={styles.emptyHint}>Create a snippet and assign it to this topic.</Text>
+            <Text style={styles.emptyHint}>
+              Create a snippet and assign it to this topic.
+            </Text>
           </View>
         }
         ListFooterComponent={
@@ -206,6 +227,19 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: "center",
+  },
+
+  // New Snippet button
+  newSnippetButton: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  newSnippetButtonText: {
+    ...typography.button,
+    color: colors.surface,
   },
 
   // Delete button
