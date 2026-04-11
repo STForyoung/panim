@@ -32,7 +32,7 @@ import {
 
 type TopicWithCount = Topic & { snippetCount: number };
 
-export default function DirectedTopicsScreen() {
+export default function BookTopicsScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -46,9 +46,9 @@ export default function DirectedTopicsScreen() {
 
   const loadTopics = useCallback(async () => {
     const all = await getAllTopics(db);
-    const directed = all.filter((t) => t.type === "directed");
+    const book = all.filter((t) => t.type === "book");
     const withCounts = await Promise.all(
-      directed.map(async (t) => {
+      book.map(async (t) => {
         const snippets = await getSnippetsForTopic(db, t.id);
         return { ...t, snippetCount: snippets.length };
       }),
@@ -81,7 +81,7 @@ export default function DirectedTopicsScreen() {
     setError(null);
     setIsSaving(true);
     try {
-      await createTopic(db, { name: topicName.trim(), type: "directed" });
+      await createTopic(db, { name: topicName.trim(), type: "book" });
       closeModal();
       await loadTopics();
     } catch (e) {
@@ -131,13 +131,13 @@ export default function DirectedTopicsScreen() {
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Directed Topics</Text>
+            <Text style={styles.title}>Book Topics</Text>
             <TouchableOpacity
               style={styles.newButton}
               onPress={openModal}
               activeOpacity={0.8}
             >
-              <Text style={styles.newButtonText}>+ New Directed Topic</Text>
+              <Text style={styles.newButtonText}>+ New Book Topic</Text>
             </TouchableOpacity>
           </View>
         }
@@ -161,7 +161,7 @@ export default function DirectedTopicsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.centered}>
-            <Text style={styles.mutedText}>No directed topics yet.</Text>
+            <Text style={styles.mutedText}>No book topics yet.</Text>
           </View>
         }
       />
@@ -182,7 +182,7 @@ export default function DirectedTopicsScreen() {
             >
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>New Topic</Text>
+            <Text style={styles.modalTitle}>New Book Topic</Text>
             <View style={styles.modalHeaderSpacer} />
           </View>
 
@@ -191,7 +191,7 @@ export default function DirectedTopicsScreen() {
               style={styles.modalInput}
               value={topicName}
               onChangeText={setTopicName}
-              placeholder="Topic name"
+              placeholder="e.g. Romans"
               placeholderTextColor={colors.textSecondary + "80"}
               autoFocus
             />

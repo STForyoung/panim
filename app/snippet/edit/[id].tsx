@@ -66,7 +66,7 @@ export default function EditSnippetScreen() {
 
   // Inline topic creation
   const [newTopicName, setNewTopicName] = useState("");
-  const [newTopicType, setNewTopicType] = useState<"conceptual" | "directed">("conceptual");
+  const [newTopicType, setNewTopicType] = useState<"conceptual" | "book">("conceptual");
   const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [newTopicError, setNewTopicError] = useState<string | null>(null);
 
@@ -174,7 +174,7 @@ export default function EditSnippetScreen() {
 
   async function handleAcceptSuggestion() {
     if (!suggestedTopicName) return;
-    await createTopic(db, { name: suggestedTopicName, type: "directed" });
+    await createTopic(db, { name: suggestedTopicName, type: "book" });
     const updated = await getAllTopics(db);
     setAllTopics(updated);
     const created = updated.find((t) => t.name === suggestedTopicName);
@@ -253,11 +253,11 @@ export default function EditSnippetScreen() {
     }
   }
 
-  // Auto-suggest a directed topic from book + chapterStart
-  const suggestedTopicName = book && chapterStart ? `${book} ${chapterStart}` : null;
+  // Auto-suggest a book topic from the selected book
+  const suggestedTopicName = book ? book : null;
   const showSuggestion =
     suggestedTopicName !== null &&
-    !allTopics.some((t) => t.type === "directed" && t.name === suggestedTopicName) &&
+    !allTopics.some((t) => t.type === "book" && t.name === suggestedTopicName) &&
     !assignedTopics.some((t) => t.name === suggestedTopicName);
 
   // Topics available to add (not yet assigned)
@@ -570,12 +570,12 @@ export default function EditSnippetScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.typeButton, newTopicType === "directed" && styles.typeButtonActive]}
-              onPress={() => setNewTopicType("directed")}
+              style={[styles.typeButton, newTopicType === "book" && styles.typeButtonActive]}
+              onPress={() => setNewTopicType("book")}
               activeOpacity={0.7}
             >
-              <Text style={[styles.typeButtonText, newTopicType === "directed" && styles.typeButtonTextActive]}>
-                Directed
+              <Text style={[styles.typeButtonText, newTopicType === "book" && styles.typeButtonTextActive]}>
+                Book
               </Text>
             </TouchableOpacity>
           </View>

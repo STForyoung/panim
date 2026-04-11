@@ -61,4 +61,12 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
   } catch {
     // Column already exists — ignore
   }
+
+  try {
+    await db.execAsync(
+      "UPDATE topics SET type = 'book' WHERE type = 'directed'"
+    );
+  } catch {
+    // Migration failed — ignore
+  }
 }

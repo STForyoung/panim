@@ -25,7 +25,7 @@ type SectionItem = {
   label: string;
   route:
     | "/topic-kind/conceptual"
-    | "/topic-kind/directed"
+    | "/topic-kind/book"
     | "/topic-kind/unassigned";
   count: number;
   countLabel: string;
@@ -45,9 +45,9 @@ export default function LibraryScreen() {
       countLabel: "0 topics",
     },
     {
-      key: "directed",
-      label: "Directed Topics",
-      route: "/topic-kind/directed",
+      key: "book",
+      label: "Book Topics",
+      route: "/topic-kind/book",
       count: 0,
       countLabel: "0 topics",
     },
@@ -69,7 +69,7 @@ export default function LibraryScreen() {
     const conceptualCount = topics.filter(
       (t) => t.type === "conceptual",
     ).length;
-    const directedCount = topics.filter((t) => t.type === "directed").length;
+    const directedCount = topics.filter((t) => t.type === "book").length;
 
     const topicChecks = await Promise.all(
       snippets.map((s) => getTopicsForSnippet(db, s.id)),
@@ -86,9 +86,9 @@ export default function LibraryScreen() {
           conceptualCount === 1 ? "1 topic" : `${conceptualCount} topics`,
       },
       {
-        key: "directed",
-        label: "Directed Topics",
-        route: "/topic-kind/directed",
+        key: "book",
+        label: "Book Topics",
+        route: "/topic-kind/book",
         count: directedCount,
         countLabel: directedCount === 1 ? "1 topic" : `${directedCount} topics`,
       },
