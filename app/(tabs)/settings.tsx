@@ -422,6 +422,16 @@ export default function SettingsScreen() {
           <Text style={styles.outlineButtonText}>+ Add Time</Text>
         </TouchableOpacity>
 
+        {pendingTimes.length > 0 ? (
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={() => setPendingTimes([])}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.clearButtonText}>Clear All</Text>
+          </TouchableOpacity>
+        ) : null}
+
         {/* Add Time Modal */}
         <Modal visible={addTimeVisible} animationType="slide">
           <View style={styles.screen}>
@@ -778,6 +788,18 @@ const styles = StyleSheet.create({
   outlineButtonText: {
     ...typography.button,
     color: colors.accent,
+  },
+  clearButton: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+    marginTop: spacing.sm,
+  },
+  clearButtonText: {
+    ...typography.button,
+    color: colors.danger,
   },
 
   // Topic picker row (inside mode card)
