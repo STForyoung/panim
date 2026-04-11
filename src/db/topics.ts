@@ -4,7 +4,7 @@ import * as Crypto from 'expo-crypto';
 export type Topic = {
   id: string;
   name: string;
-  type: 'conceptual' | 'book';
+  type: 'custom' | 'book';
   createdAt: number;
 };
 

@@ -72,6 +72,14 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
     // Migration failed — ignore
   }
 
+  try {
+    await db.execAsync(
+      "UPDATE topics SET type = 'custom' WHERE type = 'conceptual'"
+    );
+  } catch {
+    // Migration failed — ignore
+  }
+
   // Seed one book topic per canonical Bible book if not already present
   const now = Date.now();
   for (const book of CANONICAL_BOOKS) {

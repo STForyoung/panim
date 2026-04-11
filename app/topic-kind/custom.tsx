@@ -32,7 +32,7 @@ import {
 
 type TopicWithCount = Topic & { snippetCount: number };
 
-export default function ConceptualTopicsScreen() {
+export default function CustomTopicsScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -46,9 +46,9 @@ export default function ConceptualTopicsScreen() {
 
   const loadTopics = useCallback(async () => {
     const all = await getAllTopics(db);
-    const conceptual = all.filter((t) => t.type === "conceptual");
+    const custom = all.filter((t) => t.type === "custom");
     const withCounts = await Promise.all(
-      conceptual.map(async (t) => {
+      custom.map(async (t) => {
         const snippets = await getSnippetsForTopic(db, t.id);
         return { ...t, snippetCount: snippets.length };
       }),
@@ -81,7 +81,7 @@ export default function ConceptualTopicsScreen() {
     setError(null);
     setIsSaving(true);
     try {
-      await createTopic(db, { name: topicName.trim(), type: "conceptual" });
+      await createTopic(db, { name: topicName.trim(), type: "custom" });
       closeModal();
       await loadTopics();
     } catch (e) {
@@ -131,7 +131,7 @@ export default function ConceptualTopicsScreen() {
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Conceptual Topics</Text>
+            <Text style={styles.title}>Custom Topics</Text>
             <TouchableOpacity
               style={styles.newButton}
               onPress={openModal}
@@ -161,7 +161,7 @@ export default function ConceptualTopicsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.centered}>
-            <Text style={styles.mutedText}>No conceptual topics yet.</Text>
+            <Text style={styles.mutedText}>No custom topics yet.</Text>
           </View>
         }
       />
@@ -233,14 +233,10 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
   },
-
-  // Header
   title: {
     ...typography.heading,
     marginBottom: spacing.lg,
   },
-
-  // New button
   newButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
@@ -255,8 +251,6 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
-
-  // Topic cards
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -283,8 +277,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.textSecondary,
   },
-
-  // Modal
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",

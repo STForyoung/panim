@@ -24,7 +24,7 @@ type SectionItem = {
   key: string;
   label: string;
   route:
-    | "/topic-kind/conceptual"
+    | "/topic-kind/custom"
     | "/topic-kind/book"
     | "/topic-kind/unassigned";
   count: number;
@@ -38,9 +38,9 @@ export default function LibraryScreen() {
 
   const [sections, setSections] = useState<SectionItem[]>([
     {
-      key: "conceptual",
-      label: "Conceptual Topics",
-      route: "/topic-kind/conceptual",
+      key: "custom",
+      label: "Custom Topics",
+      route: "/topic-kind/custom",
       count: 0,
       countLabel: "0 topics",
     },
@@ -66,24 +66,24 @@ export default function LibraryScreen() {
       getAllSnippets(db),
     ]);
 
-    const conceptualCount = topics.filter(
-      (t) => t.type === "conceptual",
+    const customCount = topics.filter(
+      (t) => t.type === "custom",
     ).length;
     const directedCount = topics.filter((t) => t.type === "book").length;
 
     const topicChecks = await Promise.all(
       snippets.map((s) => getTopicsForSnippet(db, s.id)),
     );
-    const unassignedCount = topicChecks.filter((t) => t.every((topic) => topic.type !== "conceptual")).length;
+    const unassignedCount = topicChecks.filter((t) => t.every((topic) => topic.type !== "custom")).length;
 
     setSections([
       {
-        key: "conceptual",
-        label: "Conceptual Topics",
-        route: "/topic-kind/conceptual",
-        count: conceptualCount,
+        key: "custom",
+        label: "Custom Topics",
+        route: "/topic-kind/custom",
+        count: customCount,
         countLabel:
-          conceptualCount === 1 ? "1 topic" : `${conceptualCount} topics`,
+          customCount === 1 ? "1 topic" : `${customCount} topics`,
       },
       {
         key: "book",

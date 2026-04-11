@@ -138,10 +138,10 @@ export default function CreateSnippetScreen() {
     setNewTopicError(null);
     setIsAddingTopic(true);
     try {
-      await createTopic(db, { name: newTopicName.trim(), type: "conceptual" });
+      await createTopic(db, { name: newTopicName.trim(), type: "custom" });
       const updated = await getAllTopics(db);
       setAllTopics(updated);
-      const created = updated.find((t) => t.name === newTopicName.trim() && t.type === "conceptual");
+      const created = updated.find((t) => t.name === newTopicName.trim() && t.type === "custom");
       if (created) {
         setAssignedTopics((prev) => [...prev, created]);
       }
@@ -189,7 +189,7 @@ export default function CreateSnippetScreen() {
         passage,
         reflection: reflection.trim(),
       });
-      // Assign to all selected conceptual topics
+      // Assign to all selected custom topics
       for (const topic of assignedTopics) {
         await addSnippetToTopic(db, snippetId, topic.id);
       }
@@ -208,7 +208,7 @@ export default function CreateSnippetScreen() {
 
   // Conceptual topics not yet assigned
   const unassignedTopics = allTopics.filter(
-    (t) => t.type === "conceptual" && !assignedTopics.some((a) => a.id === t.id),
+    (t) => t.type === "custom" && !assignedTopics.some((a) => a.id === t.id),
   );
 
   function inputBorder(field: string) {

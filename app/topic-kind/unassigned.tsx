@@ -26,7 +26,7 @@ export default function UnassignedSnippetsScreen() {
     const topicChecks = await Promise.all(
       all.map((s) => getTopicsForSnippet(db, s.id)),
     );
-    setSnippets(all.filter((_, i) => topicChecks[i].every((t) => t.type !== "conceptual")));
+    setSnippets(all.filter((_, i) => topicChecks[i].every((t) => t.type !== "custom")));
     setLoading(false);
   }, [db]);
 
