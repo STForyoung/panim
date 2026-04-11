@@ -137,7 +137,7 @@ export default function ConceptualTopicsScreen() {
               onPress={openModal}
               activeOpacity={0.8}
             >
-              <Text style={styles.newButtonText}>+ New Conceptual Topic</Text>
+              <Text style={styles.newButtonText}>+ New Topic</Text>
             </TouchableOpacity>
           </View>
         }

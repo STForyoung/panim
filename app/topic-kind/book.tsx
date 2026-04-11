@@ -137,7 +137,7 @@ export default function BookTopicsScreen() {
               onPress={openModal}
               activeOpacity={0.8}
             >
-              <Text style={styles.newButtonText}>+ New Book Topic</Text>
+              <Text style={styles.newButtonText}>+ New Topic</Text>
             </TouchableOpacity>
           </View>
         }
@@ -182,7 +182,7 @@ export default function BookTopicsScreen() {
             >
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>New Book Topic</Text>
+            <Text style={styles.modalTitle}>New Topic</Text>
             <View style={styles.modalHeaderSpacer} />
           </View>
 
