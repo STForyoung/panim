@@ -1,4 +1,6 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
+import * as Crypto from 'expo-crypto';
+import { CANONICAL_BOOKS } from '@/src/services/bibleService';
 
 export async function migrateDb(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(`
@@ -68,5 +70,23 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
     );
   } catch {
     // Migration failed — ignore
+  }
+
+  // Seed one book topic per canonical Bible book if not already present
+  const now = Date.now();
+  for (const book of CANONICAL_BOOKS) {
+    const existing = await db.getFirstAsync<{ id: string }>(
+      "SELECT id FROM topics WHERE type = 'book' AND name = ?",
+      book
+    );
+    if (!existing) {
+      await db.runAsync(
+        'INSERT INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)',
+        Crypto.randomUUID(),
+        book,
+        'book',
+        now
+      );
+    }
   }
 }

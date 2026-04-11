@@ -142,13 +142,15 @@ export default function TopicDetailScreen() {
           </View>
         }
         ListFooterComponent={
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDelete}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.deleteText}>Delete Topic</Text>
-          </TouchableOpacity>
+          topic?.type !== 'book' ? (
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDelete}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.deleteText}>Delete Topic</Text>
+            </TouchableOpacity>
+          ) : null
         }
       />
     </SafeAreaView>

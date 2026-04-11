@@ -59,9 +59,6 @@ export default function CreateSnippetScreen() {
 
   // Inline topic creation
   const [newTopicName, setNewTopicName] = useState("");
-  const [newTopicType, setNewTopicType] = useState<"conceptual" | "book">(
-    "conceptual",
-  );
   const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [newTopicError, setNewTopicError] = useState<string | null>(null);
 
@@ -70,15 +67,6 @@ export default function CreateSnippetScreen() {
   }, [db]);
 
   // Auto-suggest a book topic from the selected book.
-  // Only suggest if that book topic name doesn't already exist in the DB.
-  const suggestedTopicName = book ? book : null;
-  const showSuggestion =
-    suggestedTopicName !== null &&
-    !allTopics.some(
-      (t) => t.type === "book" && t.name === suggestedTopicName,
-    ) &&
-    !assignedTopics.some((t) => t.name === suggestedTopicName);
-
   function selectBook(name: string) {
     setBook(name);
     setBookPickerVisible(false);
@@ -142,17 +130,6 @@ export default function CreateSnippetScreen() {
     setAssignedTopics((prev) => prev.filter((t) => t.id !== topicId));
   }
 
-  async function handleAcceptSuggestion() {
-    if (!suggestedTopicName) return;
-    await createTopic(db, { name: suggestedTopicName, type: "book" });
-    const updated = await getAllTopics(db);
-    setAllTopics(updated);
-    const created = updated.find((t) => t.name === suggestedTopicName);
-    if (created) {
-      setAssignedTopics((prev) => [...prev, created]);
-    }
-  }
-
   async function handleAddNewTopic() {
     if (!newTopicName.trim()) {
       setNewTopicError("Topic name is required.");
@@ -161,15 +138,14 @@ export default function CreateSnippetScreen() {
     setNewTopicError(null);
     setIsAddingTopic(true);
     try {
-      await createTopic(db, { name: newTopicName.trim(), type: newTopicType });
+      await createTopic(db, { name: newTopicName.trim(), type: "conceptual" });
       const updated = await getAllTopics(db);
       setAllTopics(updated);
-      const created = updated.find((t) => t.name === newTopicName.trim());
+      const created = updated.find((t) => t.name === newTopicName.trim() && t.type === "conceptual");
       if (created) {
         setAssignedTopics((prev) => [...prev, created]);
       }
       setNewTopicName("");
-      setNewTopicType("conceptual");
     } catch (e) {
       setNewTopicError(
         e instanceof Error ? e.message : "Failed to create topic.",
@@ -213,8 +189,14 @@ export default function CreateSnippetScreen() {
         passage,
         reflection: reflection.trim(),
       });
+      // Assign to all selected conceptual topics
       for (const topic of assignedTopics) {
         await addSnippetToTopic(db, snippetId, topic.id);
+      }
+      // Auto-assign to the book topic matching this snippet's book
+      const bookTopic = allTopics.find((t) => t.type === "book" && t.name === book);
+      if (bookTopic) {
+        await addSnippetToTopic(db, snippetId, bookTopic.id);
       }
       await scheduleNotifications(db);
       router.replace("/");
@@ -224,9 +206,9 @@ export default function CreateSnippetScreen() {
     }
   }
 
-  // Topics available to add (not yet assigned)
+  // Conceptual topics not yet assigned
   const unassignedTopics = allTopics.filter(
-    (t) => !assignedTopics.some((a) => a.id === t.id),
+    (t) => t.type === "conceptual" && !assignedTopics.some((a) => a.id === t.id),
   );
 
   function inputBorder(field: string) {
@@ -447,16 +429,6 @@ export default function CreateSnippetScreen() {
             </View>
           ) : null}
 
-          {showSuggestion ? (
-            <TouchableOpacity
-              style={styles.suggestionRow}
-              onPress={handleAcceptSuggestion}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.suggestionText}>+ {suggestedTopicName}</Text>
-            </TouchableOpacity>
-          ) : null}
-
           {unassignedTopics.length > 0 ? (
             <TouchableOpacity
               style={styles.topicPickerButton}
@@ -511,42 +483,6 @@ export default function CreateSnippetScreen() {
             onFocus={() => setFocusedField("newTopic")}
             onBlur={() => setFocusedField(null)}
           />
-          <View style={styles.typeToggleRow}>
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                newTopicType === "conceptual" && styles.typeButtonActive,
-              ]}
-              onPress={() => setNewTopicType("conceptual")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  newTopicType === "conceptual" && styles.typeButtonTextActive,
-                ]}
-              >
-                Conceptual
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                newTopicType === "book" && styles.typeButtonActive,
-              ]}
-              onPress={() => setNewTopicType("book")}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[
-                  styles.typeButtonText,
-                  newTopicType === "book" && styles.typeButtonTextActive,
-                ]}
-              >
-                Book
-              </Text>
-            </TouchableOpacity>
-          </View>
           {newTopicError ? (
             <Text style={styles.errorText}>{newTopicError}</Text>
           ) : null}

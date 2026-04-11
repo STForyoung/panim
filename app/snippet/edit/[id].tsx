@@ -66,7 +66,6 @@ export default function EditSnippetScreen() {
 
   // Inline topic creation
   const [newTopicName, setNewTopicName] = useState("");
-  const [newTopicType, setNewTopicType] = useState<"conceptual" | "book">("conceptual");
   const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [newTopicError, setNewTopicError] = useState<string | null>(null);
 
@@ -94,7 +93,7 @@ export default function EditSnippetScreen() {
       setPassage(snippet.passage);
       setReflection(snippet.reflection);
 
-      setAssignedTopics(snippetTopics);
+      setAssignedTopics(snippetTopics.filter((t) => t.type === "conceptual"));
       setAllTopics(topics);
       setLoading(false);
     }
@@ -172,17 +171,6 @@ export default function EditSnippetScreen() {
     setAssignedTopics((prev) => prev.filter((t) => t.id !== topicId));
   }
 
-  async function handleAcceptSuggestion() {
-    if (!suggestedTopicName) return;
-    await createTopic(db, { name: suggestedTopicName, type: "book" });
-    const updated = await getAllTopics(db);
-    setAllTopics(updated);
-    const created = updated.find((t) => t.name === suggestedTopicName);
-    if (created) {
-      setAssignedTopics((prev) => [...prev, created]);
-    }
-  }
-
   async function handleAddNewTopic() {
     if (!newTopicName.trim()) {
       setNewTopicError("Topic name is required.");
@@ -191,15 +179,14 @@ export default function EditSnippetScreen() {
     setNewTopicError(null);
     setIsAddingTopic(true);
     try {
-      await createTopic(db, { name: newTopicName.trim(), type: newTopicType });
+      await createTopic(db, { name: newTopicName.trim(), type: "conceptual" });
       const updated = await getAllTopics(db);
       setAllTopics(updated);
-      const created = updated.find((t) => t.name === newTopicName.trim());
+      const created = updated.find((t) => t.name === newTopicName.trim() && t.type === "conceptual");
       if (created) {
         setAssignedTopics((prev) => [...prev, created]);
       }
       setNewTopicName("");
-      setNewTopicType("conceptual");
     } catch (e) {
       setNewTopicError(e instanceof Error ? e.message : "Failed to create topic.");
     } finally {
@@ -238,12 +225,18 @@ export default function EditSnippetScreen() {
         reflection: reflection.trim(),
       });
 
-      // Re-sync topics: remove all originals, add all current assigned
-      for (const topic of originalTopics) {
+      // Re-sync conceptual topics only
+      const originalConceptual = originalTopics.filter((t) => t.type === "conceptual");
+      for (const topic of originalConceptual) {
         await removeSnippetFromTopic(db, id, topic.id);
       }
       for (const topic of assignedTopics) {
         await addSnippetToTopic(db, id, topic.id);
+      }
+      // Ensure book topic is assigned (auto-assign if missing)
+      const bookTopic = allTopics.find((t) => t.type === "book" && t.name === book);
+      if (bookTopic) {
+        await addSnippetToTopic(db, id, bookTopic.id);
       }
 
       router.back();
@@ -253,16 +246,9 @@ export default function EditSnippetScreen() {
     }
   }
 
-  // Auto-suggest a book topic from the selected book
-  const suggestedTopicName = book ? book : null;
-  const showSuggestion =
-    suggestedTopicName !== null &&
-    !allTopics.some((t) => t.type === "book" && t.name === suggestedTopicName) &&
-    !assignedTopics.some((t) => t.name === suggestedTopicName);
-
-  // Topics available to add (not yet assigned)
+  // Conceptual topics not yet assigned
   const unassignedTopics = allTopics.filter(
-    (t) => !assignedTopics.some((a) => a.id === t.id)
+    (t) => t.type === "conceptual" && !assignedTopics.some((a) => a.id === t.id)
   );
 
   function inputBorder(field: string) {
@@ -499,16 +485,6 @@ export default function EditSnippetScreen() {
             </View>
           ) : null}
 
-          {showSuggestion ? (
-            <TouchableOpacity
-              style={styles.suggestionRow}
-              onPress={handleAcceptSuggestion}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.suggestionText}>+ {suggestedTopicName}</Text>
-            </TouchableOpacity>
-          ) : null}
-
           {unassignedTopics.length > 0 ? (
             <TouchableOpacity
               style={styles.topicPickerButton}
@@ -559,26 +535,6 @@ export default function EditSnippetScreen() {
             onFocus={() => setFocusedField("newTopic")}
             onBlur={() => setFocusedField(null)}
           />
-          <View style={styles.typeToggleRow}>
-            <TouchableOpacity
-              style={[styles.typeButton, newTopicType === "conceptual" && styles.typeButtonActive]}
-              onPress={() => setNewTopicType("conceptual")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.typeButtonText, newTopicType === "conceptual" && styles.typeButtonTextActive]}>
-                Conceptual
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.typeButton, newTopicType === "book" && styles.typeButtonActive]}
-              onPress={() => setNewTopicType("book")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.typeButtonText, newTopicType === "book" && styles.typeButtonTextActive]}>
-                Book
-              </Text>
-            </TouchableOpacity>
-          </View>
           {newTopicError ? (
             <Text style={styles.errorText}>{newTopicError}</Text>
           ) : null}

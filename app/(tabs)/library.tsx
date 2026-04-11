@@ -74,7 +74,7 @@ export default function LibraryScreen() {
     const topicChecks = await Promise.all(
       snippets.map((s) => getTopicsForSnippet(db, s.id)),
     );
-    const unassignedCount = topicChecks.filter((t) => t.length === 0).length;
+    const unassignedCount = topicChecks.filter((t) => t.every((topic) => topic.type !== "conceptual")).length;
 
     setSections([
       {
