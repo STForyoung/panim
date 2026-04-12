@@ -230,7 +230,7 @@ export default function HomeScreen() {
               <View style={styles.divider} />
 
               <Text style={styles.cardReflection} numberOfLines={3}>
-                {current.reflection}
+                {current.reflection || current.passage}
               </Text>
 
               <View style={styles.divider} />
@@ -283,7 +283,7 @@ export default function HomeScreen() {
                     {getDisplayReference(item)}
                   </Text>
                   <Text style={styles.miniCardPassage} numberOfLines={2}>
-                    {item.reflection}
+                    {item.reflection || item.passage}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -317,7 +317,7 @@ export default function HomeScreen() {
                     {getDisplayReference(item)}
                   </Text>
                   <Text style={styles.miniCardPassage} numberOfLines={2}>
-                    {item.reflection}
+                    {item.reflection || item.passage}
                   </Text>
                 </TouchableOpacity>
               )}

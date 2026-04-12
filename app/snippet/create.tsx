@@ -168,11 +168,6 @@ export default function CreateSnippetScreen() {
       setShowRetry(false);
       return;
     }
-    if (!reflection.trim()) {
-      setError("A reflection is required.");
-      setShowRetry(false);
-      return;
-    }
     if (chapterEnd && !verseEnd) {
       setError("End verse is required when end chapter is provided.");
       setShowRetry(false);

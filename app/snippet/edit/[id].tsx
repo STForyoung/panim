@@ -198,11 +198,6 @@ export default function EditSnippetScreen() {
   }
 
   async function handleSave() {
-    if (!reflection.trim()) {
-      setError("A reflection is required.");
-      setShowRetry(false);
-      return;
-    }
     if (chapterEnd && !verseEnd) {
       setError("End verse is required when end chapter is provided.");
       setShowRetry(false);

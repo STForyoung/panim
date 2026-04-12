@@ -77,6 +77,9 @@ export default function SettingsScreen() {
 
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
+  const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(
+    null,
+  );
 
   // Quick Setup
   const [qsStartHour, setQsStartHour] = useState("8");
@@ -149,8 +152,22 @@ export default function SettingsScreen() {
 
   function handleTopicSelect(topicId: string) {
     setPendingActiveTopic(topicId);
+    setTopicPickerType(null);
     setTopicPickerVisible(false);
     setApplyMessage(null);
+  }
+
+  function openTopicPicker() {
+    const activeTopicType = pendingActiveTopic
+      ? (topics.find((t) => t.id === pendingActiveTopic)?.type ?? null)
+      : null;
+    setTopicPickerType(activeTopicType);
+    setTopicPickerVisible(true);
+  }
+
+  function closeTopicPicker() {
+    setTopicPickerVisible(false);
+    setTopicPickerType(null);
   }
 
   function handleGenerateTimes() {
@@ -255,6 +272,11 @@ export default function SettingsScreen() {
   const activeTopicName = pendingActiveTopic
     ? (topics.find((t) => t.id === pendingActiveTopic)?.name ?? "Unknown topic")
     : null;
+  const customTopics = topics.filter((topic) => topic.type === "custom");
+  const bookTopics = topics.filter((topic) => topic.type === "book");
+  const topicsForSelectedType = topicPickerType
+    ? topics.filter((topic) => topic.type === topicPickerType)
+    : [];
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
@@ -523,7 +545,7 @@ export default function SettingsScreen() {
                 {mode === "topic" && pendingMode === "topic" ? (
                   <TouchableOpacity
                     style={[styles.row, styles.rowLast, styles.topicPickerRow]}
-                    onPress={() => setTopicPickerVisible(true)}
+                    onPress={openTopicPicker}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.topicPickerText}>
@@ -548,11 +570,19 @@ export default function SettingsScreen() {
             >
               <TouchableOpacity
                 style={styles.modalCancelArea}
-                onPress={() => setTopicPickerVisible(false)}
+                onPress={() =>
+                  topicPickerType
+                    ? setTopicPickerType(null)
+                    : closeTopicPicker()
+                }
               >
-                <Text style={styles.modalCancel}>Cancel</Text>
+                <Text style={styles.modalCancel}>
+                  {topicPickerType ? "Back" : "Cancel"}
+                </Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Select Topic</Text>
+              <Text style={styles.modalTitle}>
+                {topicPickerType ? "Select Topic" : "Select Topic Type"}
+              </Text>
               <View style={styles.modalCancelArea} />
             </View>
             <ScrollView>
@@ -560,8 +590,43 @@ export default function SettingsScreen() {
                 <View style={styles.centeredState}>
                   <Text style={styles.mutedText}>No topics yet.</Text>
                 </View>
+              ) : !topicPickerType ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.modalRow}
+                    onPress={() => setTopicPickerType("custom")}
+                    activeOpacity={0.7}
+                  >
+                    <View>
+                      <Text style={styles.rowLabel}>Custom Topics</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {customTopics.length} available
+                      </Text>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalRow, styles.rowLast]}
+                    onPress={() => setTopicPickerType("book")}
+                    activeOpacity={0.7}
+                  >
+                    <View>
+                      <Text style={styles.rowLabel}>Book Topics</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {bookTopics.length} available
+                      </Text>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                </>
+              ) : topicsForSelectedType.length === 0 ? (
+                <View style={styles.centeredState}>
+                  <Text style={styles.mutedText}>
+                    No topics in this type yet.
+                  </Text>
+                </View>
               ) : (
-                topics.map((topic, i) => {
+                topicsForSelectedType.map((topic, i) => {
                   const selected = pendingActiveTopic === topic.id;
                   return (
                     <TouchableOpacity
@@ -569,15 +634,12 @@ export default function SettingsScreen() {
                       style={[
                         styles.modalRow,
                         selected && styles.rowSelected,
-                        i === topics.length - 1 && styles.rowLast,
+                        i === topicsForSelectedType.length - 1 && styles.rowLast,
                       ]}
                       onPress={() => handleTopicSelect(topic.id)}
                       activeOpacity={0.7}
                     >
-                      <View>
-                        <Text style={styles.rowLabel}>{topic.name}</Text>
-                        <Text style={styles.topicTypeTag}>{topic.type}</Text>
-                      </View>
+                      <Text style={styles.rowLabel}>{topic.name}</Text>
                       {selected ? (
                         <Text style={styles.checkmark}>✓</Text>
                       ) : null}

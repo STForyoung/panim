@@ -121,11 +121,13 @@ export default function SnippetDetailScreen() {
         <Text style={styles.sectionLabel}>PASSAGE</Text>
         <Text style={styles.passageText}>{snippet.passage}</Text>
 
-        <View style={styles.divider} />
-
-        {/* Reflection */}
-        <Text style={styles.sectionLabel}>MY REFLECTION</Text>
-        <Text style={styles.reflectionText}>{snippet.reflection}</Text>
+        {snippet.reflection ? (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionLabel}>MY REFLECTION</Text>
+            <Text style={styles.reflectionText}>{snippet.reflection}</Text>
+          </>
+        ) : null}
 
         {/* Prayer */}
         {snippet.prayer ? (

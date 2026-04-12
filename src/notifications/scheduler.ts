@@ -102,10 +102,16 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
       snippet = pool[Math.floor(Math.random() * pool.length)];
     }
 
+    const body = snippet.prayer
+      ? firstSentence(snippet.prayer)
+      : snippet.reflection?.trim()
+        ? firstSentence(snippet.reflection)
+        : firstSentence(snippet.passage);
+
     await Notifications.scheduleNotificationAsync({
       content: {
         title: formatReference(snippet),
-        body: firstSentence(snippet.passage),
+        body,
         data: { snippetId: snippet.id },
       },
       trigger: {
