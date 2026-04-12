@@ -16,6 +16,15 @@ import { Stack, router, useRootNavigationState } from "expo-router";
 import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 // Rendered inside SQLiteProvider so it can access the db via useSQLiteContext
 function AppInitializer() {
   const db = useSQLiteContext();

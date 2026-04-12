@@ -62,6 +62,9 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 }
 
 export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
+  const permissions = await Notifications.getPermissionsAsync();
+  if (permissions.status !== "granted") return;
+
   const schedule = await getSchedule(db);
 
   await Notifications.cancelAllScheduledNotificationsAsync();
