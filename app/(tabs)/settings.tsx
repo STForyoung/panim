@@ -634,7 +634,8 @@ export default function SettingsScreen() {
                       style={[
                         styles.modalRow,
                         selected && styles.rowSelected,
-                        i === topicsForSelectedType.length - 1 && styles.rowLast,
+                        i === topicsForSelectedType.length - 1 &&
+                          styles.rowLast,
                       ]}
                       onPress={() => handleTopicSelect(topic.id)}
                       activeOpacity={0.7}
