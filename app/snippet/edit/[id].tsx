@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, getSnippet, updateSnippet } from "@/src/db/snippets";
@@ -35,6 +35,7 @@ export default function EditSnippetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useSQLiteContext();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Loading / not found
   const [loading, setLoading] = useState(true);
@@ -320,8 +321,8 @@ export default function EditSnippetScreen() {
 
           {/* Book picker modal */}
           <Modal visible={bookPickerVisible} animationType="slide">
-            <SafeAreaView style={styles.screen}>
-              <View style={styles.modalHeader}>
+            <View style={styles.screen}>
+              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setBookPickerVisible(false)}
@@ -359,7 +360,7 @@ export default function EditSnippetScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </SafeAreaView>
+            </View>
           </Modal>
 
           {/* Start chapter and verse */}
@@ -514,8 +515,8 @@ export default function EditSnippetScreen() {
 
           {/* Topic picker modal */}
           <Modal visible={topicPickerVisible} animationType="slide">
-            <SafeAreaView style={styles.screen}>
-              <View style={styles.modalHeader}>
+            <View style={styles.screen}>
+              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setTopicPickerVisible(false)}
@@ -538,7 +539,7 @@ export default function EditSnippetScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </SafeAreaView>
+            </View>
           </Modal>
 
           {/* Inline create new topic */}

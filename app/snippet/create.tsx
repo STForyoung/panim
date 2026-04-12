@@ -25,7 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Derive ordered, deduplicated book list from BOOK_IDS (aliases share an ID — keep first occurrence)
 const allBooks = Object.entries(BOOK_IDS)
@@ -36,6 +36,7 @@ const NT_BOOKS = allBooks.filter(([, id]) => id >= 40).map(([name]) => name);
 
 export default function CreateSnippetScreen() {
   const db = useSQLiteContext();
+  const insets = useSafeAreaInsets();
 
   // Passage fields
   const [book, setBook] = useState("");
@@ -249,8 +250,8 @@ export default function CreateSnippetScreen() {
 
           {/* Book picker modal */}
           <Modal visible={bookPickerVisible} animationType="slide">
-            <SafeAreaView style={styles.screen}>
-              <View style={styles.modalHeader}>
+            <View style={styles.screen}>
+              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setBookPickerVisible(false)}
@@ -298,7 +299,7 @@ export default function CreateSnippetScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </SafeAreaView>
+            </View>
           </Modal>
 
           {/* Start chapter and verse */}
@@ -459,8 +460,8 @@ export default function CreateSnippetScreen() {
 
           {/* Topic picker modal */}
           <Modal visible={topicPickerVisible} animationType="slide">
-            <SafeAreaView style={styles.screen}>
-              <View style={styles.modalHeader}>
+            <View style={styles.screen}>
+              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setTopicPickerVisible(false)}
@@ -483,7 +484,7 @@ export default function CreateSnippetScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </SafeAreaView>
+            </View>
           </Modal>
 
           {/* Inline create new topic */}
