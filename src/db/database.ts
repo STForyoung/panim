@@ -80,6 +80,14 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
     // Migration failed — ignore
   }
 
+  try {
+    await db.execAsync(
+      'ALTER TABLE snippets ADD COLUMN prayer TEXT'
+    );
+  } catch {
+    // Column already exists — ignore
+  }
+
   // Seed one book topic per canonical Bible book if not already present
   const now = Date.now();
   for (const book of CANONICAL_BOOKS) {

@@ -117,15 +117,24 @@ export default function SnippetDetailScreen() {
 
         <View style={styles.divider} />
 
+        {/* Passage */}
+        <Text style={styles.sectionLabel}>PASSAGE</Text>
+        <Text style={styles.passageText}>{snippet.passage}</Text>
+
+        <View style={styles.divider} />
+
         {/* Reflection */}
         <Text style={styles.sectionLabel}>MY REFLECTION</Text>
         <Text style={styles.reflectionText}>{snippet.reflection}</Text>
 
-        <View style={styles.divider} />
-
-        {/* Passage */}
-        <Text style={styles.sectionLabel}>PASSAGE</Text>
-        <Text style={styles.passageText}>{snippet.passage}</Text>
+        {/* Prayer */}
+        {snippet.prayer ? (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionLabel}>MY PRAYER</Text>
+            <Text style={styles.prayerText}>{snippet.prayer}</Text>
+          </>
+        ) : null}
 
         {/* Favourite button */}
         <TouchableOpacity
@@ -239,13 +248,18 @@ const styles = StyleSheet.create({
 
   // Reflection
   reflectionText: {
-    ...typography.reflection,
+    ...typography.scripture,
   },
 
   // Passage
   passageText: {
-    ...typography.scripture,
+    ...typography.scriptureItalic,
     color: colors.textSecondary,
+  },
+
+  // Prayer
+  prayerText: {
+    ...typography.scripture,
   },
 
   // Favourite button

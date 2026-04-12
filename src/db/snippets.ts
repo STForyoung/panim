@@ -10,6 +10,7 @@ export type Snippet = {
   verseEnd: number | null;
   passage: string;
   reflection: string;
+  prayer: string | null;
   createdAt: number;
   updatedAt: number;
   isFavourite: boolean; // SQLite stores as 0/1 — always use !!snippet.isFavourite in UI

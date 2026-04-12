@@ -60,6 +60,7 @@ export default function HomeScreen() {
   const [comingUp, setComingUp] = useState<Snippet[]>([]);
   const [favourites, setFavourites] = useState<Snippet[]>([]);
   const [nextReminder, setNextReminder] = useState<string | null>(null);
+  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
 
   const pickFromSchedule = useCallback(
     async (snippets: Snippet[]) => {
@@ -83,6 +84,7 @@ export default function HomeScreen() {
       const topics = await getTopicsForSnippet(db, picked.id);
       setCurrent(picked);
       setCurrentTopics(topics);
+      setActiveTopicId(schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null);
       setNextReminder(getNextReminderTime(schedule.times));
 
       if (schedule.selectionOrder === "sequential") {
@@ -205,15 +207,20 @@ export default function HomeScreen() {
                 {getDisplayReference(current).toUpperCase()}
               </Text>
 
-              {currentTopics.length > 0 ? (
-                <View style={styles.topicsRow}>
-                  {currentTopics.map((t) => (
-                    <Text key={t.id} style={styles.topicName}>
-                      {t.name}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
+              {(() => {
+                const displayTopics = activeTopicId
+                  ? currentTopics.filter((t) => t.id === activeTopicId)
+                  : currentTopics.filter((t) => t.type === "custom");
+                return displayTopics.length > 0 ? (
+                  <View style={styles.topicsRow}>
+                    {displayTopics.map((t) => (
+                      <View key={t.id} style={styles.topicChip}>
+                        <Text style={styles.topicChipText}>{t.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null;
+              })()}
 
               <Text style={styles.reminderText}>
                 {nextReminder ??
@@ -404,7 +411,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.xs,
   },
-  topicName: {
+  topicChip: {
+    backgroundColor: colors.accent + "26",
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  topicChipText: {
     ...typography.label,
     color: colors.accent,
   },

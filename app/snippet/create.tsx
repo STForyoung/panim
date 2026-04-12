@@ -45,6 +45,7 @@ export default function CreateSnippetScreen() {
   const [verseEnd, setVerseEnd] = useState("");
   const [passage, setPassage] = useState("");
   const [reflection, setReflection] = useState("");
+  const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -188,6 +189,7 @@ export default function CreateSnippetScreen() {
         verseEnd: verseEnd ? parseInt(verseEnd, 10) : null,
         passage,
         reflection: reflection.trim(),
+        prayer: prayer.trim() || null,
       });
       // Assign to all selected custom topics
       for (const topic of assignedTopics) {
@@ -409,6 +411,22 @@ export default function CreateSnippetScreen() {
             multiline
             textAlignVertical="top"
             onFocus={() => setFocusedField("reflection")}
+            onBlur={() => setFocusedField(null)}
+          />
+
+          {/* Prayer */}
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
+            MY PRAYER (optional)
+          </Text>
+          <TextInput
+            style={[styles.reflectionInput, inputBorder("prayer")]}
+            value={prayer}
+            onChangeText={setPrayer}
+            placeholder="Your prayer in response to this passage..."
+            placeholderTextColor={colors.textSecondary + "80"}
+            multiline
+            textAlignVertical="top"
+            onFocus={() => setFocusedField("prayer")}
             onBlur={() => setFocusedField(null)}
           />
 
@@ -677,7 +695,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   passageText: {
-    ...typography.scripture,
+    ...typography.scriptureItalic,
+    color: colors.textSecondary,
   },
 
   // Error
@@ -706,7 +725,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: spacing.md,
-    ...typography.reflection,
+    ...typography.scripture,
     minHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
