@@ -256,7 +256,6 @@ const styles = StyleSheet.create({
   // Passage
   passageText: {
     ...typography.scriptureItalic,
-    color: colors.textSecondary,
   },
 
   // Prayer

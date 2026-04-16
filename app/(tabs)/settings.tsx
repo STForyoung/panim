@@ -12,8 +12,9 @@ import {
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
+import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -56,7 +57,7 @@ export default function SettingsScreen() {
 
   // Pending schedule state — not saved until Apply is tapped
   const [pendingTimes, setPendingTimes] = useState<string[]>([]);
-  const [pendingMode, setPendingMode] = useState<"random" | "topic">("random");
+  const [pendingMode, setPendingMode] = useState<"random" | "topic" | "favourites">("random");
   const [pendingActiveTopic, setPendingActiveTopic] = useState<string | null>(
     null,
   );
@@ -88,6 +89,14 @@ export default function SettingsScreen() {
   const [qsEndMinute, setQsEndMinute] = useState("0");
   const [qsInterval, setQsInterval] = useState<1 | 2 | 3 | 4 | null>(null);
   const [qsError, setQsError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setApplyMessage(null);
+      };
+    }, []),
+  );
 
   useEffect(() => {
     async function load() {
@@ -144,9 +153,9 @@ export default function SettingsScreen() {
     setApplyMessage(null);
   }
 
-  function handleModeChange(mode: "random" | "topic") {
+  function handleModeChange(mode: "random" | "topic" | "favourites") {
     setPendingMode(mode);
-    if (mode === "random") setPendingActiveTopic(null);
+    if (mode !== "topic") setPendingActiveTopic(null);
     setApplyMessage(null);
   }
 
@@ -250,6 +259,7 @@ export default function SettingsScreen() {
       );
       await scheduleNotifications(db);
       setApplyMessage("Schedule updated");
+      setTimeout(() => setApplyMessage(null), 3000);
     } catch (e) {
       setApplyError(
         e instanceof Error ? e.message : "Failed to save schedule.",
@@ -258,6 +268,21 @@ export default function SettingsScreen() {
       setIsApplying(false);
     }
   }
+
+  function handleCancel() {
+    if (!schedule) return;
+    setPendingTimes(schedule.times);
+    setPendingMode(schedule.mode);
+    setPendingActiveTopic(schedule.activeTopic ?? null);
+    setPendingSelectionOrder(schedule.selectionOrder);
+  }
+
+  const hasUnsavedChanges =
+    schedule != null &&
+    (JSON.stringify(pendingTimes) !== JSON.stringify(schedule.times) ||
+      pendingMode !== schedule.mode ||
+      pendingActiveTopic !== schedule.activeTopic ||
+      pendingSelectionOrder !== schedule.selectionOrder);
 
   if (loading || !schedule) {
     return (
@@ -280,7 +305,12 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          hasUnsavedChanges && styles.scrollWithFooter,
+        ]}
+      >
         <Text style={styles.title}>Settings</Text>
 
         {/* Translation */}
@@ -518,10 +548,10 @@ export default function SettingsScreen() {
         {/* Notification Mode */}
         <Text style={styles.sectionHeader}>NOTIFICATION MODE</Text>
         <View style={styles.sectionCard}>
-          {(["random", "topic"] as const).map((mode, i) => {
+          {(["random", "topic", "favourites"] as const).map((mode, i, arr) => {
             const selected = pendingMode === mode;
-            const label = mode === "random" ? "Random" : "Topic Focus";
-            const isLast = mode === "topic" && pendingMode !== "topic";
+            const label = mode === "random" ? "Random" : mode === "topic" ? "Topic Focus" : "Favourites";
+            const isLast = i === arr.length - 1;
             return (
               <View key={mode}>
                 <TouchableOpacity
@@ -530,10 +560,6 @@ export default function SettingsScreen() {
                     styles.rowSpaceBetween,
                     selected && styles.rowSelected,
                     isLast && styles.rowLast,
-                    mode === "topic" &&
-                      pendingMode === "topic" &&
-                      styles.rowLast,
-                    i === 0 && pendingMode !== "topic" ? {} : {},
                   ]}
                   onPress={() => handleModeChange(mode)}
                   activeOpacity={0.7}
@@ -544,7 +570,7 @@ export default function SettingsScreen() {
 
                 {mode === "topic" && pendingMode === "topic" ? (
                   <TouchableOpacity
-                    style={[styles.row, styles.rowLast, styles.topicPickerRow]}
+                    style={[styles.row, styles.topicPickerRow]}
                     onPress={openTopicPicker}
                     activeOpacity={0.7}
                   >
@@ -677,23 +703,37 @@ export default function SettingsScreen() {
           })}
         </View>
 
-        {/* Apply */}
-        <TouchableOpacity
-          style={[styles.applyButton, isApplying && styles.buttonDisabled]}
-          onPress={handleApply}
-          disabled={isApplying}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isApplying ? "Applying…" : "Apply Schedule"}
-          </Text>
-        </TouchableOpacity>
-
-        {applyMessage ? (
-          <Text style={styles.applySuccess}>{applyMessage}</Text>
-        ) : null}
         {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
       </ScrollView>
+
+      {hasUnsavedChanges ? (
+        <View style={styles.stickyFooter}>
+          <View style={styles.footerRow}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}
+              disabled={isApplying}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.applyButton, isApplying && styles.buttonDisabled]}
+              onPress={handleApply}
+              disabled={isApplying}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.primaryButtonText}>
+                {isApplying ? "Applying…" : "Apply"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : applyMessage ? (
+        <View style={styles.stickyFooter}>
+          <Text style={styles.applySuccess}>{applyMessage}</Text>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -892,13 +932,44 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
+  // Sticky footer
+  scrollWithFooter: {
+    paddingBottom: spacing.xl * 2 + 52, // reserve space for footer
+  },
+  stickyFooter: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    padding: spacing.md,
+  },
+  footerRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+
   // Apply button
   applyButton: {
+    flex: 1,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: "center",
-    marginTop: spacing.xl,
+  },
+  cancelButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    ...typography.button,
+    color: colors.textSecondary,
   },
   buttonDisabled: {
     opacity: 0.5,

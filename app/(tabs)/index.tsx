@@ -76,6 +76,9 @@ export default function HomeScreen() {
           );
           pool = topicSnippets.length === 0 ? snippets : topicSnippets;
         }
+      } else if (schedule.mode === "favourites") {
+        const favourites = await getFavouriteSnippets(db);
+        pool = favourites.length === 0 ? snippets : favourites;
       }
 
       if (pool.length === 0) return;
@@ -84,7 +87,9 @@ export default function HomeScreen() {
       const topics = await getTopicsForSnippet(db, picked.id);
       setCurrent(picked);
       setCurrentTopics(topics);
-      setActiveTopicId(schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null);
+      setActiveTopicId(
+        schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null,
+      );
       setNextReminder(getNextReminderTime(schedule.times));
 
       if (schedule.selectionOrder === "sequential") {
@@ -131,12 +136,19 @@ export default function HomeScreen() {
         ]);
         setAllSnippets(snippets);
         setFavourites(favs);
+        setNextReminder(getNextReminderTime(schedule.times));
 
-        if (snippets.length > 0) {
-          await pickFromSchedule(snippets);
-        } else {
-          setNextReminder(getNextReminderTime(schedule.times));
-        }
+        // Only pick a new snippet if there isn't one already displayed,
+        // or if the snippet list changed size (e.g. a snippet was deleted).
+        setCurrent((prev) => {
+          const stillExists = prev && snippets.some((s) => s.id === prev.id);
+          if (!prev || !stillExists) {
+            if (snippets.length > 0) {
+              pickFromSchedule(snippets);
+            }
+          }
+          return prev;
+        });
       }
       onFocus();
     }, [db, pickFromSchedule]),
@@ -227,17 +239,25 @@ export default function HomeScreen() {
                   "Set a schedule in Settings to start receiving reminders"}
               </Text>
 
-              <View style={styles.divider} />
-
-              <Text style={styles.cardReflection} numberOfLines={3}>
-                {current.reflection || current.passage}
-              </Text>
-
-              <View style={styles.divider} />
-
-              <Text style={styles.cardPassage} numberOfLines={3}>
-                {current.passage}
-              </Text>
+              {current.reflection ? (
+                <>
+                  <View style={styles.divider} />
+                  <Text style={styles.cardReflection} numberOfLines={3}>
+                    {current.reflection}
+                  </Text>
+                  <View style={styles.divider} />
+                  <Text style={styles.cardPassage} numberOfLines={3}>
+                    {current.passage}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <View style={styles.divider} />
+                  <Text style={styles.cardPassage} numberOfLines={3}>
+                    {current.passage}
+                  </Text>
+                </>
+              )}
 
               <View style={styles.cardButtons}>
                 {allSnippets.length > 1 ? (

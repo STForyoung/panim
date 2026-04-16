@@ -1,5 +1,5 @@
 import { getSchedule } from "@/src/db/notificationSchedule";
-import { getAllSnippets, type Snippet } from "@/src/db/snippets";
+import { getAllSnippets, getFavouriteSnippets, type Snippet } from "@/src/db/snippets";
 import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -78,17 +78,14 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
   let pool: Snippet[] = allSnippets;
   if (schedule.mode === "topic") {
     if (!schedule.activeTopic) {
-      // activeTopic is null — fall back to all snippets
       pool = allSnippets;
     } else {
       const topicSnippets = await getSnippetsForTopic(db, schedule.activeTopic);
-      if (topicSnippets.length === 0) {
-        // activeTopic has no snippets — fall back to all snippets
-        pool = allSnippets;
-      } else {
-        pool = topicSnippets;
-      }
+      pool = topicSnippets.length === 0 ? allSnippets : topicSnippets;
     }
+  } else if (schedule.mode === "favourites") {
+    const favourites = await getFavouriteSnippets(db);
+    pool = favourites.length === 0 ? allSnippets : favourites;
   }
 
   for (const time of schedule.times) {
