@@ -49,20 +49,23 @@ export default function RootLayout() {
 
   // Fonts must be loaded before rendering to prevent flash of unstyled text.
   // TODO post-MVP: replace return null with expo-splash-screen to avoid blank screen during load.
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Lora_400Regular,
     Lora_400Regular_Italic,
     Lora_600SemiBold,
     Lora_700Bold,
   });
+  console.log("[DEBUG] fontsLoaded:", fontsLoaded, "fontError:", fontError);
 
   useEffect(() => {
     AsyncStorage.getItem("hasLaunched").then((value) => {
+      console.log("[DEBUG] hasLaunched value:", value);
       setHasLaunched(value !== null);
     });
   }, []);
 
   useEffect(() => {
+    console.log("[DEBUG] nav effect — key:", navigationState?.key, "hasLaunched:", hasLaunched);
     if (!navigationState?.key || hasLaunched === null) return;
     if (!hasLaunched) {
       router.replace("/onboarding");

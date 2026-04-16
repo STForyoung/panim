@@ -1,6 +1,7 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
 import { CANONICAL_BOOKS } from '@/src/services/bibleService';
+// import { seedDefaultContent } from '@/src/db/seeds';
 
 export async function migrateDb(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(`
@@ -87,6 +88,8 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
   } catch {
     // Column already exists — ignore
   }
+
+  // await seedDefaultContent(db);
 
   // Seed one book topic per canonical Bible book if not already present
   const now = Date.now();
