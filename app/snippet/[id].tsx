@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, deleteSnippet, getSnippet, toggleFavourite } from "@/src/db/snippets";
 import { type Topic } from "@/src/db/topics";
@@ -19,21 +19,23 @@ export default function SnippetDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      const result = await getSnippet(db, id);
-      if (!result) {
-        setNotFound(true);
+  useFocusEffect(
+    useCallback(() => {
+      async function load() {
+        const result = await getSnippet(db, id);
+        if (!result) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        const assignedTopics = await getTopicsForSnippet(db, id);
+        setSnippet(result);
+        setTopics(assignedTopics);
         setLoading(false);
-        return;
       }
-      const assignedTopics = await getTopicsForSnippet(db, id);
-      setSnippet(result);
-      setTopics(assignedTopics);
-      setLoading(false);
-    }
-    load();
-  }, [db, id]);
+      load();
+    }, [db, id])
+  );
 
   function handleDelete() {
     Alert.alert(
@@ -115,15 +117,26 @@ export default function SnippetDetailScreen() {
 
         <View style={styles.divider} />
 
-        {/* Reflection */}
-        <Text style={styles.sectionLabel}>MY REFLECTION</Text>
-        <Text style={styles.reflectionText}>{snippet.reflection}</Text>
-
-        <View style={styles.divider} />
-
         {/* Passage */}
         <Text style={styles.sectionLabel}>PASSAGE</Text>
         <Text style={styles.passageText}>{snippet.passage}</Text>
+
+        {snippet.reflection ? (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionLabel}>MY REFLECTION</Text>
+            <Text style={styles.reflectionText}>{snippet.reflection}</Text>
+          </>
+        ) : null}
+
+        {/* Prayer */}
+        {snippet.prayer ? (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.sectionLabel}>MY PRAYER</Text>
+            <Text style={styles.prayerText}>{snippet.prayer}</Text>
+          </>
+        ) : null}
 
         {/* Favourite button */}
         <TouchableOpacity
@@ -237,13 +250,17 @@ const styles = StyleSheet.create({
 
   // Reflection
   reflectionText: {
-    ...typography.reflection,
+    ...typography.scripture,
   },
 
   // Passage
   passageText: {
+    ...typography.scriptureItalic,
+  },
+
+  // Prayer
+  prayerText: {
     ...typography.scripture,
-    color: colors.textSecondary,
   },
 
   // Favourite button

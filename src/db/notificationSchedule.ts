@@ -3,7 +3,7 @@ import { type SQLiteDatabase } from 'expo-sqlite';
 export type NotificationSchedule = {
   id: string;
   times: string[];
-  mode: 'random' | 'topic';
+  mode: 'random' | 'topic' | 'favourites';
   activeTopic: string | null;
   selectionOrder: 'random' | 'sequential';
   lastSentIndex: number;

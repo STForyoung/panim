@@ -60,6 +60,7 @@ export default function HomeScreen() {
   const [comingUp, setComingUp] = useState<Snippet[]>([]);
   const [favourites, setFavourites] = useState<Snippet[]>([]);
   const [nextReminder, setNextReminder] = useState<string | null>(null);
+  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
 
   const pickFromSchedule = useCallback(
     async (snippets: Snippet[]) => {
@@ -75,6 +76,9 @@ export default function HomeScreen() {
           );
           pool = topicSnippets.length === 0 ? snippets : topicSnippets;
         }
+      } else if (schedule.mode === "favourites") {
+        const favourites = await getFavouriteSnippets(db);
+        pool = favourites.length === 0 ? snippets : favourites;
       }
 
       if (pool.length === 0) return;
@@ -83,6 +87,9 @@ export default function HomeScreen() {
       const topics = await getTopicsForSnippet(db, picked.id);
       setCurrent(picked);
       setCurrentTopics(topics);
+      setActiveTopicId(
+        schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null,
+      );
       setNextReminder(getNextReminderTime(schedule.times));
 
       if (schedule.selectionOrder === "sequential") {
@@ -129,12 +136,19 @@ export default function HomeScreen() {
         ]);
         setAllSnippets(snippets);
         setFavourites(favs);
+        setNextReminder(getNextReminderTime(schedule.times));
 
-        if (snippets.length > 0) {
-          await pickFromSchedule(snippets);
-        } else {
-          setNextReminder(getNextReminderTime(schedule.times));
-        }
+        // Only pick a new snippet if there isn't one already displayed,
+        // or if the snippet list changed size (e.g. a snippet was deleted).
+        setCurrent((prev) => {
+          const stillExists = prev && snippets.some((s) => s.id === prev.id);
+          if (!prev || !stillExists) {
+            if (snippets.length > 0) {
+              pickFromSchedule(snippets);
+            }
+          }
+          return prev;
+        });
       }
       onFocus();
     }, [db, pickFromSchedule]),
@@ -205,32 +219,45 @@ export default function HomeScreen() {
                 {getDisplayReference(current).toUpperCase()}
               </Text>
 
-              {currentTopics.length > 0 ? (
-                <View style={styles.topicsRow}>
-                  {currentTopics.map((t) => (
-                    <Text key={t.id} style={styles.topicName}>
-                      {t.name}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
+              {(() => {
+                const displayTopics = activeTopicId
+                  ? currentTopics.filter((t) => t.id === activeTopicId)
+                  : currentTopics.filter((t) => t.type === "custom");
+                return displayTopics.length > 0 ? (
+                  <View style={styles.topicsRow}>
+                    {displayTopics.map((t) => (
+                      <View key={t.id} style={styles.topicChip}>
+                        <Text style={styles.topicChipText}>{t.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null;
+              })()}
 
               <Text style={styles.reminderText}>
                 {nextReminder ??
                   "Set a schedule in Settings to start receiving reminders"}
               </Text>
 
-              <View style={styles.divider} />
-
-              <Text style={styles.cardReflection} numberOfLines={5}>
-                {current.reflection}
-              </Text>
-
-              <View style={styles.divider} />
-
-              <Text style={styles.cardPassage} numberOfLines={5}>
-                {current.passage}
-              </Text>
+              {current.reflection ? (
+                <>
+                  <View style={styles.divider} />
+                  <Text style={styles.cardReflection} numberOfLines={3}>
+                    {current.reflection}
+                  </Text>
+                  <View style={styles.divider} />
+                  <Text style={styles.cardPassage} numberOfLines={3}>
+                    {current.passage}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <View style={styles.divider} />
+                  <Text style={styles.cardPassage} numberOfLines={3}>
+                    {current.passage}
+                  </Text>
+                </>
+              )}
 
               <View style={styles.cardButtons}>
                 {allSnippets.length > 1 ? (
@@ -275,8 +302,8 @@ export default function HomeScreen() {
                   <Text style={styles.miniCardReference}>
                     {getDisplayReference(item)}
                   </Text>
-                  <Text style={styles.miniCardPassage} numberOfLines={1}>
-                    {item.passage}
+                  <Text style={styles.miniCardPassage} numberOfLines={2}>
+                    {item.reflection || item.passage}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -309,8 +336,8 @@ export default function HomeScreen() {
                   <Text style={styles.miniCardReference}>
                     {getDisplayReference(item)}
                   </Text>
-                  <Text style={styles.miniCardPassage} numberOfLines={1}>
-                    {item.passage}
+                  <Text style={styles.miniCardPassage} numberOfLines={2}>
+                    {item.reflection || item.passage}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -404,7 +431,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.xs,
   },
-  topicName: {
+  topicChip: {
+    backgroundColor: colors.accent + "26",
+    borderRadius: radius.lg,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  topicChipText: {
     ...typography.label,
     color: colors.accent,
   },

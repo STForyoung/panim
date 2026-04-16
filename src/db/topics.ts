@@ -4,7 +4,7 @@ import * as Crypto from 'expo-crypto';
 export type Topic = {
   id: string;
   name: string;
-  type: 'conceptual' | 'directed';
+  type: 'custom' | 'book';
   createdAt: number;
 };
 
@@ -32,5 +32,9 @@ export async function getAllTopics(db: SQLiteDatabase): Promise<Topic[]> {
 }
 
 export async function deleteTopic(db: SQLiteDatabase, id: string): Promise<void> {
+  const topic = await db.getFirstAsync<{ type: string }>('SELECT type FROM topics WHERE id = ?', id);
+  if (topic?.type === 'book') {
+    throw new Error('Book topics cannot be deleted.');
+  }
   await db.runAsync('DELETE FROM topics WHERE id = ?', id);
 }

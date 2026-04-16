@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, getSnippet, updateSnippet } from "@/src/db/snippets";
@@ -35,6 +35,7 @@ export default function EditSnippetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useSQLiteContext();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Loading / not found
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,7 @@ export default function EditSnippetScreen() {
   const [verseEnd, setVerseEnd] = useState("");
   const [passage, setPassage] = useState("");
   const [reflection, setReflection] = useState("");
+  const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,7 +68,6 @@ export default function EditSnippetScreen() {
 
   // Inline topic creation
   const [newTopicName, setNewTopicName] = useState("");
-  const [newTopicType, setNewTopicType] = useState<"conceptual" | "directed">("conceptual");
   const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [newTopicError, setNewTopicError] = useState<string | null>(null);
 
@@ -93,8 +94,9 @@ export default function EditSnippetScreen() {
       setVerseEnd(snippet.verseEnd !== null ? String(snippet.verseEnd) : "");
       setPassage(snippet.passage);
       setReflection(snippet.reflection);
+      setPrayer(snippet.prayer ?? "");
 
-      setAssignedTopics(snippetTopics);
+      setAssignedTopics(snippetTopics.filter((t) => t.type === "custom"));
       setAllTopics(topics);
       setLoading(false);
     }
@@ -172,17 +174,6 @@ export default function EditSnippetScreen() {
     setAssignedTopics((prev) => prev.filter((t) => t.id !== topicId));
   }
 
-  async function handleAcceptSuggestion() {
-    if (!suggestedTopicName) return;
-    await createTopic(db, { name: suggestedTopicName, type: "directed" });
-    const updated = await getAllTopics(db);
-    setAllTopics(updated);
-    const created = updated.find((t) => t.name === suggestedTopicName);
-    if (created) {
-      setAssignedTopics((prev) => [...prev, created]);
-    }
-  }
-
   async function handleAddNewTopic() {
     if (!newTopicName.trim()) {
       setNewTopicError("Topic name is required.");
@@ -191,15 +182,14 @@ export default function EditSnippetScreen() {
     setNewTopicError(null);
     setIsAddingTopic(true);
     try {
-      await createTopic(db, { name: newTopicName.trim(), type: newTopicType });
+      await createTopic(db, { name: newTopicName.trim(), type: "custom" });
       const updated = await getAllTopics(db);
       setAllTopics(updated);
-      const created = updated.find((t) => t.name === newTopicName.trim());
+      const created = updated.find((t) => t.name === newTopicName.trim() && t.type === "custom");
       if (created) {
         setAssignedTopics((prev) => [...prev, created]);
       }
       setNewTopicName("");
-      setNewTopicType("conceptual");
     } catch (e) {
       setNewTopicError(e instanceof Error ? e.message : "Failed to create topic.");
     } finally {
@@ -208,11 +198,6 @@ export default function EditSnippetScreen() {
   }
 
   async function handleSave() {
-    if (!reflection.trim()) {
-      setError("A reflection is required.");
-      setShowRetry(false);
-      return;
-    }
     if (chapterEnd && !verseEnd) {
       setError("End verse is required when end chapter is provided.");
       setShowRetry(false);
@@ -236,14 +221,21 @@ export default function EditSnippetScreen() {
         verseEnd: verseEnd ? parseInt(verseEnd, 10) : null,
         passage,
         reflection: reflection.trim(),
+        prayer: prayer.trim() || null,
       });
 
-      // Re-sync topics: remove all originals, add all current assigned
-      for (const topic of originalTopics) {
+      // Re-sync custom topics only
+      const originalConceptual = originalTopics.filter((t) => t.type === "custom");
+      for (const topic of originalConceptual) {
         await removeSnippetFromTopic(db, id, topic.id);
       }
       for (const topic of assignedTopics) {
         await addSnippetToTopic(db, id, topic.id);
+      }
+      // Ensure book topic is assigned (auto-assign if missing)
+      const bookTopic = allTopics.find((t) => t.type === "book" && t.name === book);
+      if (bookTopic) {
+        await addSnippetToTopic(db, id, bookTopic.id);
       }
 
       router.back();
@@ -253,16 +245,9 @@ export default function EditSnippetScreen() {
     }
   }
 
-  // Auto-suggest a directed topic from book + chapterStart
-  const suggestedTopicName = book && chapterStart ? `${book} ${chapterStart}` : null;
-  const showSuggestion =
-    suggestedTopicName !== null &&
-    !allTopics.some((t) => t.type === "directed" && t.name === suggestedTopicName) &&
-    !assignedTopics.some((t) => t.name === suggestedTopicName);
-
-  // Topics available to add (not yet assigned)
+  // Conceptual topics not yet assigned
   const unassignedTopics = allTopics.filter(
-    (t) => !assignedTopics.some((a) => a.id === t.id)
+    (t) => t.type === "custom" && !assignedTopics.some((a) => a.id === t.id)
   );
 
   function inputBorder(field: string) {
@@ -331,8 +316,8 @@ export default function EditSnippetScreen() {
 
           {/* Book picker modal */}
           <Modal visible={bookPickerVisible} animationType="slide">
-            <SafeAreaView style={styles.screen}>
-              <View style={styles.modalHeader}>
+            <View style={styles.screen}>
+              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setBookPickerVisible(false)}
@@ -370,7 +355,7 @@ export default function EditSnippetScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </SafeAreaView>
+            </View>
           </Modal>
 
           {/* Start chapter and verse */}
@@ -484,6 +469,20 @@ export default function EditSnippetScreen() {
             onBlur={() => setFocusedField(null)}
           />
 
+          {/* Prayer */}
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>MY PRAYER (optional)</Text>
+          <TextInput
+            style={[styles.reflectionInput, inputBorder("prayer")]}
+            value={prayer}
+            onChangeText={setPrayer}
+            placeholder="Your prayer in response to this passage..."
+            placeholderTextColor={colors.textSecondary + "80"}
+            multiline
+            textAlignVertical="top"
+            onFocus={() => setFocusedField("prayer")}
+            onBlur={() => setFocusedField(null)}
+          />
+
           {/* Topics */}
           <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>TOPICS</Text>
 
@@ -499,16 +498,6 @@ export default function EditSnippetScreen() {
             </View>
           ) : null}
 
-          {showSuggestion ? (
-            <TouchableOpacity
-              style={styles.suggestionRow}
-              onPress={handleAcceptSuggestion}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.suggestionText}>+ {suggestedTopicName}</Text>
-            </TouchableOpacity>
-          ) : null}
-
           {unassignedTopics.length > 0 ? (
             <TouchableOpacity
               style={styles.topicPickerButton}
@@ -521,8 +510,8 @@ export default function EditSnippetScreen() {
 
           {/* Topic picker modal */}
           <Modal visible={topicPickerVisible} animationType="slide">
-            <SafeAreaView style={styles.screen}>
-              <View style={styles.modalHeader}>
+            <View style={styles.screen}>
+              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setTopicPickerVisible(false)}
@@ -545,7 +534,7 @@ export default function EditSnippetScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </SafeAreaView>
+            </View>
           </Modal>
 
           {/* Inline create new topic */}
@@ -559,26 +548,6 @@ export default function EditSnippetScreen() {
             onFocus={() => setFocusedField("newTopic")}
             onBlur={() => setFocusedField(null)}
           />
-          <View style={styles.typeToggleRow}>
-            <TouchableOpacity
-              style={[styles.typeButton, newTopicType === "conceptual" && styles.typeButtonActive]}
-              onPress={() => setNewTopicType("conceptual")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.typeButtonText, newTopicType === "conceptual" && styles.typeButtonTextActive]}>
-                Conceptual
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.typeButton, newTopicType === "directed" && styles.typeButtonActive]}
-              onPress={() => setNewTopicType("directed")}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.typeButtonText, newTopicType === "directed" && styles.typeButtonTextActive]}>
-                Directed
-              </Text>
-            </TouchableOpacity>
-          </View>
           {newTopicError ? (
             <Text style={styles.errorText}>{newTopicError}</Text>
           ) : null}
@@ -804,7 +773,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   passageText: {
-    ...typography.scripture,
+    ...typography.scriptureItalic,
+    color: colors.textSecondary,
   },
 
   // Error
@@ -833,7 +803,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: spacing.md,
-    ...typography.reflection,
+    ...typography.scripture,
     minHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
