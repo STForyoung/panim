@@ -8,13 +8,19 @@ import {
   Lora_400Regular_Italic,
   Lora_600SemiBold,
   Lora_700Bold,
+  useFonts,
 } from "@expo-google-fonts/lora";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFonts } from "expo-font";
+import {
+  NotoSerifHebrew_400Regular,
+  NotoSerifHebrew_700Bold,
+} from "@expo-google-fonts/noto-serif-hebrew";
 import * as Notifications from "expo-notifications";
-import { Stack, router, useRootNavigationState } from "expo-router";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+
+SplashScreen.preventAutoHideAsync();
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -44,33 +50,20 @@ function AppInitializer() {
 }
 
 export default function RootLayout() {
-  const navigationState = useRootNavigationState();
-  const [hasLaunched, setHasLaunched] = useState<boolean | null>(null);
-
-  // Fonts must be loaded before rendering to prevent flash of unstyled text.
-  // TODO post-MVP: replace return null with expo-splash-screen to avoid blank screen during load.
-  const [fontsLoaded, fontError] = useFonts({
+  const [fontsLoaded] = useFonts({
     Lora_400Regular,
     Lora_400Regular_Italic,
     Lora_600SemiBold,
     Lora_700Bold,
+    NotoSerifHebrew_400Regular,
+    NotoSerifHebrew_700Bold,
   });
-  console.log("[DEBUG] fontsLoaded:", fontsLoaded, "fontError:", fontError);
 
   useEffect(() => {
-    AsyncStorage.getItem("hasLaunched").then((value) => {
-      console.log("[DEBUG] hasLaunched value:", value);
-      setHasLaunched(value !== null);
-    });
-  }, []);
-
-  useEffect(() => {
-    console.log("[DEBUG] nav effect — key:", navigationState?.key, "hasLaunched:", hasLaunched);
-    if (!navigationState?.key || hasLaunched === null) return;
-    if (!hasLaunched) {
-      router.replace("/onboarding");
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
     }
-  }, [navigationState?.key, hasLaunched]);
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
 

@@ -1,7 +1,7 @@
-import { type SQLiteDatabase } from 'expo-sqlite';
-import * as Crypto from 'expo-crypto';
-import { CANONICAL_BOOKS } from '@/src/services/bibleService';
-// import { seedDefaultContent } from '@/src/db/seeds';
+import { seedDefaultContent } from "@/src/db/seeds";
+import { CANONICAL_BOOKS } from "@/src/services/bibleService";
+import * as Crypto from "expo-crypto";
+import { type SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDb(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(`
@@ -51,7 +51,7 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
   // Migrations for existing installs
   try {
     await db.execAsync(
-      'ALTER TABLE snippets ADD COLUMN isFavourite INTEGER NOT NULL DEFAULT 0'
+      "ALTER TABLE snippets ADD COLUMN isFavourite INTEGER NOT NULL DEFAULT 0",
     );
   } catch {
     // Column already exists — ignore
@@ -59,7 +59,7 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
 
   try {
     await db.execAsync(
-      "ALTER TABLE notification_schedule ADD COLUMN translation TEXT NOT NULL DEFAULT 'NKJV'"
+      "ALTER TABLE notification_schedule ADD COLUMN translation TEXT NOT NULL DEFAULT 'NKJV'",
     );
   } catch {
     // Column already exists — ignore
@@ -67,7 +67,7 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
 
   try {
     await db.execAsync(
-      "UPDATE topics SET type = 'book' WHERE type = 'directed'"
+      "UPDATE topics SET type = 'book' WHERE type = 'directed'",
     );
   } catch {
     // Migration failed — ignore
@@ -75,36 +75,34 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
 
   try {
     await db.execAsync(
-      "UPDATE topics SET type = 'custom' WHERE type = 'conceptual'"
+      "UPDATE topics SET type = 'custom' WHERE type = 'conceptual'",
     );
   } catch {
     // Migration failed — ignore
   }
 
   try {
-    await db.execAsync(
-      'ALTER TABLE snippets ADD COLUMN prayer TEXT'
-    );
+    await db.execAsync("ALTER TABLE snippets ADD COLUMN prayer TEXT");
   } catch {
     // Column already exists — ignore
   }
 
-  // await seedDefaultContent(db);
+  await seedDefaultContent(db);
 
   // Seed one book topic per canonical Bible book if not already present
   const now = Date.now();
   for (const book of CANONICAL_BOOKS) {
     const existing = await db.getFirstAsync<{ id: string }>(
       "SELECT id FROM topics WHERE type = 'book' AND name = ?",
-      book
+      book,
     );
     if (!existing) {
       await db.runAsync(
-        'INSERT INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)',
+        "INSERT INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)",
         Crypto.randomUUID(),
         book,
-        'book',
-        now
+        "book",
+        now,
       );
     }
   }

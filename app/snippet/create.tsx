@@ -25,7 +25,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 // Derive ordered, deduplicated book list from BOOK_IDS (aliases share an ID — keep first occurrence)
 const allBooks = Object.entries(BOOK_IDS)
@@ -143,7 +146,9 @@ export default function CreateSnippetScreen() {
       await createTopic(db, { name: newTopicName.trim(), type: "custom" });
       const updated = await getAllTopics(db);
       setAllTopics(updated);
-      const created = updated.find((t) => t.name === newTopicName.trim() && t.type === "custom");
+      const created = updated.find(
+        (t) => t.name === newTopicName.trim() && t.type === "custom",
+      );
       if (created) {
         setAssignedTopics((prev) => [...prev, created]);
       }
@@ -192,7 +197,9 @@ export default function CreateSnippetScreen() {
         await addSnippetToTopic(db, snippetId, topic.id);
       }
       // Auto-assign to the book topic matching this snippet's book
-      const bookTopic = allTopics.find((t) => t.type === "book" && t.name === book);
+      const bookTopic = allTopics.find(
+        (t) => t.type === "book" && t.name === book,
+      );
       if (bookTopic) {
         await addSnippetToTopic(db, snippetId, bookTopic.id);
       }
@@ -220,7 +227,12 @@ export default function CreateSnippetScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.scroll}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.replace("/(tabs)")
+            }
+            hitSlop={8}
+          >
             <Text style={styles.cancelText}>←</Text>
           </TouchableOpacity>
 
@@ -246,7 +258,12 @@ export default function CreateSnippetScreen() {
           {/* Book picker modal */}
           <Modal visible={bookPickerVisible} animationType="slide">
             <View style={styles.screen}>
-              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
+              <View
+                style={[
+                  styles.modalHeader,
+                  { paddingTop: insets.top + spacing.md },
+                ]}
+              >
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setBookPickerVisible(false)}
@@ -456,7 +473,12 @@ export default function CreateSnippetScreen() {
           {/* Topic picker modal */}
           <Modal visible={topicPickerVisible} animationType="slide">
             <View style={styles.screen}>
-              <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
+              <View
+                style={[
+                  styles.modalHeader,
+                  { paddingTop: insets.top + spacing.md },
+                ]}
+              >
                 <TouchableOpacity
                   style={styles.modalCancelArea}
                   onPress={() => setTopicPickerVisible(false)}
