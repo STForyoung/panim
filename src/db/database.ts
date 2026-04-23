@@ -46,6 +46,11 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
       lastSentIndex INTEGER NOT NULL DEFAULT 0,
       translation TEXT NOT NULL DEFAULT 'NKJV'
     );
+
+    CREATE TABLE IF NOT EXISTS metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
 
   // Migrations for existing installs
@@ -87,9 +92,14 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
     // Column already exists — ignore
   }
 
-  await seedDefaultContent(db);
+  try {
+    await db.execAsync("ALTER TABLE snippets ADD COLUMN syncedAt INTEGER");
+  } catch {
+    // Column already exists — ignore
+  }
 
   // Seed one book topic per canonical Bible book if not already present
+  // Must run before seedDefaultContent so snippets can be assigned to book topics
   const now = Date.now();
   for (const book of CANONICAL_BOOKS) {
     const existing = await db.getFirstAsync<{ id: string }>(
@@ -106,4 +116,6 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
       );
     }
   }
+
+  await seedDefaultContent(db);
 }

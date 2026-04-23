@@ -110,7 +110,7 @@ export default function OnboardingScreen() {
             <Text style={styles.body}>
               Create snippets from Bible passages with your reflections.
             </Text>
-            <Text style={styles.body}>Organise them by topic.</Text>
+            <Text style={styles.body}>Organize them by topic.</Text>
             <Text style={styles.body}>
               Receive them as notifications throughout your day as quiet
               reminders to pause and meditate.
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
 
   // Step 1 — Brand
   hebrew: {
-    fontFamily: "NotoSerifHebrew_400Regular",
+    fontFamily: "NotoRashiHebrew_400Regular",
     fontSize: 72,
     lineHeight: 86,
     color: colors.textPrimary,

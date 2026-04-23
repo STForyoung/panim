@@ -11,9 +11,10 @@ import {
   useFonts,
 } from "@expo-google-fonts/lora";
 import {
-  NotoSerifHebrew_400Regular,
-  NotoSerifHebrew_700Bold,
-} from "@expo-google-fonts/noto-serif-hebrew";
+  NotoRashiHebrew_400Regular,
+  NotoRashiHebrew_700Bold,
+} from "@expo-google-fonts/noto-rashi-hebrew";
+import * as Crypto from "expo-crypto";
 import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -36,9 +37,25 @@ function AppInitializer() {
   const db = useSQLiteContext();
 
   useEffect(() => {
-    scheduleNotifications(db).catch(() => {
-      // Scheduling errors are non-fatal — silently ignore
-    });
+    async function init() {
+      // Ensure a stable device ID exists for future sync
+      const existing = await db.getFirstAsync<{ value: string }>(
+        "SELECT value FROM metadata WHERE key = ?",
+        "deviceId",
+      );
+      if (!existing) {
+        await db.runAsync(
+          "INSERT INTO metadata (key, value) VALUES (?, ?)",
+          "deviceId",
+          Crypto.randomUUID(),
+        );
+      }
+
+      scheduleNotifications(db).catch(() => {
+        // Scheduling errors are non-fatal — silently ignore
+      });
+    }
+    init();
 
     const subscription = Notifications.addNotificationResponseReceivedListener(
       handleNotificationTap,
@@ -55,8 +72,8 @@ export default function RootLayout() {
     Lora_400Regular_Italic,
     Lora_600SemiBold,
     Lora_700Bold,
-    NotoSerifHebrew_400Regular,
-    NotoSerifHebrew_700Bold,
+    NotoRashiHebrew_400Regular,
+    NotoRashiHebrew_700Bold,
   });
 
   useEffect(() => {

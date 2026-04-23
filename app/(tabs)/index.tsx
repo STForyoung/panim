@@ -20,7 +20,7 @@ import { getNextReminderTime } from "@/src/notifications/scheduler";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   ScrollView,
@@ -61,6 +61,7 @@ export default function HomeScreen() {
   const [favourites, setFavourites] = useState<Snippet[]>([]);
   const [nextReminder, setNextReminder] = useState<string | null>(null);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const lastScheduleKey = useRef<string | null>(null);
 
   const pickFromSchedule = useCallback(
     async (snippets: Snippet[]) => {
@@ -138,11 +139,14 @@ export default function HomeScreen() {
         setFavourites(favs);
         setNextReminder(getNextReminderTime(schedule.times));
 
-        // Only pick a new snippet if there isn't one already displayed,
-        // or if the snippet list changed size (e.g. a snippet was deleted).
+        const scheduleKey = `${schedule.mode}:${schedule.activeTopic ?? ""}`;
+        const scheduleChanged = lastScheduleKey.current !== scheduleKey;
+        if (scheduleChanged) lastScheduleKey.current = scheduleKey;
+
+        // Re-pick if: no current snippet, snippet was deleted, or schedule changed.
         setCurrent((prev) => {
           const stillExists = prev && snippets.some((s) => s.id === prev.id);
-          if (!prev || !stillExists) {
+          if (!prev || !stillExists || scheduleChanged) {
             if (snippets.length > 0) {
               pickFromSchedule(snippets);
             }
