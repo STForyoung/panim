@@ -8,13 +8,20 @@ import {
   Lora_400Regular_Italic,
   Lora_600SemiBold,
   Lora_700Bold,
+  useFonts,
 } from "@expo-google-fonts/lora";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFonts } from "expo-font";
+import {
+  NotoRashiHebrew_400Regular,
+  NotoRashiHebrew_700Bold,
+} from "@expo-google-fonts/noto-rashi-hebrew";
+import * as Crypto from "expo-crypto";
 import * as Notifications from "expo-notifications";
-import { Stack, router, useRootNavigationState } from "expo-router";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+
+SplashScreen.preventAutoHideAsync();
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -30,9 +37,25 @@ function AppInitializer() {
   const db = useSQLiteContext();
 
   useEffect(() => {
-    scheduleNotifications(db).catch(() => {
-      // Scheduling errors are non-fatal — silently ignore
-    });
+    async function init() {
+      // Ensure a stable device ID exists for future sync
+      const existing = await db.getFirstAsync<{ value: string }>(
+        "SELECT value FROM metadata WHERE key = ?",
+        "deviceId",
+      );
+      if (!existing) {
+        await db.runAsync(
+          "INSERT INTO metadata (key, value) VALUES (?, ?)",
+          "deviceId",
+          Crypto.randomUUID(),
+        );
+      }
+
+      scheduleNotifications(db).catch(() => {
+        // Scheduling errors are non-fatal — silently ignore
+      });
+    }
+    init();
 
     const subscription = Notifications.addNotificationResponseReceivedListener(
       handleNotificationTap,
@@ -44,30 +67,20 @@ function AppInitializer() {
 }
 
 export default function RootLayout() {
-  const navigationState = useRootNavigationState();
-  const [hasLaunched, setHasLaunched] = useState<boolean | null>(null);
-
-  // Fonts must be loaded before rendering to prevent flash of unstyled text.
-  // TODO post-MVP: replace return null with expo-splash-screen to avoid blank screen during load.
   const [fontsLoaded] = useFonts({
     Lora_400Regular,
     Lora_400Regular_Italic,
     Lora_600SemiBold,
     Lora_700Bold,
+    NotoRashiHebrew_400Regular,
+    NotoRashiHebrew_700Bold,
   });
 
   useEffect(() => {
-    AsyncStorage.getItem("hasLaunched").then((value) => {
-      setHasLaunched(value !== null);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!navigationState?.key || hasLaunched === null) return;
-    if (!hasLaunched) {
-      router.replace("/onboarding");
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
     }
-  }, [navigationState?.key, hasLaunched]);
+  }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
 

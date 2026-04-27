@@ -11,14 +11,14 @@ export const colors = {
 export const typography = {
   scripture: {
     fontFamily: "Lora_400Regular",
-    fontSize: 18,
-    lineHeight: 29,
+    fontSize: 17,
+    lineHeight: 27,
     color: "#1A1A1A",
   },
   scriptureItalic: {
     fontFamily: "Lora_400Regular_Italic",
-    fontSize: 19,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 28,
     color: "#1A1A1A",
   },
   reflection: {

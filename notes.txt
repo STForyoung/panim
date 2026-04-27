@@ -1,19 +1,4 @@
-This page describes some notes that I will be taking for my learning as I work through the project. 
-
-The right order for this kind of app is **bottom up** — build the foundation before the UI, because every screen depends on it:
-```
-1. Database setup        ← everything depends on this
-2. Bible API service     ← snippet creation depends on this
-3. Screens (in order):
-   - Create Snippet      ← core action of the app
-   - Snippet List        ← home screen, needs data to display
-   - Snippet Detail      ← needed for notification tap behavior
-   - Topic List          ← organization layer
-   - Topic Detail        ← snippets within a topic
-   - Settings            ← notification configuration
-   - Onboarding          ← first launch, comes last
-4. Notifications         ← depends on snippets and topics existing
-The reason database comes first is that if you build screens first you end up with hardcoded mock data everywhere that you then have to rip out and replace. 
-Starting with real data structures means every screen you build works with real data from day one.
-
 Claude leaning: Use Shift+Tab to switch between modes. 
+
+
+identifier: app.panim
