@@ -11,6 +11,7 @@ import {
   updateSchedule,
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
+import { BOOK_IDS } from "@/src/services/bibleService";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
@@ -78,9 +79,8 @@ export default function SettingsScreen() {
 
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
-  const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(
-    null,
-  );
+  const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(null);
+  const [bookTopicSection, setBookTopicSection] = useState<"OT" | "NT" | null>(null);
 
   // Quick Setup
   const [qsStartHour, setQsStartHour] = useState("8");
@@ -162,18 +162,21 @@ export default function SettingsScreen() {
   function handleTopicSelect(topicId: string) {
     setPendingActiveTopic(topicId);
     setTopicPickerType(null);
+    setBookTopicSection(null);
     setTopicPickerVisible(false);
     setApplyMessage(null);
   }
 
   function openTopicPicker() {
     setTopicPickerType(null);
+    setBookTopicSection(null);
     setTopicPickerVisible(true);
   }
 
   function closeTopicPicker() {
     setTopicPickerVisible(false);
     setTopicPickerType(null);
+    setBookTopicSection(null);
   }
 
   function handleGenerateTimes() {
@@ -296,9 +299,15 @@ export default function SettingsScreen() {
     : null;
   const customTopics = topics.filter((topic) => topic.type === "custom");
   const bookTopics = topics.filter((topic) => topic.type === "book");
-  const topicsForSelectedType = topicPickerType
-    ? topics.filter((topic) => topic.type === topicPickerType)
-    : [];
+  const otBookTopics = bookTopics.filter((t) => (BOOK_IDS[t.name] ?? 0) <= 39);
+  const ntBookTopics = bookTopics.filter((t) => (BOOK_IDS[t.name] ?? 0) >= 40);
+  const topicsForSelectedType = topicPickerType === "custom"
+    ? customTopics
+    : topicPickerType === "book" && bookTopicSection === "OT"
+      ? otBookTopics
+      : topicPickerType === "book" && bookTopicSection === "NT"
+        ? ntBookTopics
+        : [];
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
@@ -593,18 +602,30 @@ export default function SettingsScreen() {
             >
               <TouchableOpacity
                 style={styles.modalCancelArea}
-                onPress={() =>
-                  topicPickerType
-                    ? setTopicPickerType(null)
-                    : closeTopicPicker()
-                }
+                onPress={() => {
+                  if (bookTopicSection) {
+                    setBookTopicSection(null);
+                  } else if (topicPickerType) {
+                    setTopicPickerType(null);
+                  } else {
+                    closeTopicPicker();
+                  }
+                }}
               >
                 <Text style={styles.modalCancel}>
                   {topicPickerType ? "Back" : "Cancel"}
                 </Text>
               </TouchableOpacity>
               <Text style={styles.modalTitle}>
-                {topicPickerType ? "Select Topic" : "Select Topic Type"}
+                {bookTopicSection === "OT"
+                  ? "Old Testament"
+                  : bookTopicSection === "NT"
+                    ? "New Testament"
+                    : topicPickerType === "custom"
+                      ? "Select Topic"
+                      : topicPickerType === "book"
+                        ? "Select Testament"
+                        : "Select Topic Type"}
               </Text>
               <View style={styles.modalCancelArea} />
             </View>
@@ -642,10 +663,39 @@ export default function SettingsScreen() {
                     <Text style={styles.chevron}>›</Text>
                   </TouchableOpacity>
                 </>
+              ) : topicPickerType === "book" && !bookTopicSection ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.modalRow}
+                    onPress={() => setBookTopicSection("OT")}
+                    activeOpacity={0.7}
+                  >
+                    <View>
+                      <Text style={styles.rowLabel}>Old Testament</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {otBookTopics.length} available
+                      </Text>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalRow, styles.rowLast]}
+                    onPress={() => setBookTopicSection("NT")}
+                    activeOpacity={0.7}
+                  >
+                    <View>
+                      <Text style={styles.rowLabel}>New Testament</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {ntBookTopics.length} available
+                      </Text>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                </>
               ) : topicsForSelectedType.length === 0 ? (
                 <View style={styles.centeredState}>
                   <Text style={styles.mutedText}>
-                    No topics in this type yet.
+                    No topics in this category yet.
                   </Text>
                 </View>
               ) : (
