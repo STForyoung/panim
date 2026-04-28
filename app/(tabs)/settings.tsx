@@ -167,10 +167,7 @@ export default function SettingsScreen() {
   }
 
   function openTopicPicker() {
-    const activeTopicType = pendingActiveTopic
-      ? (topics.find((t) => t.id === pendingActiveTopic)?.type ?? null)
-      : null;
-    setTopicPickerType(activeTopicType);
+    setTopicPickerType(null);
     setTopicPickerVisible(true);
   }
 
