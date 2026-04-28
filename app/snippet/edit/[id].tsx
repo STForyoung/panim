@@ -493,11 +493,11 @@ export default function EditSnippetScreen() {
 
           {unassignedTopics.length > 0 ? (
             <TouchableOpacity
-              style={styles.topicPickerButton}
+              style={styles.addTopicButton}
               onPress={() => setTopicPickerVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.topicPickerText}>Add existing topic…</Text>
+              <Text style={styles.addTopicText}>Add Existing Topic</Text>
             </TouchableOpacity>
           ) : null}
 
