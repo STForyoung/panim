@@ -103,9 +103,22 @@ export default function HomeScreen() {
           const s = pool[(startIndex + i) % pool.length];
           if (s && s.id !== picked.id) next.push(s);
         }
+        // Fall back to random snippets if pool is exhausted
+        if (next.length < 3) {
+          next.push(...pickRandomN(snippets, 3 - next.length, picked));
+        }
         setComingUp(next);
       } else {
-        setComingUp(pickRandomN(pool, 3, picked));
+        const fromPool = pickRandomN(pool, 3, picked);
+        // Fall back to random snippets if pool is exhausted
+        const comingUp =
+          fromPool.length < 3
+            ? [
+                ...fromPool,
+                ...pickRandomN(snippets, 3 - fromPool.length, picked),
+              ]
+            : fromPool;
+        setComingUp(comingUp);
       }
     },
     [db],

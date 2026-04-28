@@ -51,7 +51,9 @@ export default function CreateSnippetScreen() {
   const [reflection, setReflection] = useState("");
   const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
-  const [bookPickerSection, setBookPickerSection] = useState<"OT" | "NT" | null>(null);
+  const [bookPickerSection, setBookPickerSection] = useState<
+    "OT" | "NT" | null
+  >(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +67,11 @@ export default function CreateSnippetScreen() {
 
   // Inline topic creation
   const [newTopicName, setNewTopicName] = useState("");
-  const [isAddingTopic, setIsAddingTopic] = useState(false);
   const [newTopicError, setNewTopicError] = useState<string | null>(null);
+  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
+  const [pendingNewTopicNames, setPendingNewTopicNames] = useState<string[]>(
+    [],
+  );
 
   useEffect(() => {
     getAllTopics(db).then(setAllTopics);
@@ -137,31 +142,16 @@ export default function CreateSnippetScreen() {
     setAssignedTopics((prev) => prev.filter((t) => t.id !== topicId));
   }
 
-  async function handleAddNewTopic() {
-    if (!newTopicName.trim()) {
+  function handleAddNewTopic() {
+    const trimmed = newTopicName.trim();
+    if (!trimmed) {
       setNewTopicError("Topic name is required.");
       return;
     }
     setNewTopicError(null);
-    setIsAddingTopic(true);
-    try {
-      await createTopic(db, { name: newTopicName.trim(), type: "custom" });
-      const updated = await getAllTopics(db);
-      setAllTopics(updated);
-      const created = updated.find(
-        (t) => t.name === newTopicName.trim() && t.type === "custom",
-      );
-      if (created) {
-        setAssignedTopics((prev) => [...prev, created]);
-      }
-      setNewTopicName("");
-    } catch (e) {
-      setNewTopicError(
-        e instanceof Error ? e.message : "Failed to create topic.",
-      );
-    } finally {
-      setIsAddingTopic(false);
-    }
+    setPendingNewTopicNames((prev) => [...prev, trimmed]);
+    setNewTopicName("");
+    setIsCreatingTopic(false);
   }
 
   async function handleSave() {
@@ -194,7 +184,17 @@ export default function CreateSnippetScreen() {
         reflection: reflection.trim(),
         prayer: prayer.trim() || null,
       });
-      // Assign to all selected custom topics
+      // Create and assign any pending new topics
+      for (const name of pendingNewTopicNames) {
+        await createTopic(db, { name, type: "custom" });
+        const created = await getAllTopics(db).then((t) =>
+          t.find((t) => t.name === name && t.type === "custom"),
+        );
+        if (created) {
+          await addSnippetToTopic(db, snippetId, created.id);
+        }
+      }
+      // Assign to all selected existing topics
       for (const topic of assignedTopics) {
         await addSnippetToTopic(db, snippetId, topic.id);
       }
@@ -308,23 +308,25 @@ export default function CreateSnippetScreen() {
                     </TouchableOpacity>
                   </>
                 ) : (
-                  (bookPickerSection === "OT" ? OT_BOOKS : NT_BOOKS).map((name) => (
-                    <TouchableOpacity
-                      key={name}
-                      style={styles.bookRow}
-                      onPress={() => selectBook(name)}
-                      activeOpacity={0.6}
-                    >
-                      <Text
-                        style={[
-                          styles.bookRowText,
-                          book === name && styles.bookRowTextSelected,
-                        ]}
+                  (bookPickerSection === "OT" ? OT_BOOKS : NT_BOOKS).map(
+                    (name) => (
+                      <TouchableOpacity
+                        key={name}
+                        style={styles.bookRow}
+                        onPress={() => selectBook(name)}
+                        activeOpacity={0.6}
                       >
-                        {name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
+                        <Text
+                          style={[
+                            styles.bookRowText,
+                            book === name && styles.bookRowTextSelected,
+                          ]}
+                        >
+                          {name}
+                        </Text>
+                      </TouchableOpacity>
+                    ),
+                  )
                 )}
               </ScrollView>
             </View>
@@ -464,13 +466,24 @@ export default function CreateSnippetScreen() {
             TOPICS
           </Text>
 
-          {assignedTopics.length > 0 ? (
+          {assignedTopics.length > 0 || pendingNewTopicNames.length > 0 ? (
             <View style={styles.chipsRow}>
               {assignedTopics.map((topic) => (
                 <TopicChip
                   key={topic.id}
                   name={topic.name}
                   onRemove={() => handleRemoveTopic(topic.id)}
+                />
+              ))}
+              {pendingNewTopicNames.map((name) => (
+                <TopicChip
+                  key={name}
+                  name={name}
+                  onRemove={() =>
+                    setPendingNewTopicNames((prev) =>
+                      prev.filter((n) => n !== name),
+                    )
+                  }
                 />
               ))}
             </View>
@@ -521,36 +534,55 @@ export default function CreateSnippetScreen() {
           </Modal>
 
           {/* Inline create new topic */}
-          <Text style={styles.inlineCreateLabel}>NEW TOPIC</Text>
-          <TextInput
-            style={[
-              styles.input,
-              inputBorder("newTopic"),
-              styles.newTopicInput,
-            ]}
-            value={newTopicName}
-            onChangeText={setNewTopicName}
-            placeholder="Topic name"
-            placeholderTextColor={colors.textSecondary + "80"}
-            onFocus={() => setFocusedField("newTopic")}
-            onBlur={() => setFocusedField(null)}
-          />
-          {newTopicError ? (
-            <Text style={styles.errorText}>{newTopicError}</Text>
-          ) : null}
-          <TouchableOpacity
-            style={[
-              styles.addTopicButton,
-              isAddingTopic && styles.buttonDisabled,
-            ]}
-            onPress={handleAddNewTopic}
-            disabled={isAddingTopic}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.addTopicText}>
-              {isAddingTopic ? "Adding…" : "Add Topic"}
-            </Text>
-          </TouchableOpacity>
+          {!isCreatingTopic ? (
+            <TouchableOpacity
+              style={styles.addTopicButton}
+              onPress={() => setIsCreatingTopic(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.addTopicText}>Create New Topic</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TextInput
+                style={[
+                  styles.input,
+                  inputBorder("newTopic"),
+                  styles.newTopicInput,
+                ]}
+                value={newTopicName}
+                onChangeText={setNewTopicName}
+                placeholder="Topic name"
+                placeholderTextColor={colors.textSecondary + "80"}
+                onFocus={() => setFocusedField("newTopic")}
+                onBlur={() => setFocusedField(null)}
+                autoFocus
+              />
+              {newTopicError ? (
+                <Text style={styles.errorText}>{newTopicError}</Text>
+              ) : null}
+              <View style={styles.inlineTopicActions}>
+                <TouchableOpacity
+                  style={styles.addTopicButtonSecondary}
+                  onPress={() => {
+                    setIsCreatingTopic(false);
+                    setNewTopicName("");
+                    setNewTopicError(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.addTopicTextSecondary}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.addTopicButton, { flex: 1, marginBottom: 0 }]}
+                  onPress={handleAddNewTopic}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.addTopicText}>Add Topic</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
           {/* Save */}
           <TouchableOpacity
@@ -835,7 +867,7 @@ const styles = StyleSheet.create({
   addTopicButton: {
     borderWidth: 1,
     borderColor: colors.accent,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     alignItems: "center",
     marginBottom: spacing.sm,
@@ -843,6 +875,27 @@ const styles = StyleSheet.create({
   addTopicText: {
     ...typography.button,
     color: colors.accent,
+  },
+  inlineTopicActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+    alignItems: "stretch",
+  },
+  flex1: {
+    flex: 1,
+  },
+  addTopicButtonSecondary: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+  },
+  addTopicTextSecondary: {
+    ...typography.button,
+    color: colors.textSecondary,
   },
 
   // Save button
