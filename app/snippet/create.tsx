@@ -51,6 +51,7 @@ export default function CreateSnippetScreen() {
   const [reflection, setReflection] = useState("");
   const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
+  const [bookPickerSection, setBookPickerSection] = useState<"OT" | "NT" | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +76,7 @@ export default function CreateSnippetScreen() {
   function selectBook(name: string) {
     setBook(name);
     setBookPickerVisible(false);
+    setBookPickerSection(null);
     setPassage("");
     setError(null);
   }
@@ -266,50 +268,64 @@ export default function CreateSnippetScreen() {
               >
                 <TouchableOpacity
                   style={styles.modalCancelArea}
-                  onPress={() => setBookPickerVisible(false)}
+                  onPress={() =>
+                    bookPickerSection
+                      ? setBookPickerSection(null)
+                      : setBookPickerVisible(false)
+                  }
                 >
-                  <Text style={styles.modalCancel}>Cancel</Text>
+                  <Text style={styles.modalCancel}>
+                    {bookPickerSection ? "Back" : "Cancel"}
+                  </Text>
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Select Book</Text>
+                <Text style={styles.modalTitle}>
+                  {bookPickerSection === "OT"
+                    ? "Old Testament"
+                    : bookPickerSection === "NT"
+                      ? "New Testament"
+                      : "Select Book"}
+                </Text>
                 <View style={styles.modalCancelArea} />
               </View>
               <ScrollView>
-                <Text style={styles.bookSectionHeader}>OLD TESTAMENT</Text>
-                {OT_BOOKS.map((name) => (
-                  <TouchableOpacity
-                    key={name}
-                    style={styles.bookRow}
-                    onPress={() => selectBook(name)}
-                    activeOpacity={0.6}
-                  >
-                    <Text
-                      style={[
-                        styles.bookRowText,
-                        book === name && styles.bookRowTextSelected,
-                      ]}
+                {!bookPickerSection ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.bookRow}
+                      onPress={() => setBookPickerSection("OT")}
+                      activeOpacity={0.6}
                     >
-                      {name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-                <Text style={styles.bookSectionHeader}>NEW TESTAMENT</Text>
-                {NT_BOOKS.map((name) => (
-                  <TouchableOpacity
-                    key={name}
-                    style={styles.bookRow}
-                    onPress={() => selectBook(name)}
-                    activeOpacity={0.6}
-                  >
-                    <Text
-                      style={[
-                        styles.bookRowText,
-                        book === name && styles.bookRowTextSelected,
-                      ]}
+                      <Text style={styles.bookRowText}>Old Testament</Text>
+                      <Text style={styles.chevron}>›</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.bookRow}
+                      onPress={() => setBookPickerSection("NT")}
+                      activeOpacity={0.6}
                     >
-                      {name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text style={styles.bookRowText}>New Testament</Text>
+                      <Text style={styles.chevron}>›</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  (bookPickerSection === "OT" ? OT_BOOKS : NT_BOOKS).map((name) => (
+                    <TouchableOpacity
+                      key={name}
+                      style={styles.bookRow}
+                      onPress={() => selectBook(name)}
+                      activeOpacity={0.6}
+                    >
+                      <Text
+                        style={[
+                          styles.bookRowText,
+                          book === name && styles.bookRowTextSelected,
+                        ]}
+                      >
+                        {name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                )}
               </ScrollView>
             </View>
           </Modal>
