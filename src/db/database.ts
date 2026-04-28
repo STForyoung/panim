@@ -98,6 +98,14 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
     // Column already exists — ignore
   }
 
+  try {
+    await db.execAsync(
+      "ALTER TABLE notification_schedule ADD COLUMN notificationContent TEXT NOT NULL DEFAULT 'passage'",
+    );
+  } catch {
+    // Column already exists — ignore
+  }
+
   // Seed one book topic per canonical Bible book if not already present
   // Must run before seedDefaultContent so snippets can be assigned to book topics
   const now = Date.now();

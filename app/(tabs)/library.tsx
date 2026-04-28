@@ -23,10 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type SectionItem = {
   key: string;
   label: string;
-  route:
-    | "/topic-kind/custom"
-    | "/topic-kind/book"
-    | "/topic-kind/unassigned";
+  route: "/topic-kind/custom" | "/topic-kind/book" | "/topic-kind/unassigned";
   count: number;
   countLabel: string;
 };
@@ -39,14 +36,14 @@ export default function LibraryScreen() {
   const [sections, setSections] = useState<SectionItem[]>([
     {
       key: "custom",
-      label: "Custom Topics",
+      label: "My Topics",
       route: "/topic-kind/custom",
       count: 0,
       countLabel: "0 topics",
     },
     {
       key: "book",
-      label: "Book Topics",
+      label: "Bible Books",
       route: "/topic-kind/book",
       count: 0,
       countLabel: "0 topics",
@@ -66,28 +63,27 @@ export default function LibraryScreen() {
       getAllSnippets(db),
     ]);
 
-    const customCount = topics.filter(
-      (t) => t.type === "custom",
-    ).length;
+    const customCount = topics.filter((t) => t.type === "custom").length;
     const directedCount = topics.filter((t) => t.type === "book").length;
 
     const topicChecks = await Promise.all(
       snippets.map((s) => getTopicsForSnippet(db, s.id)),
     );
-    const unassignedCount = topicChecks.filter((t) => t.every((topic) => topic.type !== "custom")).length;
+    const unassignedCount = topicChecks.filter((t) =>
+      t.every((topic) => topic.type !== "custom"),
+    ).length;
 
     setSections([
       {
         key: "custom",
-        label: "Custom Topics",
+        label: "My Topics",
         route: "/topic-kind/custom",
         count: customCount,
-        countLabel:
-          customCount === 1 ? "1 topic" : `${customCount} topics`,
+        countLabel: customCount === 1 ? "1 topic" : `${customCount} topics`,
       },
       {
         key: "book",
-        label: "Book Topics",
+        label: "Bible Books",
         route: "/topic-kind/book",
         count: directedCount,
         countLabel: directedCount === 1 ? "1 topic" : `${directedCount} topics`,

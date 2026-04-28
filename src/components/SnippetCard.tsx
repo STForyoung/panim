@@ -12,9 +12,13 @@ export function SnippetCard({ snippet, onPress }: Props) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.reference}>{getDisplayReference(snippet)}</Text>
-      <Text style={styles.reflection} numberOfLines={2}>{snippet.reflection}</Text>
-      <View style={styles.divider} />
       <Text style={styles.passage} numberOfLines={2}>{snippet.passage}</Text>
+      {snippet.reflection ? (
+        <>
+          <View style={styles.divider} />
+          <Text style={styles.reflection} numberOfLines={2}>{snippet.reflection}</Text>
+        </>
+      ) : null}
     </TouchableOpacity>
   );
 }

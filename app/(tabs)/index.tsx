@@ -219,19 +219,15 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.greeting}>{getGreeting()}</Text>
 
-        <TouchableOpacity
-          style={styles.newSnippetButton}
-          onPress={() => router.push("/snippet/create")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.newSnippetButtonText}>+ New Snippet</Text>
-        </TouchableOpacity>
-
         {/* Next in Playlist */}
         {current ? (
           <View>
             <Text style={styles.sectionLabel}>NEXT IN PLAYLIST</Text>
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/snippet/${current.id}`)}
+              activeOpacity={0.85}
+            >
               <Text style={styles.cardReference}>
                 {getDisplayReference(current).toUpperCase()}
               </Text>
@@ -256,45 +252,28 @@ export default function HomeScreen() {
                   "Set a schedule in Settings to start receiving reminders"}
               </Text>
 
+              <View style={styles.divider} />
+              <Text style={styles.cardPassage} numberOfLines={3}>
+                {current.passage}
+              </Text>
               {current.reflection ? (
                 <>
                   <View style={styles.divider} />
                   <Text style={styles.cardReflection} numberOfLines={3}>
                     {current.reflection}
                   </Text>
-                  <View style={styles.divider} />
-                  <Text style={styles.cardPassage} numberOfLines={3}>
-                    {current.passage}
-                  </Text>
                 </>
-              ) : (
-                <>
-                  <View style={styles.divider} />
-                  <Text style={styles.cardPassage} numberOfLines={3}>
-                    {current.passage}
-                  </Text>
-                </>
-              )}
-
-              <View style={styles.cardButtons}>
-                {allSnippets.length > 1 ? (
-                  <TouchableOpacity
-                    style={styles.buttonOutline}
-                    onPress={handleNewSnippet}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.buttonOutlineText}>New Snippet</Text>
-                  </TouchableOpacity>
-                ) : null}
-                <TouchableOpacity
-                  style={styles.buttonFilled}
-                  onPress={() => router.push(`/snippet/${current.id}`)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.buttonFilledText}>View Snippet</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+              ) : null}
+            </TouchableOpacity>
+            {allSnippets.length > 1 ? (
+              <TouchableOpacity
+                style={styles.newSnippetButton}
+                onPress={handleNewSnippet}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.newSnippetButtonText}>+ New Snippet</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : null}
 
@@ -475,35 +454,6 @@ const styles = StyleSheet.create({
   cardReflection: {
     ...typography.scripture,
   },
-  cardButtons: {
-    flexDirection: "row",
-    marginTop: spacing.md,
-  },
-  buttonOutline: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-    marginRight: spacing.sm,
-  },
-  buttonOutlineText: {
-    ...typography.button,
-    color: colors.accent,
-  },
-  buttonFilled: {
-    flex: 1,
-    backgroundColor: colors.accent,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-  },
-  buttonFilledText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-
   // Mini cards (Coming Up + Favourites)
   miniCard: {
     backgroundColor: colors.surface,

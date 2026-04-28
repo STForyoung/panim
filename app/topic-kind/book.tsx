@@ -68,7 +68,7 @@ export default function BookTopicsScreen() {
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Book Topics</Text>
+            <Text style={styles.title}>Bible Books</Text>
           </View>
         }
         renderItem={({ item }) => (

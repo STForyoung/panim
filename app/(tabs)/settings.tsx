@@ -11,8 +11,8 @@ import {
   updateSchedule,
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
-import { BOOK_IDS } from "@/src/services/bibleService";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
+import { BOOK_IDS } from "@/src/services/bibleService";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
@@ -58,13 +58,18 @@ export default function SettingsScreen() {
 
   // Pending schedule state — not saved until Apply is tapped
   const [pendingTimes, setPendingTimes] = useState<string[]>([]);
-  const [pendingMode, setPendingMode] = useState<"random" | "topic" | "favourites">("random");
+  const [pendingMode, setPendingMode] = useState<
+    "random" | "topic" | "favourites"
+  >("random");
   const [pendingActiveTopic, setPendingActiveTopic] = useState<string | null>(
     null,
   );
   const [pendingSelectionOrder, setPendingSelectionOrder] = useState<
     "random" | "sequential"
   >("random");
+  const [pendingNotificationContent, setPendingNotificationContent] = useState<
+    "passage" | "reflection" | "prayer"
+  >("passage");
 
   // Apply state
   const [isApplying, setIsApplying] = useState(false);
@@ -79,8 +84,12 @@ export default function SettingsScreen() {
 
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
-  const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(null);
-  const [bookTopicSection, setBookTopicSection] = useState<"OT" | "NT" | null>(null);
+  const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(
+    null,
+  );
+  const [bookTopicSection, setBookTopicSection] = useState<"OT" | "NT" | null>(
+    null,
+  );
 
   // Quick Setup
   const [qsStartHour, setQsStartHour] = useState("8");
@@ -106,6 +115,7 @@ export default function SettingsScreen() {
       setPendingMode(s.mode);
       setPendingActiveTopic(s.activeTopic);
       setPendingSelectionOrder(s.selectionOrder);
+      setPendingNotificationContent(s.notificationContent);
       setTopics(t);
       setLoading(false);
     }
@@ -245,6 +255,7 @@ export default function SettingsScreen() {
         mode: pendingMode,
         activeTopic: pendingActiveTopic,
         selectionOrder: pendingSelectionOrder,
+        notificationContent: pendingNotificationContent,
       });
       setSchedule((prev) =>
         prev
@@ -254,6 +265,7 @@ export default function SettingsScreen() {
               mode: pendingMode,
               activeTopic: pendingActiveTopic,
               selectionOrder: pendingSelectionOrder,
+              notificationContent: pendingNotificationContent,
             }
           : prev,
       );
@@ -275,6 +287,7 @@ export default function SettingsScreen() {
     setPendingMode(schedule.mode);
     setPendingActiveTopic(schedule.activeTopic ?? null);
     setPendingSelectionOrder(schedule.selectionOrder);
+    setPendingNotificationContent(schedule.notificationContent);
   }
 
   const hasUnsavedChanges =
@@ -282,7 +295,8 @@ export default function SettingsScreen() {
     (JSON.stringify(pendingTimes) !== JSON.stringify(schedule.times) ||
       pendingMode !== schedule.mode ||
       pendingActiveTopic !== schedule.activeTopic ||
-      pendingSelectionOrder !== schedule.selectionOrder);
+      pendingSelectionOrder !== schedule.selectionOrder ||
+      pendingNotificationContent !== schedule.notificationContent);
 
   if (loading || !schedule) {
     return (
@@ -301,13 +315,14 @@ export default function SettingsScreen() {
   const bookTopics = topics.filter((topic) => topic.type === "book");
   const otBookTopics = bookTopics.filter((t) => (BOOK_IDS[t.name] ?? 0) <= 39);
   const ntBookTopics = bookTopics.filter((t) => (BOOK_IDS[t.name] ?? 0) >= 40);
-  const topicsForSelectedType = topicPickerType === "custom"
-    ? customTopics
-    : topicPickerType === "book" && bookTopicSection === "OT"
-      ? otBookTopics
-      : topicPickerType === "book" && bookTopicSection === "NT"
-        ? ntBookTopics
-        : [];
+  const topicsForSelectedType =
+    topicPickerType === "custom"
+      ? customTopics
+      : topicPickerType === "book" && bookTopicSection === "OT"
+        ? otBookTopics
+        : topicPickerType === "book" && bookTopicSection === "NT"
+          ? ntBookTopics
+          : [];
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
@@ -556,7 +571,12 @@ export default function SettingsScreen() {
         <View style={styles.sectionCard}>
           {(["random", "topic", "favourites"] as const).map((mode, i, arr) => {
             const selected = pendingMode === mode;
-            const label = mode === "random" ? "Random" : mode === "topic" ? "Topic Focus" : "Favourites";
+            const label =
+              mode === "random"
+                ? "Random"
+                : mode === "topic"
+                  ? "Topic Focus"
+                  : "Favourites";
             const isLast = i === arr.length - 1;
             return (
               <View key={mode}>
@@ -642,7 +662,7 @@ export default function SettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <View>
-                      <Text style={styles.rowLabel}>Custom Topics</Text>
+                      <Text style={styles.rowLabel}>My Topics</Text>
                       <Text style={styles.topicTypeTag}>
                         {customTopics.length} available
                       </Text>
@@ -655,7 +675,7 @@ export default function SettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <View>
-                      <Text style={styles.rowLabel}>Book Topics</Text>
+                      <Text style={styles.rowLabel}>Bible Books</Text>
                       <Text style={styles.topicTypeTag}>
                         {bookTopics.length} available
                       </Text>
@@ -724,6 +744,42 @@ export default function SettingsScreen() {
             </ScrollView>
           </View>
         </Modal>
+
+        {/* Notification Content */}
+        <Text style={styles.sectionHeader}>NOTIFICATION CONTENT</Text>
+        <Text style={styles.sectionNote}>What leads each notification</Text>
+        <View style={styles.sectionCard}>
+          {(["passage", "reflection", "prayer"] as const).map(
+            (content, i, arr) => {
+              const selected = pendingNotificationContent === content;
+              const label =
+                content === "passage"
+                  ? "Passage"
+                  : content === "reflection"
+                    ? "Meditation"
+                    : "Prayer";
+              return (
+                <TouchableOpacity
+                  key={content}
+                  style={[
+                    styles.row,
+                    styles.rowSpaceBetween,
+                    selected && styles.rowSelected,
+                    i === arr.length - 1 && styles.rowLast,
+                  ]}
+                  onPress={() => {
+                    setPendingNotificationContent(content);
+                    setApplyMessage(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.rowLabel}>{label}</Text>
+                  {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                </TouchableOpacity>
+              );
+            },
+          )}
+        </View>
 
         {/* Selection Order */}
         <Text style={styles.sectionHeader}>SELECTION ORDER</Text>

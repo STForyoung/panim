@@ -131,7 +131,7 @@ export default function CustomTopicsScreen() {
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
               <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Custom Topics</Text>
+            <Text style={styles.title}>My Topics</Text>
             <TouchableOpacity
               style={styles.newButton}
               onPress={openModal}
@@ -161,7 +161,7 @@ export default function CustomTopicsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.centered}>
-            <Text style={styles.mutedText}>No custom topics yet.</Text>
+            <Text style={styles.mutedText}>No topics yet.</Text>
           </View>
         }
       />
