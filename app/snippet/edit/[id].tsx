@@ -103,26 +103,19 @@ export default function EditSnippetScreen() {
     load();
   }, [db, id]);
 
-  // Detect if reference has changed from original
-  function referenceChanged(): boolean {
-    if (!originalSnippet) return false;
-    return (
-      book !== originalSnippet.book ||
-      chapterStart !== String(originalSnippet.chapterStart) ||
-      verseStart !== String(originalSnippet.verseStart) ||
-      chapterEnd !== (originalSnippet.chapterEnd !== null ? String(originalSnippet.chapterEnd) : "") ||
-      verseEnd !== (originalSnippet.verseEnd !== null ? String(originalSnippet.verseEnd) : "")
-    );
-  }
 
   function selectBook(name: string) {
     setBook(name);
     setBookPickerVisible(false);
+    setPassage("");
+    setError(null);
   }
 
   function handleReferenceChange(setter: (v: string) => void) {
     return (v: string) => {
       setter(v);
+      setPassage("");
+      setError(null);
     };
   }
 
@@ -203,7 +196,7 @@ export default function EditSnippetScreen() {
       setShowRetry(false);
       return;
     }
-    if (referenceChanged()) {
+    if (!passage) {
       setError("Re-fetch the passage before saving.");
       setShowRetry(false);
       return;
