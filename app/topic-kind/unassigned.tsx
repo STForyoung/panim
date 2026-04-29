@@ -55,7 +55,7 @@ export default function UnassignedSnippetsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
               <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.title}>Unassigned Snippets</Text>
@@ -85,7 +85,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   centered: {
     alignItems: "center",
@@ -99,10 +101,8 @@ const styles = StyleSheet.create({
     ...typography.heading,
     marginBottom: spacing.lg,
   },
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
+  backButton: {
+    marginBottom: spacing.lg,
   },
   cardWrapper: {
     marginBottom: spacing.sm,

@@ -122,6 +122,7 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
       content: {
         title: formatReference(snippet),
         body,
+        sound: 'default',
         data: { snippetId: snippet.id },
       },
       trigger: {

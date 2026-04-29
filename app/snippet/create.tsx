@@ -243,6 +243,7 @@ export default function CreateSnippetScreen() {
               router.canGoBack() ? router.back() : router.replace("/(tabs)")
             }
             hitSlop={8}
+            style={styles.cancelText}
           >
             <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -623,9 +624,7 @@ const styles = StyleSheet.create({
   },
 
   cancelText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
   },
 
   // Screen title

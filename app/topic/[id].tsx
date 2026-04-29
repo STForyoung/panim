@@ -103,7 +103,7 @@ export default function TopicDetailScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
               <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
 
@@ -164,7 +164,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
 
   // Loading / not found
@@ -178,9 +180,7 @@ const styles = StyleSheet.create({
   },
 
   // Back button
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
+  backButton: {
     marginBottom: spacing.lg,
   },
 

@@ -6,7 +6,6 @@ import {
   spacing,
   typography,
 } from "@/src/constants/theme";
-import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import {
   type Topic,
   createTopic,
@@ -48,12 +47,13 @@ export default function CustomTopicsScreen() {
   const loadTopics = useCallback(async () => {
     const all = await getAllTopics(db);
     const custom = all.filter((t) => t.type === "custom");
-    const withCounts = await Promise.all(
-      custom.map(async (t) => {
-        const snippets = await getSnippetsForTopic(db, t.id);
-        return { ...t, snippetCount: snippets.length };
-      }),
+    const counts = await db.getAllAsync<{ topicId: string; count: number }>(
+      `SELECT topicId, COUNT(*) as count FROM snippet_topics
+       WHERE topicId IN (SELECT id FROM topics WHERE type = 'custom')
+       GROUP BY topicId`
     );
+    const countMap = Object.fromEntries(counts.map((r) => [r.topicId, r.count]));
+    const withCounts = custom.map((t) => ({ ...t, snippetCount: countMap[t.id] ?? 0 }));
     setTopics(withCounts);
     setLoading(false);
   }, [db]);
@@ -129,7 +129,7 @@ export default function CustomTopicsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
               <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.title}>My Topics</Text>
@@ -224,7 +224,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   centered: {
     alignItems: "center",
@@ -318,10 +320,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: 0,
   },
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
+  backButton: {
+    marginBottom: spacing.lg,
   },
   errorText: {
     ...typography.label,

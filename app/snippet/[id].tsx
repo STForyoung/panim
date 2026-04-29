@@ -88,7 +88,7 @@ export default function SnippetDetailScreen() {
 
         {/* Header row */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push(`/snippet/edit/${id}`)} hitSlop={8}>
@@ -175,7 +175,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
 
   // Loading / not found
@@ -198,9 +200,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
+  backButton: {
+    marginBottom: spacing.lg,
   },
   editText: {
     ...typography.button,

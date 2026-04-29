@@ -6,7 +6,6 @@ import {
   spacing,
   typography,
 } from "@/src/constants/theme";
-import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
@@ -32,12 +31,13 @@ export default function BookTopicsScreen() {
   const loadTopics = useCallback(async () => {
     const all = await getAllTopics(db);
     const book = all.filter((t) => t.type === "book");
-    const withCounts = await Promise.all(
-      book.map(async (t) => {
-        const snippets = await getSnippetsForTopic(db, t.id);
-        return { ...t, snippetCount: snippets.length };
-      }),
+    const counts = await db.getAllAsync<{ topicId: string; count: number }>(
+      `SELECT topicId, COUNT(*) as count FROM snippet_topics
+       WHERE topicId IN (SELECT id FROM topics WHERE type = 'book')
+       GROUP BY topicId`
     );
+    const countMap = Object.fromEntries(counts.map((r) => [r.topicId, r.count]));
+    const withCounts = book.map((t) => ({ ...t, snippetCount: countMap[t.id] ?? 0 }));
     setTopics(withCounts);
     setLoading(false);
   }, [db]);
@@ -66,7 +66,7 @@ export default function BookTopicsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
               <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.title}>Bible Books</Text>
@@ -100,7 +100,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   centered: {
     alignItems: "center",
@@ -140,9 +142,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.textSecondary,
   },
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
+  backButton: {
+    marginBottom: spacing.lg,
   },
 });

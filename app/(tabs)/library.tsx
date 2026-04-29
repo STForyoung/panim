@@ -154,7 +154,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
 
   // Loading
@@ -171,6 +173,7 @@ const styles = StyleSheet.create({
   // Title
   title: {
     ...typography.heading,
+    marginTop: spacing.md,
     marginBottom: spacing.lg,
   },
 
