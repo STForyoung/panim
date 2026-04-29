@@ -16,6 +16,7 @@ import {
 } from "@expo-google-fonts/noto-rashi-hebrew";
 import * as Crypto from "expo-crypto";
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
@@ -31,6 +32,14 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+if (Platform.OS === "android") {
+  Notifications.setNotificationChannelAsync("default", {
+    name: "Reminders",
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: "default",
+  });
+}
 
 // Rendered inside SQLiteProvider so it can access the db via useSQLiteContext
 function AppInitializer() {

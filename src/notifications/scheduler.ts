@@ -3,6 +3,7 @@ import { getAllSnippets, getFavouriteSnippets, type Snippet } from "@/src/db/sni
 import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
+import { Platform } from "react-native";
 import { type SQLiteDatabase } from "expo-sqlite";
 
 function formatReference(snippet: Snippet): string {
@@ -124,6 +125,7 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
         body,
         sound: 'default',
         data: { snippetId: snippet.id },
+        ...(Platform.OS === 'android' && { channelId: 'default' }),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
