@@ -62,6 +62,7 @@ export default function HomeScreen() {
   const [nextReminder, setNextReminder] = useState<string | null>(null);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const lastScheduleKey = useRef<string | null>(null);
+  const lastSnippetCount = useRef<number>(0);
 
   const pickFromSchedule = useCallback(
     async (snippets: Snippet[]) => {
@@ -143,10 +144,13 @@ export default function HomeScreen() {
         const scheduleChanged = lastScheduleKey.current !== scheduleKey;
         if (scheduleChanged) lastScheduleKey.current = scheduleKey;
 
-        // Re-pick if: no current snippet, snippet was deleted, or schedule changed.
+        const snippetCountChanged = lastSnippetCount.current !== snippets.length;
+        if (snippetCountChanged) lastSnippetCount.current = snippets.length;
+
+        // Re-pick if: no current snippet, snippet was deleted, schedule changed, or new snippets added.
         setCurrent((prev) => {
           const stillExists = prev && snippets.some((s) => s.id === prev.id);
-          if (!prev || !stillExists || scheduleChanged) {
+          if (!prev || !stillExists || scheduleChanged || snippetCountChanged) {
             if (snippets.length > 0) {
               pickFromSchedule(snippets);
             }
