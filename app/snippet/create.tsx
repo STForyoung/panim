@@ -195,13 +195,8 @@ export default function CreateSnippetScreen() {
       });
       // Create and assign any pending new topics
       for (const name of pendingNewTopicNames) {
-        await createTopic(db, { name, type: "custom" });
-        const created = await getAllTopics(db).then((t) =>
-          t.find((t) => t.name === name && t.type === "custom"),
-        );
-        if (created) {
-          await addSnippetToTopic(db, snippetId, created.id);
-        }
+        const newTopicId = await createTopic(db, { name, type: "custom" });
+        await addSnippetToTopic(db, snippetId, newTopicId);
       }
       // Assign to all selected existing topics
       for (const topic of assignedTopics) {

@@ -11,7 +11,7 @@ export type Topic = {
 export async function createTopic(
   db: SQLiteDatabase,
   topic: Omit<Topic, 'id' | 'createdAt'>
-): Promise<void> {
+): Promise<string> {
   const id = Crypto.randomUUID();
   const now = Date.now();
   await db.runAsync(
@@ -21,6 +21,7 @@ export async function createTopic(
     topic.type,
     now
   );
+  return id;
 }
 
 export async function getTopic(db: SQLiteDatabase, id: string): Promise<Topic | null> {

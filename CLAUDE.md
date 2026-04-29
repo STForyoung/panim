@@ -292,6 +292,18 @@ Translation preference and notification schedule configuration.
 - Search filter in book picker
 - Re-fetching passages when translation changes
 
+## Post-MVP Technical Debt
+
+Known issues to address before significant feature expansion:
+
+1. **DB migration versioning** — migrations run via blind try/catch every launch with no version tracking. Replace with `PRAGMA user_version` so each migration runs exactly once. Critical before remote DB sync or premium features.
+2. **`scheduleNotifications` assigns the same snippet to all time slots** — all daily reminders resolve to the same pool index. Each slot should advance the index so a user doesn't get the same snippet three times in one day.
+3. **`lastSentIndex` is never incremented** — sequential selection mode is half-built. Needs to be incremented after each notification is sent and persisted via `updateSchedule`.
+4. **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`. Explicit column handling would be safer as the schema grows.
+5. **No pagination** — `getAllSnippets` fetches all rows. Will cause load time and memory pressure with hundreds of snippets.
+6. **Seed guard is one-way** — seeds never re-run once any snippets exist. A `seeded_version` metadata key would allow shipping new default content to existing users.
+7. **`notification_schedule` is a single row** — per-slot or per-day topic targeting will require a schema redesign.
+
 ## Design Tokens
 
 All colors, typography, spacing, radius, and shadow values live in `src/constants/theme.ts`.

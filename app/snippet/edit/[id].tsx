@@ -213,13 +213,8 @@ export default function EditSnippetScreen() {
 
       // Create and assign any pending new topics
       for (const name of pendingNewTopicNames) {
-        await createTopic(db, { name, type: "custom" });
-        const created = await getAllTopics(db).then((t) =>
-          t.find((t) => t.name === name && t.type === "custom"),
-        );
-        if (created) {
-          await addSnippetToTopic(db, id, created.id);
-        }
+        const newTopicId = await createTopic(db, { name, type: "custom" });
+        await addSnippetToTopic(db, id, newTopicId);
       }
       // Re-sync custom topics only
       const originalConceptual = originalTopics.filter((t) => t.type === "custom");
