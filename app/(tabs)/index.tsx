@@ -103,22 +103,9 @@ export default function HomeScreen() {
           const s = pool[(startIndex + i) % pool.length];
           if (s && s.id !== picked.id) next.push(s);
         }
-        // Fall back to random snippets if pool is exhausted
-        if (next.length < 3) {
-          next.push(...pickRandomN(snippets, 3 - next.length, picked));
-        }
         setComingUp(next);
       } else {
-        const fromPool = pickRandomN(pool, 3, picked);
-        // Fall back to random snippets if pool is exhausted
-        const comingUp =
-          fromPool.length < 3
-            ? [
-                ...fromPool,
-                ...pickRandomN(snippets, 3 - fromPool.length, picked),
-              ]
-            : fromPool;
-        setComingUp(comingUp);
+        setComingUp(pickRandomN(pool, 3, picked));
       }
     },
     [db],
@@ -170,15 +157,6 @@ export default function HomeScreen() {
       onFocus();
     }, [db, pickFromSchedule]),
   );
-
-  async function handleNewSnippet() {
-    if (allSnippets.length === 0) return;
-    const picked = pickRandom(allSnippets, current ?? undefined);
-    const topics = await getTopicsForSnippet(db, picked.id);
-    setCurrent(picked);
-    setCurrentTopics(topics);
-    setComingUp(pickRandomN(allSnippets, 3, picked));
-  }
 
   if (loading) {
     return (
@@ -254,7 +232,7 @@ export default function HomeScreen() {
 
               <View style={styles.divider} />
               <Text style={styles.cardPassage} numberOfLines={3}>
-                {current.passage}
+                {current.passage.map((v) => v.text).join(" ")}
               </Text>
               {current.reflection ? (
                 <>
@@ -265,15 +243,13 @@ export default function HomeScreen() {
                 </>
               ) : null}
             </TouchableOpacity>
-            {allSnippets.length > 1 ? (
-              <TouchableOpacity
-                style={styles.newSnippetButton}
-                onPress={handleNewSnippet}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.newSnippetButtonText}>+ New Snippet</Text>
-              </TouchableOpacity>
-            ) : null}
+            <TouchableOpacity
+              style={styles.newSnippetButton}
+              onPress={() => router.push("/snippet/create")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.newSnippetButtonText}>+ New Snippet</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -299,7 +275,7 @@ export default function HomeScreen() {
                     {getDisplayReference(item)}
                   </Text>
                   <Text style={styles.miniCardPassage} numberOfLines={2}>
-                    {item.reflection || item.passage}
+                    {item.reflection || item.passage.map((v) => v.text).join(" ")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -333,7 +309,7 @@ export default function HomeScreen() {
                     {getDisplayReference(item)}
                   </Text>
                   <Text style={styles.miniCardPassage} numberOfLines={2}>
-                    {item.reflection || item.passage}
+                    {item.reflection || item.passage.map((v) => v.text).join(" ")}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -386,6 +362,7 @@ const styles = StyleSheet.create({
   // Greeting
   greeting: {
     ...typography.heading,
+    marginTop: spacing.md,
     marginBottom: spacing.xs,
   },
 
@@ -420,6 +397,7 @@ const styles = StyleSheet.create({
   },
   cardReference: {
     ...typography.reference,
+    color: colors.textSecondary,
   },
   topicsRow: {
     flexDirection: "row",
@@ -449,7 +427,6 @@ const styles = StyleSheet.create({
   },
   cardPassage: {
     ...typography.scriptureItalic,
-    marginTop: spacing.sm,
   },
   cardReflection: {
     ...typography.scripture,
@@ -464,6 +441,7 @@ const styles = StyleSheet.create({
   },
   miniCardReference: {
     ...typography.reference,
+    color: colors.textSecondary,
   },
   miniCardPassage: {
     ...typography.scripture,

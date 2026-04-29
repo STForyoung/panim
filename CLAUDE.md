@@ -323,3 +323,11 @@ All colors, typography, spacing, radius, and shadow values live in `src/constant
   it is the component that renders SQLiteProvider. Extract any
   logic that needs DB access into a child component rendered
   inside SQLiteProvider (e.g. AppInitializer)
+- Do not batch PRAGMA statements with DDL in a single execAsync call in migrateDb —
+  combining PRAGMA journal_mode = WAL with CREATE TABLE statements causes
+  "database is locked" on Android. Run each PRAGMA in its own execAsync call
+  before the DDL block.
+- Do not use getAllAsync or other prepared-statement APIs inside migrateDb (the
+  onInit handler) — this causes SQLITE_MISUSE (error code 21) on Android.
+  Use only execAsync for migrations; do row-level data transforms with pure SQL
+  (e.g. UPDATE ... SET col = json_quote(col) WHERE ...) instead of JS loops.

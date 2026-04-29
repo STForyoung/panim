@@ -12,7 +12,7 @@ export function SnippetCard({ snippet, onPress }: Props) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.reference}>{getDisplayReference(snippet)}</Text>
-      <Text style={styles.passage} numberOfLines={2}>{snippet.passage}</Text>
+      <Text style={styles.passage} numberOfLines={2}>{snippet.passage.map((v) => v.text).join(" ")}</Text>
       {snippet.reflection ? (
         <>
           <View style={styles.divider} />
@@ -33,6 +33,7 @@ const styles = StyleSheet.create({
   },
   reference: {
     ...typography.reference,
+    color: colors.textSecondary,
   },
   reflection: {
     ...typography.scripture,
@@ -44,6 +45,5 @@ const styles = StyleSheet.create({
   },
   passage: {
     ...typography.scriptureItalic,
-    color: colors.textSecondary,
   },
 });

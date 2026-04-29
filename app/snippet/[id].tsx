@@ -5,6 +5,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, deleteSnippet, getSnippet, toggleFavourite } from "@/src/db/snippets";
 import { type Topic } from "@/src/db/topics";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
+import { PassageText } from "@/src/components/PassageText";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { colors, radius, spacing, typography } from "@/src/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -119,7 +120,7 @@ export default function SnippetDetailScreen() {
 
         {/* Passage */}
         <Text style={styles.sectionLabel}>PASSAGE</Text>
-        <Text style={styles.passageText}>{snippet.passage}</Text>
+        <PassageText verses={snippet.passage} />
 
         {snippet.reflection ? (
           <>
@@ -254,10 +255,6 @@ const styles = StyleSheet.create({
   },
 
   // Passage
-  passageText: {
-    ...typography.scriptureItalic,
-  },
-
   // Prayer
   prayerText: {
     ...typography.scripture,

@@ -82,6 +82,9 @@ export default function SettingsScreen() {
   const [minuteInput, setMinuteInput] = useState("");
   const [timeError, setTimeError] = useState<string | null>(null);
 
+  // Translation picker modal
+  const [translationPickerVisible, setTranslationPickerVisible] = useState(false);
+
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
   const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(
@@ -334,29 +337,63 @@ export default function SettingsScreen() {
       >
         <Text style={styles.title}>Settings</Text>
 
-        {/* Translation */}
-        <Text style={styles.sectionHeader}>TRANSLATION</Text>
-        <Text style={styles.sectionNote}>Applies to new snippets only</Text>
+        {/* Bible Translation */}
+        <Text style={styles.categoryHeader}>Bible Translation</Text>
+        <Text style={styles.categoryNote}>Applies to new snippets only</Text>
+
         <View style={styles.sectionCard}>
-          {TRANSLATIONS.map((t, i) => {
-            const selected = schedule.translation === t;
-            return (
-              <TouchableOpacity
-                key={t}
-                style={[
-                  styles.row,
-                  selected && styles.rowSelected,
-                  i === TRANSLATIONS.length - 1 && styles.rowLast,
-                ]}
-                onPress={() => handleTranslationChange(t)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
-                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
-              </TouchableOpacity>
-            );
-          })}
+          <TouchableOpacity
+            style={[styles.row, styles.rowSpaceBetween, styles.rowLast]}
+            onPress={() => setTranslationPickerVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.rowLabel}>{TRANSLATION_NAMES[schedule.translation]}</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Translation Picker Modal */}
+        <Modal visible={translationPickerVisible} animationType="slide">
+          <View style={styles.screen}>
+            <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={() => setTranslationPickerVisible(false)}
+              >
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Translation</Text>
+              <View style={styles.modalCancelArea} />
+            </View>
+            <ScrollView>
+              {TRANSLATIONS.map((t, i) => {
+                const selected = schedule.translation === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[
+                      styles.modalRow,
+                      selected && styles.rowSelected,
+                      i === TRANSLATIONS.length - 1 && styles.rowLast,
+                    ]}
+                    onPress={() => {
+                      handleTranslationChange(t);
+                      setTranslationPickerVisible(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
+                    {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Notification Schedule */}
+        <Text style={styles.categoryHeader}>Notification Schedule</Text>
+        <Text style={styles.categoryNote}>When you receive reminders</Text>
 
         {/* Quick Setup */}
         <Text style={styles.sectionHeader}>QUICK SETUP</Text>
@@ -566,50 +603,9 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        {/* Notification Mode */}
-        <Text style={styles.sectionHeader}>NOTIFICATION MODE</Text>
-        <View style={styles.sectionCard}>
-          {(["random", "topic", "favourites"] as const).map((mode, i, arr) => {
-            const selected = pendingMode === mode;
-            const label =
-              mode === "random"
-                ? "Random"
-                : mode === "topic"
-                  ? "Topic Focus"
-                  : "Favourites";
-            const isLast = i === arr.length - 1;
-            return (
-              <View key={mode}>
-                <TouchableOpacity
-                  style={[
-                    styles.row,
-                    styles.rowSpaceBetween,
-                    selected && styles.rowSelected,
-                    isLast && styles.rowLast,
-                  ]}
-                  onPress={() => handleModeChange(mode)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.rowLabel}>{label}</Text>
-                  {selected ? <Text style={styles.checkmark}>✓</Text> : null}
-                </TouchableOpacity>
-
-                {mode === "topic" && pendingMode === "topic" ? (
-                  <TouchableOpacity
-                    style={[styles.row, styles.topicPickerRow]}
-                    onPress={openTopicPicker}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.topicPickerText}>
-                      {activeTopicName ?? "Select a topic…"}
-                    </Text>
-                    <Text style={styles.chevron}>›</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
+        {/* Notification Preferences */}
+        <Text style={styles.categoryHeader}>Notification Preferences</Text>
+        <Text style={styles.categoryNote}>What gets sent in each reminder</Text>
 
         {/* Topic Picker Modal */}
         <Modal visible={topicPickerVisible} animationType="slide">
@@ -745,45 +741,75 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        {/* Notification Content */}
-        <Text style={styles.sectionHeader}>NOTIFICATION CONTENT</Text>
-        <Text style={styles.sectionNote}>What leads each notification</Text>
         <View style={styles.sectionCard}>
-          {(["passage", "reflection", "prayer"] as const).map(
-            (content, i, arr) => {
-              const selected = pendingNotificationContent === content;
-              const label =
-                content === "passage"
-                  ? "Passage"
-                  : content === "reflection"
-                    ? "Meditation"
-                    : "Prayer";
-              return (
+          {/* Mode */}
+          <View style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}>
+            <Text style={styles.prefLabel}>MODE</Text>
+          </View>
+          {(["random", "topic", "favourites"] as const).map((mode) => {
+            const selected = pendingMode === mode;
+            const label = mode === "random" ? "Random" : mode === "topic" ? "Topic Focus" : "Favourites";
+            return (
+              <View key={mode}>
                 <TouchableOpacity
-                  key={content}
                   style={[
                     styles.row,
                     styles.rowSpaceBetween,
                     selected && styles.rowSelected,
-                    i === arr.length - 1 && styles.rowLast,
                   ]}
-                  onPress={() => {
-                    setPendingNotificationContent(content);
-                    setApplyMessage(null);
-                  }}
+                  onPress={() => handleModeChange(mode)}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.rowLabel}>{label}</Text>
                   {selected ? <Text style={styles.checkmark}>✓</Text> : null}
                 </TouchableOpacity>
-              );
-            },
-          )}
-        </View>
+                {mode === "topic" && pendingMode === "topic" ? (
+                  <TouchableOpacity
+                    style={[styles.row, styles.topicPickerRow]}
+                    onPress={openTopicPicker}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.topicPickerText}>
+                      {activeTopicName ?? "Select a topic…"}
+                    </Text>
+                    <Text style={styles.chevron}>›</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            );
+          })}
 
-        {/* Selection Order */}
-        <Text style={styles.sectionHeader}>SELECTION ORDER</Text>
-        <View style={styles.sectionCard}>
+          {/* Content */}
+          <View style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}>
+            <Text style={styles.prefLabel}>CONTENT</Text>
+          </View>
+          {(["passage", "reflection", "prayer"] as const).map((content) => {
+            const selected = pendingNotificationContent === content;
+            const label = content === "passage" ? "Passage" : content === "reflection" ? "Meditation" : "Prayer";
+            return (
+              <TouchableOpacity
+                key={content}
+                style={[
+                  styles.row,
+                  styles.rowSpaceBetween,
+                  selected && styles.rowSelected,
+                ]}
+                onPress={() => {
+                  setPendingNotificationContent(content);
+                  setApplyMessage(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.rowLabel}>{label}</Text>
+                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Selection Order */}
+          <View style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}>
+            <Text style={styles.prefLabel}>SELECTION ORDER</Text>
+          </View>
           {(["random", "sequential"] as const).map((order, i) => {
             const selected = pendingSelectionOrder === order;
             const label = order === "random" ? "Random" : "Sequential";
@@ -863,7 +889,21 @@ const styles = StyleSheet.create({
   // Title
   title: {
     ...typography.heading,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xs,
+  },
+
+  // Category headers
+  categoryHeader: {
+    ...typography.heading,
+    fontSize: 18,
+    color: colors.textHeading,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xs,
+  },
+  categoryNote: {
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
 
   // Section pattern
@@ -1008,11 +1048,26 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
 
+  // Preference group labels (inside consolidated card)
+  prefGroupLabel: {
+    backgroundColor: colors.background,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  prefLabel: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+  },
+
   // Topic picker row (inside mode card)
   topicPickerRow: {
-    backgroundColor: colors.background,
-    paddingLeft: spacing.lg,
+    paddingLeft: spacing.xl,
     justifyContent: "space-between",
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    backgroundColor: colors.accent + "0D",
   },
   topicPickerText: {
     ...typography.body,

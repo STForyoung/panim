@@ -1,3 +1,4 @@
+import { PassageText } from "@/src/components/PassageText";
 import { TopicChip } from "@/src/components/TopicChip";
 import {
   colors,
@@ -6,12 +7,12 @@ import {
   spacing,
   typography,
 } from "@/src/constants/theme";
-import { createSnippet } from "@/src/db/snippets";
+import { type PassageVerse, createSnippet } from "@/src/db/snippets";
 import { addSnippetToTopic } from "@/src/db/snippetTopics";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { BOOK_IDS, fetchPassage } from "@/src/services/bibleService";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
@@ -40,6 +41,7 @@ const NT_BOOKS = allBooks.filter(([, id]) => id >= 40).map(([name]) => name);
 export default function CreateSnippetScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
+  const { topicId } = useLocalSearchParams<{ topicId?: string }>();
 
   // Passage fields
   const [book, setBook] = useState("");
@@ -47,7 +49,7 @@ export default function CreateSnippetScreen() {
   const [verseStart, setVerseStart] = useState("");
   const [chapterEnd, setChapterEnd] = useState("");
   const [verseEnd, setVerseEnd] = useState("");
-  const [passage, setPassage] = useState("");
+  const [passage, setPassage] = useState<PassageVerse[]>([]);
   const [reflection, setReflection] = useState("");
   const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
@@ -74,22 +76,28 @@ export default function CreateSnippetScreen() {
   );
 
   useEffect(() => {
-    getAllTopics(db).then(setAllTopics);
-  }, [db]);
+    getAllTopics(db).then((topics) => {
+      setAllTopics(topics);
+      if (topicId) {
+        const preAssigned = topics.find((t) => t.id === topicId);
+        if (preAssigned) setAssignedTopics([preAssigned]);
+      }
+    });
+  }, [db, topicId]);
 
   // Auto-suggest a book topic from the selected book.
   function selectBook(name: string) {
     setBook(name);
     setBookPickerVisible(false);
     setBookPickerSection(null);
-    setPassage("");
+    setPassage([]);
     setError(null);
   }
 
   function handleReferenceChange(setter: (v: string) => void) {
     return (v: string) => {
       setter(v);
-      setPassage("");
+      setPassage([]);
       setError(null);
     };
   }
@@ -110,15 +118,15 @@ export default function CreateSnippetScreen() {
     setShowRetry(false);
     setIsFetching(true);
     try {
-      const text = await fetchPassage(
+      const verses = await fetchPassage(
         book,
         parseInt(chapterStart, 10),
         parseInt(verseStart, 10),
         chapterEnd ? parseInt(chapterEnd, 10) : null,
         verseEnd ? parseInt(verseEnd, 10) : null,
-        "NKJV", // default translation; will use global setting once Settings screen is built
+        "NKJV",
       );
-      setPassage(text);
+      setPassage(verses);
     } catch (e) {
       setError(
         e instanceof Error
@@ -160,7 +168,7 @@ export default function CreateSnippetScreen() {
       setShowRetry(false);
       return;
     }
-    if (!passage) {
+    if (passage.length === 0) {
       setError("Fetch the passage before saving.");
       setShowRetry(false);
       return;
@@ -206,7 +214,7 @@ export default function CreateSnippetScreen() {
         await addSnippetToTopic(db, snippetId, bookTopic.id);
       }
       await scheduleNotifications(db);
-      router.replace("/");
+      router.replace(`/snippet/${snippetId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save snippet.");
       setIsSaving(false);
@@ -405,10 +413,10 @@ export default function CreateSnippetScreen() {
           </TouchableOpacity>
 
           {/* Passage display */}
-          {passage ? (
+          {passage.length > 0 ? (
             <View style={styles.passageCard}>
               <Text style={styles.sectionLabel}>PASSAGE</Text>
-              <Text style={styles.passageText}>{passage}</Text>
+              <PassageText verses={passage} />
             </View>
           ) : null}
 
@@ -729,6 +737,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     ...typography.body,
+    lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -760,11 +769,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     ...shadows.card,
   },
-  passageText: {
-    ...typography.scriptureItalic,
-    color: colors.textSecondary,
-  },
-
   // Error
   errorContainer: {
     marginTop: spacing.sm,

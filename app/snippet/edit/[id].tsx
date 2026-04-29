@@ -13,7 +13,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { type Snippet, getSnippet, updateSnippet } from "@/src/db/snippets";
+import { type PassageVerse, type Snippet, getSnippet, updateSnippet } from "@/src/db/snippets";
+import { PassageText } from "@/src/components/PassageText";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
 import {
   addSnippetToTopic,
@@ -51,7 +52,7 @@ export default function EditSnippetScreen() {
   const [verseStart, setVerseStart] = useState("");
   const [chapterEnd, setChapterEnd] = useState("");
   const [verseEnd, setVerseEnd] = useState("");
-  const [passage, setPassage] = useState("");
+  const [passage, setPassage] = useState<PassageVerse[]>([]);
   const [reflection, setReflection] = useState("");
   const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
@@ -94,7 +95,7 @@ export default function EditSnippetScreen() {
       setVerseStart(String(snippet.verseStart));
       setChapterEnd(snippet.chapterEnd !== null ? String(snippet.chapterEnd) : "");
       setVerseEnd(snippet.verseEnd !== null ? String(snippet.verseEnd) : "");
-      setPassage(snippet.passage);
+      setPassage(Array.isArray(snippet.passage) ? snippet.passage : []);
       setReflection(snippet.reflection);
       setPrayer(snippet.prayer ?? "");
 
@@ -110,14 +111,14 @@ export default function EditSnippetScreen() {
     setBook(name);
     setBookPickerVisible(false);
     setBookPickerSection(null);
-    setPassage("");
+    setPassage([]);
     setError(null);
   }
 
   function handleReferenceChange(setter: (v: string) => void) {
     return (v: string) => {
       setter(v);
-      setPassage("");
+      setPassage([]);
       setError(null);
     };
   }
@@ -138,7 +139,7 @@ export default function EditSnippetScreen() {
     setShowRetry(false);
     setIsFetching(true);
     try {
-      const text = await fetchPassage(
+      const verses = await fetchPassage(
         book,
         parseInt(chapterStart, 10),
         parseInt(verseStart, 10),
@@ -146,7 +147,7 @@ export default function EditSnippetScreen() {
         verseEnd ? parseInt(verseEnd, 10) : null,
         "NKJV",
       );
-      setPassage(text);
+      setPassage(verses);
     } catch (e) {
       setError(
         e instanceof Error
@@ -188,7 +189,7 @@ export default function EditSnippetScreen() {
       setShowRetry(false);
       return;
     }
-    if (!passage) {
+    if (passage.length === 0) {
       setError("Re-fetch the passage before saving.");
       setShowRetry(false);
       return;
@@ -445,10 +446,10 @@ export default function EditSnippetScreen() {
           </TouchableOpacity>
 
           {/* Passage display */}
-          {passage ? (
+          {passage.length > 0 ? (
             <View style={styles.passageCard}>
               <Text style={styles.sectionLabel}>PASSAGE</Text>
-              <Text style={styles.passageText}>{passage}</Text>
+              <PassageText verses={passage} />
             </View>
           ) : null}
 
@@ -786,6 +787,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     ...typography.body,
+    lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -817,11 +819,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     ...shadows.card,
   },
-  passageText: {
-    ...typography.scriptureItalic,
-    color: colors.textSecondary,
-  },
-
   // Error
   errorContainer: {
     marginTop: spacing.sm,

@@ -7,7 +7,7 @@ type SeedSnippet = {
   verseStart: number;
   chapterEnd: number | null;
   verseEnd: number | null;
-  passage: string;
+  passage: { chapter: number; verse: number; text: string }[];
   reflection: string;
 };
 
@@ -21,15 +21,36 @@ const SEED_DATA: SeedTopic[] = [
     name: "Beholding the face of God",
     snippets: [
       {
-        book: "Psalm",
+        book: "Psalms",
         chapterStart: 27,
         verseStart: 8,
         chapterEnd: null,
         verseEnd: null,
-        passage:
-          'When You said, "Seek My face," My heart said to You, "Your face, Lord, I will seek."',
+        passage: [
+          {
+            chapter: 27,
+            verse: 8,
+            text: 'When You said, "Seek My face," My heart said to You, "Your face, Lord, I will seek."',
+          },
+        ],
         reflection:
           "God, according to His desire, has invited me to know His presence. As I diligently seek Him, I receive His promise of intimacy and a revelation of His glory.",
+      },
+      {
+        book: "Psalms",
+        chapterStart: 27,
+        verseStart: 4,
+        chapterEnd: null,
+        verseEnd: null,
+        passage: [
+          {
+            chapter: 27,
+            verse: 4,
+            text: "One thing I have desired of the Lord, That will I seek: That I may dwell in the house of the Lord All the days of my life, To behold the beauty of the Lord, And to inquire in His temple.",
+          },
+        ],
+        reflection:
+          "The desire of a heart tuned to God is not many things, but one: to behold His beauty. This is the posture of prayer, to desire in His presence above all else.",
       },
     ],
   },
@@ -65,7 +86,7 @@ export async function seedDefaultContent(db: SQLiteDatabase): Promise<void> {
         snippet.verseStart,
         snippet.chapterEnd ?? null,
         snippet.verseEnd ?? null,
-        snippet.passage,
+        JSON.stringify(snippet.passage),
         snippet.reflection,
         now,
         now,

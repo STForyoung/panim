@@ -102,19 +102,20 @@ export async function scheduleNotifications(db: SQLiteDatabase): Promise<void> {
       snippet = pool[Math.floor(Math.random() * pool.length)];
     }
 
+    const passageText = snippet.passage.map((v) => v.text).join(' ');
     let body: string;
     if (schedule.notificationContent === 'prayer') {
       body = snippet.prayer?.trim()
         ? firstSentence(snippet.prayer)
         : snippet.reflection?.trim()
           ? firstSentence(snippet.reflection)
-          : firstSentence(snippet.passage);
+          : firstSentence(passageText);
     } else if (schedule.notificationContent === 'reflection') {
       body = snippet.reflection?.trim()
         ? firstSentence(snippet.reflection)
-        : firstSentence(snippet.passage);
+        : firstSentence(passageText);
     } else {
-      body = firstSentence(snippet.passage);
+      body = firstSentence(passageText);
     }
 
     await Notifications.scheduleNotificationAsync({

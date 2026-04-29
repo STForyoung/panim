@@ -374,8 +374,8 @@ const styles = StyleSheet.create({
   },
   definition: {
     ...typography.scripture,
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 28,
     color: colors.textSecondary,
     textAlign: "center",
     marginBottom: spacing.lg,
@@ -392,8 +392,8 @@ const styles = StyleSheet.create({
   },
   verseText: {
     ...typography.scriptureItalic,
-    fontSize: 13,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 23,
     color: "#4a3f3a",
   },
   verseReference: {

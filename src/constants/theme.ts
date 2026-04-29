@@ -1,8 +1,9 @@
 export const colors = {
-  background: "#f4f1ed",
+  background: "#F5F4F0",
   surface: "#FFFFFF",
   textPrimary: "#1A1A1A",
   textSecondary: "#6B6460",
+  textHeading: "#3B2B1E",
   accent: "#C4A882",
   border: "#E8E4DF",
   danger: "#C0392B",
@@ -37,7 +38,7 @@ export const typography = {
     fontFamily: "Lora_700Bold",
     fontSize: 22,
     lineHeight: 30,
-    color: "#1A1A1A",
+    color: "#3B2B1E",
   },
   label: {
     fontSize: 12,
@@ -67,7 +68,7 @@ export const spacing = {
 
 export const radius = {
   sm: 6,
-  md: 12,
+  md: 8,
   lg: 20,
 };
 

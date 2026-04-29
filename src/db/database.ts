@@ -4,10 +4,12 @@ import * as Crypto from "expo-crypto";
 import { type SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDb(db: SQLiteDatabase): Promise<void> {
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
+  // Run PRAGMAs separately — combining them with DDL in one execAsync
+  // can cause "database is locked" on Android when switching to WAL mode.
+  await db.execAsync('PRAGMA journal_mode = WAL;');
+  await db.execAsync('PRAGMA foreign_keys = ON;');
 
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS snippets (
       id TEXT PRIMARY KEY NOT NULL,
       book TEXT NOT NULL,
@@ -104,6 +106,19 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
     );
   } catch {
     // Column already exists — ignore
+  }
+
+  // Migrate plain-text passages to structured PassageVerse JSON.
+  // Uses json_quote() (SQLite 3.9+) to safely escape passage text.
+  // Only updates rows whose passage does not already start with '['.
+  try {
+    await db.execAsync(
+      `UPDATE snippets
+       SET passage = '[{"chapter":' || chapterStart || ',"verse":' || verseStart || ',"text":' || json_quote(passage) || '}]'
+       WHERE passage NOT LIKE '[%'`
+    );
+  } catch {
+    // Migration failed — ignore
   }
 
   // Seed one book topic per canonical Bible book if not already present

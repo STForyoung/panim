@@ -118,7 +118,7 @@ export default function TopicDetailScreen() {
 
             <TouchableOpacity
               style={styles.newSnippetButton}
-              onPress={() => router.push("/snippet/create")}
+              onPress={() => router.push(`/snippet/create?topicId=${id}`)}
               activeOpacity={0.8}
             >
               <Text style={styles.newSnippetButtonText}>+ New Snippet</Text>

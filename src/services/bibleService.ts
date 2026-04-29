@@ -185,7 +185,7 @@ export async function fetchPassage(
   chapterEnd: number | null,
   verseEnd: number | null,
   translation: string,
-): Promise<string> {
+): Promise<{ chapter: number; verse: number; text: string }[]> {
   const bookId = getBookId(book);
   const requests = buildRequests(
     bookId,
@@ -219,7 +219,6 @@ export async function fetchPassage(
   data.sort((a, b) => a.chapter - b.chapter || a.verse - b.verse);
 
   return data
-    .map((v) => stripHtml(v.text))
-    .filter(Boolean)
-    .join(" ");
+    .map((v) => ({ chapter: v.chapter, verse: v.verse, text: stripHtml(v.text) }))
+    .filter((v) => v.text.length > 0);
 }
