@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "panim",
+    "name": "Panim",
     "slug": "panim",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A1A1A"
+      "backgroundColor": "#F5F4F0"
     },
     "ios": {
       "supportsTablet": true,
@@ -22,11 +22,11 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1A1A1A"
+        "backgroundColor": "#F5F4F0"
       },
       "package": "app.panim"
     },
-    "plugins": ["expo-router", "expo-sqlite"],
+    "plugins": ["expo-router", "expo-sqlite", "expo-notifications"],
     "experiments": {
       "typedRoutes": true
     },
