@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -72,7 +73,7 @@ export default function SnippetDetailScreen() {
         <View style={styles.centeredState}>
           <Text style={styles.stateText}>Snippet not found.</Text>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButtonState}>
-            <Text style={styles.backText}>← Go back</Text>
+            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -88,7 +89,7 @@ export default function SnippetDetailScreen() {
         {/* Header row */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Text style={styles.backText}>←</Text>
+            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push(`/snippet/edit/${id}`)} hitSlop={8}>
             <Text style={styles.editText}>Edit</Text>

@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { PassageText } from "@/src/components/PassageText";
 import { TopicChip } from "@/src/components/TopicChip";
 import {
@@ -243,7 +244,7 @@ export default function CreateSnippetScreen() {
             }
             hitSlop={8}
           >
-            <Text style={styles.cancelText}>←</Text>
+            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <Text style={styles.screenTitle}>New Snippet</Text>

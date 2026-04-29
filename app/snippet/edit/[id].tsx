@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -266,7 +267,7 @@ export default function EditSnippetScreen() {
         <View style={styles.centeredState}>
           <Text style={styles.mutedText}>Snippet not found.</Text>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButtonState}>
-            <Text style={styles.backText}>← Go back</Text>
+            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -284,7 +285,7 @@ export default function EditSnippetScreen() {
           {/* Header row */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Text style={styles.backText}>←</Text>
+              <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.screenTitle}>Edit Snippet</Text>
             <View style={styles.headerSpacer} />

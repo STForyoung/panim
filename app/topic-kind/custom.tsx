@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import {
   colors,
   radius,
@@ -129,7 +130,7 @@ export default function CustomTopicsScreen() {
         ListHeaderComponent={
           <View>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Text style={styles.backText}>←</Text>
+              <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
             <Text style={styles.title}>My Topics</Text>
             <TouchableOpacity
