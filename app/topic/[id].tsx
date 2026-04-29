@@ -48,22 +48,52 @@ export default function TopicDetailScreen() {
   function handleDelete() {
     if (!topic) return;
 
-    const message =
-      snippets.length > 0
-        ? `"${topic.name}" has ${snippets.length} snippet${snippets.length === 1 ? "" : "s"}. Deleting this topic will not delete those snippets — they will become unassigned.`
-        : `Are you sure you want to delete "${topic.name}"?`;
-
-    Alert.alert("Delete Topic", message, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          await deleteTopic(db, id);
-          router.back();
+    if (snippets.length === 0) {
+      Alert.alert("Delete Topic", `Are you sure you want to delete "${topic.name}"?`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            await deleteTopic(db, id);
+            router.back();
+          },
         },
-      },
-    ]);
+      ]);
+      return;
+    }
+
+    const count = snippets.length;
+    const snippetLabel = count === 1 ? "1 snippet" : `${count} snippets`;
+
+    Alert.alert(
+      "Delete Topic",
+      `"${topic.name}" has ${snippetLabel}. What would you like to do?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Topic Only",
+          onPress: async () => {
+            await deleteTopic(db, id);
+            router.back();
+          },
+        },
+        {
+          text: "Delete Topic & Snippets",
+          style: "destructive",
+          onPress: async () => {
+            await db.runAsync(
+              `DELETE FROM snippets WHERE id IN (
+                SELECT snippetId FROM snippet_topics WHERE topicId = ?
+              )`,
+              id,
+            );
+            await deleteTopic(db, id);
+            router.back();
+          },
+        },
+      ],
+    );
   }
 
   if (loading) {

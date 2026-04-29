@@ -104,9 +104,13 @@ export default function HomeScreen() {
           const s = pool[(startIndex + i) % pool.length];
           if (s && s.id !== picked.id) next.push(s);
         }
-        setComingUp(next);
+        // Fall back to all snippets if pool is exhausted
+        const comingUpSeq = next.length > 0 ? next : pickRandomN(snippets, 3, picked);
+        setComingUp(comingUpSeq);
       } else {
-        setComingUp(pickRandomN(pool, 3, picked));
+        const fromPool = pickRandomN(pool, 3, picked);
+        // Fall back to all snippets if pool is exhausted
+        setComingUp(fromPool.length > 0 ? fromPool : pickRandomN(snippets, 3, picked));
       }
     },
     [db],
@@ -147,9 +151,14 @@ export default function HomeScreen() {
         const snippetCountChanged = lastSnippetCount.current !== snippets.length;
         if (snippetCountChanged) lastSnippetCount.current = snippets.length;
 
+        const snippetIds = new Set(snippets.map((s) => s.id));
+
+        // Always purge stale snippets from Coming Up (handles topic/snippet deletions).
+        setComingUp((prev) => prev.filter((s) => snippetIds.has(s.id)));
+
         // Re-pick if: no current snippet, snippet was deleted, schedule changed, or new snippets added.
         setCurrent((prev) => {
-          const stillExists = prev && snippets.some((s) => s.id === prev.id);
+          const stillExists = prev && snippetIds.has(prev.id);
           if (!prev || !stillExists || scheduleChanged || snippetCountChanged) {
             if (snippets.length > 0) {
               pickFromSchedule(snippets);
