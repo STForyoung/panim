@@ -23,11 +23,28 @@ function ProgressDots({ active }: { active: 1 | 2 | 3 }) {
   );
 }
 
-const FREQUENCY_TIMES: Record<string, string[]> = {
-  "1": ["09:00"],
-  "3": ["09:00", "12:00", "18:00"],
-  "5": ["09:00", "12:00", "15:00", "18:00", "21:00"],
-};
+// Must match PRESETS in settings.tsx exactly so the active chip highlights on first open
+const FREQUENCY_OPTIONS = [
+  { value: "2", label: "2×", desc: "9 AM · 6 PM", times: ["09:00", "18:00"] },
+  {
+    value: "3",
+    label: "3×",
+    desc: "9 AM · 12 PM · 6 PM",
+    times: ["09:00", "12:00", "18:00"],
+  },
+  {
+    value: "4",
+    label: "4×",
+    desc: "9 AM · 12 · 3 PM · 6 PM",
+    times: ["09:00", "12:00", "15:00", "18:00"],
+  },
+  {
+    value: "5",
+    label: "5×",
+    desc: "9 AM · 12 · 3 · 6 · 9 PM",
+    times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+  },
+];
 
 export default function OnboardingScreen() {
   const db = useSQLiteContext();
@@ -35,7 +52,9 @@ export default function OnboardingScreen() {
   const [frequency, setFrequency] = useState("3");
 
   async function handleRhythmContinue() {
-    const times = FREQUENCY_TIMES[frequency] ?? FREQUENCY_TIMES["3"];
+    const times =
+      FREQUENCY_OPTIONS.find((o) => o.value === frequency)?.times ??
+      FREQUENCY_OPTIONS[1].times;
     await getSchedule(db); // ensures the row exists before updating
     await updateSchedule(db, { times });
     await scheduleNotifications(db);
@@ -167,12 +186,6 @@ export default function OnboardingScreen() {
 
   // Step 4 — Rhythm
   if (step === 4) {
-    const options = [
-      { value: "1", freq: "1×", desc: "Morning" },
-      { value: "3", freq: "3×", desc: "Morn · Noon\n· Eve" },
-      { value: "5", freq: "5×", desc: "Throughout\nthe day" },
-    ];
-
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
@@ -184,8 +197,8 @@ export default function OnboardingScreen() {
             <Text style={styles.subheading}>
               You can adjust this anytime in Settings.
             </Text>
-            <View style={styles.frequencyRow}>
-              {options.map((opt) => (
+            <View style={styles.frequencyGrid}>
+              {FREQUENCY_OPTIONS.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   style={[
@@ -195,7 +208,7 @@ export default function OnboardingScreen() {
                   onPress={() => setFrequency(opt.value)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.freqLabel}>{opt.freq}</Text>
+                  <Text style={styles.freqLabel}>{opt.label}</Text>
                   <Text style={styles.freqDesc}>{opt.desc}</Text>
                 </TouchableOpacity>
               ))}
@@ -408,12 +421,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  frequencyRow: {
+  frequencyGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   freqCard: {
-    flex: 1,
+    width: "48%",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.md,

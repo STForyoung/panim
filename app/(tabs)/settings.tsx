@@ -48,6 +48,52 @@ const TRANSLATION_NAMES: Record<NotificationSchedule["translation"], string> = {
   KJV: "King James Version",
 };
 
+// 24h "HH:MM" strings
+const PRESETS: { label: string; sublabel: string; times: string[] }[] = [
+  { label: "1× Daily", sublabel: "12:00 PM", times: ["12:00"] },
+  { label: "2× Daily", sublabel: "9 AM · 6 PM", times: ["09:00", "18:00"] },
+  {
+    label: "3× Daily",
+    sublabel: "9 AM · 12 PM · 6 PM",
+    times: ["09:00", "12:00", "18:00"],
+  },
+  {
+    label: "4× Daily",
+    sublabel: "9 AM · 12 PM · 3 PM · 6 PM",
+    times: ["09:00", "12:00", "15:00", "18:00"],
+  },
+  {
+    label: "5× Daily",
+    sublabel: "9 AM · 12 PM · 3 PM · 6 PM · 9 PM",
+    times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+  },
+  {
+    label: "Hourly",
+    sublabel: "Every hour from 9 AM to 6 PM",
+    times: [
+      "09:00",
+      "10:00",
+      "11:00",
+      "12:00",
+      "13:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00",
+      "18:00",
+    ],
+  },
+];
+
+function to12h(time24: string): string {
+  const [hStr, mStr] = time24.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  const suffix = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
 export default function SettingsScreen() {
   const db = useSQLiteContext();
 
@@ -78,12 +124,14 @@ export default function SettingsScreen() {
 
   // Add time modal
   const [addTimeVisible, setAddTimeVisible] = useState(false);
-  const [hourInput, setHourInput] = useState("");
-  const [minuteInput, setMinuteInput] = useState("");
+  const [pickerHour, setPickerHour] = useState("9");
+  const [pickerMinute, setPickerMinute] = useState("00");
+  const [pickerAmPm, setPickerAmPm] = useState<"AM" | "PM">("AM");
   const [timeError, setTimeError] = useState<string | null>(null);
 
   // Translation picker modal
-  const [translationPickerVisible, setTranslationPickerVisible] = useState(false);
+  const [translationPickerVisible, setTranslationPickerVisible] =
+    useState(false);
 
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
@@ -93,14 +141,6 @@ export default function SettingsScreen() {
   const [bookTopicSection, setBookTopicSection] = useState<"OT" | "NT" | null>(
     null,
   );
-
-  // Quick Setup
-  const [qsStartHour, setQsStartHour] = useState("8");
-  const [qsStartMinute, setQsStartMinute] = useState("0");
-  const [qsEndHour, setQsEndHour] = useState("22");
-  const [qsEndMinute, setQsEndMinute] = useState("0");
-  const [qsInterval, setQsInterval] = useState<1 | 2 | 3 | 4 | null>(null);
-  const [qsError, setQsError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -139,31 +179,45 @@ export default function SettingsScreen() {
     setApplyMessage(null);
   }
 
-  function handleAddTime() {
-    const hour = parseInt(hourInput, 10);
-    const minute = parseInt(minuteInput, 10);
+  function handleApplyPreset(times: string[]) {
+    setPendingTimes(times);
+    setApplyMessage(null);
+  }
 
-    if (isNaN(hour) || hour < 0 || hour > 23) {
-      setTimeError("Hour must be between 0 and 23.");
+  function handleConfirmAddTime() {
+    const h = parseInt(pickerHour, 10);
+    const m = parseInt(pickerMinute, 10);
+
+    if (isNaN(h) || h < 1 || h > 12) {
+      setTimeError("Hour must be between 1 and 12.");
       return;
     }
-    if (isNaN(minute) || minute < 0 || minute > 59) {
+    if (isNaN(m) || m < 0 || m > 59) {
       setTimeError("Minute must be between 0 and 59.");
       return;
     }
 
-    const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    let h24 = h % 12;
+    if (pickerAmPm === "PM") h24 += 12;
+    const time = `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+
     if (pendingTimes.includes(time)) {
-      setTimeError("That time is already added.");
+      setTimeError("That time is already in your schedule.");
       return;
     }
 
     setPendingTimes((prev) => [...prev, time].sort());
-    setHourInput("");
-    setMinuteInput("");
     setTimeError(null);
     setAddTimeVisible(false);
     setApplyMessage(null);
+  }
+
+  function openAddTime() {
+    setPickerHour("");
+    setPickerMinute("");
+    setPickerAmPm("AM");
+    setTimeError(null);
+    setAddTimeVisible(true);
   }
 
   function handleModeChange(mode: "random" | "topic" | "favourites") {
@@ -190,57 +244,6 @@ export default function SettingsScreen() {
     setTopicPickerVisible(false);
     setTopicPickerType(null);
     setBookTopicSection(null);
-  }
-
-  function handleGenerateTimes() {
-    const startH = parseInt(qsStartHour, 10);
-    const startM = parseInt(qsStartMinute, 10);
-    const endH = parseInt(qsEndHour, 10);
-    const endM = parseInt(qsEndMinute, 10);
-
-    if (isNaN(startH) || startH < 0 || startH > 23) {
-      setQsError("Start hour must be between 0 and 23.");
-      return;
-    }
-    if (isNaN(startM) || startM < 0 || startM > 59) {
-      setQsError("Start minute must be between 0 and 59.");
-      return;
-    }
-    if (isNaN(endH) || endH < 0 || endH > 23) {
-      setQsError("End hour must be between 0 and 23.");
-      return;
-    }
-    if (isNaN(endM) || endM < 0 || endM > 59) {
-      setQsError("End minute must be between 0 and 59.");
-      return;
-    }
-    if (startH * 60 + startM >= endH * 60 + endM) {
-      setQsError("End time must be after start time.");
-      return;
-    }
-    if (!qsInterval) {
-      setQsError("Select an interval.");
-      return;
-    }
-
-    setQsError(null);
-
-    const generated: string[] = [];
-    let currentMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
-
-    while (currentMinutes <= endMinutes) {
-      const h = Math.floor(currentMinutes / 60);
-      const m = currentMinutes % 60;
-      generated.push(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-      );
-      currentMinutes += qsInterval * 60;
-    }
-
-    const merged = Array.from(new Set([...pendingTimes, ...generated])).sort();
-    setPendingTimes(merged);
-    setApplyMessage(null);
   }
 
   function handleSelectionOrderChange(selectionOrder: "random" | "sequential") {
@@ -347,7 +350,9 @@ export default function SettingsScreen() {
             onPress={() => setTranslationPickerVisible(true)}
             activeOpacity={0.7}
           >
-            <Text style={styles.rowLabel}>{TRANSLATION_NAMES[schedule.translation]}</Text>
+            <Text style={styles.rowLabel}>
+              {TRANSLATION_NAMES[schedule.translation]}
+            </Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         </View>
@@ -355,7 +360,12 @@ export default function SettingsScreen() {
         {/* Translation Picker Modal */}
         <Modal visible={translationPickerVisible} animationType="slide">
           <View style={styles.screen}>
-            <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
+            <View
+              style={[
+                styles.modalHeader,
+                { paddingTop: insets.top + spacing.md },
+              ]}
+            >
               <TouchableOpacity
                 style={styles.modalCancelArea}
                 onPress={() => setTranslationPickerVisible(false)}
@@ -395,111 +405,47 @@ export default function SettingsScreen() {
         <Text style={styles.categoryHeader}>Notification Schedule</Text>
         <Text style={styles.categoryNote}>When you receive reminders</Text>
 
-        {/* Quick Setup */}
-        <Text style={styles.sectionHeader}>QUICK SETUP</Text>
-        <View style={styles.sectionCard}>
-          {/* Start time */}
-          <View style={[styles.row, styles.rowSpaceBetween]}>
-            <Text style={styles.rowLabel}>Start time</Text>
-            <View style={styles.timeInputs}>
-              <TextInput
-                style={styles.timeInput}
-                value={qsStartHour}
-                onChangeText={setQsStartHour}
-                keyboardType="number-pad"
-                placeholder="8"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
-              <Text style={styles.timeSeparator}>:</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={qsStartMinute}
-                onChangeText={setQsStartMinute}
-                keyboardType="number-pad"
-                placeholder="00"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
-            </View>
-          </View>
-
-          {/* End time */}
-          <View style={[styles.row, styles.rowSpaceBetween]}>
-            <Text style={styles.rowLabel}>End time</Text>
-            <View style={styles.timeInputs}>
-              <TextInput
-                style={styles.timeInput}
-                value={qsEndHour}
-                onChangeText={setQsEndHour}
-                keyboardType="number-pad"
-                placeholder="22"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
-              <Text style={styles.timeSeparator}>:</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={qsEndMinute}
-                onChangeText={setQsEndMinute}
-                keyboardType="number-pad"
-                placeholder="00"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
-            </View>
-          </View>
-
-          {/* Interval */}
-          <View style={[styles.row, styles.rowLast, styles.rowSpaceBetween]}>
-            <Text style={styles.rowLabel}>Interval</Text>
-            <View style={styles.intervalButtons}>
-              {([1, 2, 3, 4] as const).map((h) => (
-                <TouchableOpacity
-                  key={h}
+        {/* Presets */}
+        <Text style={styles.sectionHeader}>PRESETS</Text>
+        <View style={styles.presetChipRow}>
+          {PRESETS.map((preset) => {
+            const isActive =
+              JSON.stringify(pendingTimes) === JSON.stringify(preset.times);
+            return (
+              <TouchableOpacity
+                key={preset.label}
+                style={[styles.presetChip, isActive && styles.presetChipActive]}
+                onPress={() => handleApplyPreset(preset.times)}
+                activeOpacity={0.7}
+              >
+                <Text
                   style={[
-                    styles.intervalButton,
-                    qsInterval === h && styles.intervalButtonActive,
+                    styles.presetChipText,
+                    isActive && styles.presetChipTextActive,
                   ]}
-                  onPress={() => setQsInterval(h)}
-                  activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.intervalButtonText,
-                      qsInterval === h && styles.intervalButtonTextActive,
-                    ]}
-                  >
-                    {h}h
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+                  {preset.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-
-        {qsError ? <Text style={styles.errorText}>{qsError}</Text> : null}
-
-        <TouchableOpacity
-          style={styles.generateButton}
-          onPress={handleGenerateTimes}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>Generate Times</Text>
-        </TouchableOpacity>
-        <Text style={styles.generateNote}>
-          Generated times are added to your existing schedule
-        </Text>
+        {(() => {
+          const active = PRESETS.find(
+            (p) => JSON.stringify(pendingTimes) === JSON.stringify(p.times),
+          );
+          return active ? (
+            <Text style={styles.presetActiveDetail}>{active.sublabel}</Text>
+          ) : null;
+        })()}
 
         {/* Scheduled Times */}
-        <Text style={styles.sectionHeader}>SCHEDULED TIMES</Text>
-        <View style={styles.sectionCard}>
-          {pendingTimes.length === 0 ? (
-            <View style={[styles.row, styles.rowLast]}>
-              <Text style={styles.mutedText}>No times set.</Text>
-            </View>
-          ) : (
-            pendingTimes.map((time, i) => (
+        <Text style={styles.sectionHeader}>YOUR TIMES</Text>
+        {pendingTimes.length === 0 ? (
+          <Text style={styles.mutedText}>No times set.</Text>
+        ) : (
+          <View style={styles.sectionCard}>
+            {pendingTimes.map((time, i) => (
               <View
                 key={time}
                 style={[
@@ -508,7 +454,7 @@ export default function SettingsScreen() {
                   i === pendingTimes.length - 1 && styles.rowLast,
                 ]}
               >
-                <Text style={styles.rowLabel}>{time}</Text>
+                <Text style={styles.rowLabel}>{to12h(time)}</Text>
                 <TouchableOpacity
                   onPress={() => handleRemoveTime(time)}
                   hitSlop={8}
@@ -516,20 +462,16 @@ export default function SettingsScreen() {
                   <Text style={styles.removeButton}>×</Text>
                 </TouchableOpacity>
               </View>
-            ))
-          )}
-        </View>
+            ))}
+          </View>
+        )}
+
         <TouchableOpacity
           style={styles.outlineButton}
-          onPress={() => {
-            setHourInput("");
-            setMinuteInput("");
-            setTimeError(null);
-            setAddTimeVisible(true);
-          }}
+          onPress={openAddTime}
           activeOpacity={0.8}
         >
-          <Text style={styles.outlineButtonText}>+ Add Time</Text>
+          <Text style={styles.outlineButtonText}>+ Custom Time</Text>
         </TouchableOpacity>
 
         {pendingTimes.length > 0 ? (
@@ -558,47 +500,66 @@ export default function SettingsScreen() {
                 <Text style={styles.modalCancel}>Cancel</Text>
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Add Time</Text>
-              <View style={styles.modalCancelArea} />
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={handleConfirmAddTime}
+              >
+                <Text style={[styles.modalCancel, styles.modalDone]}>Add</Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
-              <View style={styles.modalTimeRow}>
-                <View style={styles.modalTimeField}>
-                  <Text style={styles.modalTimeLabel}>HOUR (0–23)</Text>
+              <View style={styles.timePickerRow}>
+                <View style={styles.timePickerField}>
+                  <Text style={styles.pickerSectionLabel}>HOUR</Text>
                   <TextInput
-                    style={styles.modalTimeInput}
-                    value={hourInput}
-                    onChangeText={setHourInput}
+                    style={styles.timePickerInput}
+                    value={pickerHour}
+                    onChangeText={setPickerHour}
                     keyboardType="number-pad"
-                    placeholder="7"
-                    placeholderTextColor={colors.textSecondary + "80"}
                     textAlign="center"
+                    maxLength={2}
                     autoFocus
                   />
                 </View>
-                <Text style={styles.modalTimeSeparator}>:</Text>
-                <View style={styles.modalTimeField}>
-                  <Text style={styles.modalTimeLabel}>MINUTE (0–59)</Text>
+                <Text style={styles.timePickerSeparator}>:</Text>
+                <View style={styles.timePickerField}>
+                  <Text style={styles.pickerSectionLabel}>MINUTE</Text>
                   <TextInput
-                    style={styles.modalTimeInput}
-                    value={minuteInput}
-                    onChangeText={setMinuteInput}
+                    style={styles.timePickerInput}
+                    value={pickerMinute}
+                    onChangeText={setPickerMinute}
                     keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor={colors.textSecondary + "80"}
                     textAlign="center"
+                    maxLength={2}
                   />
                 </View>
+                <View style={styles.amPmStack}>
+                  {(["AM", "PM"] as const).map((suffix) => (
+                    <TouchableOpacity
+                      key={suffix}
+                      style={[
+                        styles.amPmButton,
+                        pickerAmPm === suffix && styles.amPmButtonActive,
+                      ]}
+                      onPress={() => setPickerAmPm(suffix)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.amPmText,
+                          pickerAmPm === suffix && styles.amPmTextActive,
+                        ]}
+                      >
+                        {suffix}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
+
               {timeError ? (
                 <Text style={styles.errorText}>{timeError}</Text>
               ) : null}
-              <TouchableOpacity
-                style={[styles.generateButton, { marginTop: spacing.lg }]}
-                onPress={handleAddTime}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.primaryButtonText}>Add</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -743,12 +704,19 @@ export default function SettingsScreen() {
 
         <View style={styles.sectionCard}>
           {/* Mode */}
-          <View style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}>
+          <View
+            style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}
+          >
             <Text style={styles.prefLabel}>MODE</Text>
           </View>
           {(["random", "topic", "favourites"] as const).map((mode) => {
             const selected = pendingMode === mode;
-            const label = mode === "random" ? "Random" : mode === "topic" ? "Topic Focus" : "Favourites";
+            const label =
+              mode === "random"
+                ? "Random"
+                : mode === "topic"
+                  ? "Topic Focus"
+                  : "Favourites";
             return (
               <View key={mode}>
                 <TouchableOpacity
@@ -780,12 +748,19 @@ export default function SettingsScreen() {
           })}
 
           {/* Content */}
-          <View style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}>
+          <View
+            style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}
+          >
             <Text style={styles.prefLabel}>CONTENT</Text>
           </View>
           {(["passage", "reflection", "prayer"] as const).map((content) => {
             const selected = pendingNotificationContent === content;
-            const label = content === "passage" ? "Passage" : content === "reflection" ? "Meditation" : "Prayer";
+            const label =
+              content === "passage"
+                ? "Passage"
+                : content === "reflection"
+                  ? "Meditation"
+                  : "Prayer";
             return (
               <TouchableOpacity
                 key={content}
@@ -807,7 +782,9 @@ export default function SettingsScreen() {
           })}
 
           {/* Selection Order */}
-          <View style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}>
+          <View
+            style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}
+          >
             <Text style={styles.prefLabel}>SELECTION ORDER</Text>
           </View>
           {(["random", "sequential"] as const).map((order, i) => {
@@ -917,11 +894,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
-  sectionNote: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
   sectionCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -944,7 +916,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   rowSelected: {
-    backgroundColor: colors.accent + "33", // ~20% opacity
+    backgroundColor: colors.accent + "33",
     borderLeftWidth: 3,
     borderLeftColor: colors.accent,
   },
@@ -956,66 +928,36 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
 
-  // Quick setup time inputs
-  timeInputs: {
+  // Preset chips
+  presetChipRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
+    flexWrap: "wrap",
+    gap: spacing.sm,
   },
-  timeInput: {
+  presetChip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.xs,
-    width: 40,
-    ...typography.body,
+    ...shadows.card,
   },
-  timeSeparator: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-
-  // Interval buttons
-  intervalButtons: {
-    flexDirection: "row",
-    gap: spacing.xs,
-  },
-  intervalButton: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  intervalButtonActive: {
+  presetChipActive: {
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
-  intervalButtonText: {
+  presetChipText: {
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  presetChipTextActive: {
+    color: colors.surface,
+    fontWeight: "600",
+  },
+  presetActiveDetail: {
     ...typography.label,
     color: colors.textSecondary,
-  },
-  intervalButtonTextActive: {
-    color: colors.surface,
-  },
-
-  // Generate button + note
-  generateButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginTop: spacing.md,
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  generateNote: {
-    ...typography.label,
-    color: colors.textSecondary,
-    textAlign: "center",
     marginTop: spacing.xs,
   },
 
@@ -1027,8 +969,7 @@ const styles = StyleSheet.create({
 
   // Add Time outline button
   outlineButton: {
-    borderWidth: 1,
-    borderColor: colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: "center",
@@ -1036,7 +977,7 @@ const styles = StyleSheet.create({
   },
   outlineButtonText: {
     ...typography.button,
-    color: colors.accent,
+    color: colors.surface,
   },
   clearButton: {
     borderWidth: 1,
@@ -1049,6 +990,64 @@ const styles = StyleSheet.create({
   clearButtonText: {
     ...typography.button,
     color: colors.danger,
+  },
+
+  // Add Time modal inputs
+  timePickerRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  timePickerField: {
+    alignItems: "center",
+  },
+  pickerSectionLabel: {
+    ...typography.label,
+    letterSpacing: 1.5,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  timePickerInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    width: 72,
+    fontSize: 32,
+    fontWeight: "300" as const,
+    color: colors.textHeading,
+    textAlign: "center",
+  },
+  timePickerSeparator: {
+    fontSize: 32,
+    fontWeight: "300" as const,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  amPmStack: {
+    gap: spacing.xs,
+  },
+  amPmButton: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    alignItems: "center",
+  },
+  amPmButtonActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  amPmText: {
+    ...typography.button,
+    color: colors.textSecondary,
+  },
+  amPmTextActive: {
+    color: colors.surface,
   },
 
   // Preference group labels (inside consolidated card)
@@ -1095,7 +1094,7 @@ const styles = StyleSheet.create({
 
   // Sticky footer
   scrollWithFooter: {
-    paddingBottom: spacing.xl * 2 + 52, // reserve space for footer
+    paddingBottom: spacing.xl * 2 + 52,
   },
   stickyFooter: {
     position: "absolute",
@@ -1141,6 +1140,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.sm,
   },
+  primaryButtonText: {
+    ...typography.button,
+    color: colors.surface,
+  },
 
   // Modal
   modalHeader: {
@@ -1158,6 +1161,9 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colors.accent,
   },
+  modalDone: {
+    textAlign: "right",
+  },
   modalTitle: {
     ...typography.heading,
     flex: 1,
@@ -1166,37 +1172,6 @@ const styles = StyleSheet.create({
   },
   modalBody: {
     padding: spacing.lg,
-  },
-  modalTimeRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  modalTimeField: {
-    alignItems: "center",
-  },
-  modalTimeLabel: {
-    ...typography.label,
-    letterSpacing: 1.2,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  modalTimeInput: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    width: 80,
-    ...typography.heading,
-    textAlign: "center",
-  },
-  modalTimeSeparator: {
-    ...typography.heading,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
   },
   modalRow: {
     flexDirection: "row",
