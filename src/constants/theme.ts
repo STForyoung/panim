@@ -1,10 +1,10 @@
 export const colors = {
   background: "#F5F4F0",
   surface: "#FFFFFF",
-  textPrimary: "#1A1A1A",
+  textPrimary: "#2A2421",
   textSecondary: "#6B6460",
   textHeading: "#3B2B1E",
-  accent: "#C4A882",
+  accent: "#D4B993",
   border: "#E8E4DF",
   danger: "#C0392B",
 };
@@ -14,25 +14,25 @@ export const typography = {
     fontFamily: "Lora_400Regular",
     fontSize: 17,
     lineHeight: 27,
-    color: "#1A1A1A",
+    color: "#2A2421",
   },
   scriptureItalic: {
     fontFamily: "Lora_400Regular_Italic",
     fontSize: 18,
     lineHeight: 28,
-    color: "#1A1A1A",
+    color: "#2A2421",
   },
   reflection: {
     fontFamily: "Lora_400Regular_Italic",
     fontSize: 15,
     lineHeight: 24,
-    color: "#1A1A1A",
+    color: "#2A2421",
   },
   reference: {
     fontFamily: "Lora_600SemiBold",
     fontSize: 13,
     letterSpacing: 0.5,
-    color: "#1A1A1A",
+    color: "#2A2421",
   },
   heading: {
     fontFamily: "Lora_700Bold",
@@ -49,7 +49,7 @@ export const typography = {
   body: {
     fontSize: 15,
     lineHeight: 22,
-    color: "#1A1A1A",
+    color: "#2A2421",
   },
   button: {
     fontSize: 15,
@@ -78,6 +78,6 @@ export const shadows = {
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
-    elevation: 1,
+    elevation: 2,
   },
 };

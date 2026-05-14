@@ -94,8 +94,8 @@ export default function OnboardingScreen() {
               <Text style={styles.definitionItalic}>
                 &ldquo;Face, presence, countenance.&rdquo;
               </Text>{" "}
-              — the word used throughout Scripture for the direct, personal
-              presence of God. May this app help you seek His face. Amen
+              — the word used throughout Scripture for the intimate, manifest
+              presence of God. May this app help you dwell before His face. Amen
             </Text>
             <View style={styles.verseBlock}>
               <Text style={styles.verseText}>
@@ -159,8 +159,8 @@ export default function OnboardingScreen() {
             <Text style={styles.heading}>Notifications</Text>
             <Text style={styles.body}>
               Panim sends your snippets as notifications at times you choose — a
-              gentle prompt to pause and meditate. You can set your schedule in
-              Settings at any time.
+              gentle prompt to pause and meditate. You can use the Settings tab
+              to customize your notifications.
             </Text>
           </View>
           <View style={styles.buttonStack}>
