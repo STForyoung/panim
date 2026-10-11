@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     fontFamily: "NotoRashiHebrew_400Regular",
     fontSize: 72,
     lineHeight: 86,
-    color: colors.textPrimary,
+    color: "#4a3f3a",
     textAlign: "center",
     writingDirection: "rtl",
     marginBottom: spacing.sm,
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   freqLabel: {
     ...typography.button,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: "#4a3f3a",
     marginBottom: spacing.xs,
   },
   freqDesc: {

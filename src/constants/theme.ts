@@ -1,12 +1,12 @@
 export const colors = {
   background: "#F5F4F0",
-  surface: "#FFFFFF",
+  surface: "#FDFCF9",
   textPrimary: "#2A2421",
   textSecondary: "#6B6460",
-  textHeading: "#3B2B1E",
-  accent: "#D4B993",
+  textHeading: "#2E1F0F",
+  accent: "#9B7355",
   border: "#E8E4DF",
-  danger: "#C0392B",
+  danger: "#B03A2E",
 };
 
 export const typography = {
@@ -43,7 +43,7 @@ export const typography = {
   label: {
     fontSize: 12,
     fontWeight: "500" as const,
-    color: "#6B6460",
+    color: colors.textSecondary,
     letterSpacing: 0.3,
   },
   body: {

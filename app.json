@@ -7,11 +7,6 @@
     "scheme": "panim",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F5F4F0"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.panim",
@@ -26,7 +21,22 @@
       },
       "package": "app.panim"
     },
-    "plugins": ["expo-router", "expo-sqlite", "expo-notifications"],
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-notifications",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F5F4F0",
+          "enableFullScreenImage_legacy": true
+        }
+      ],
+      "expo-status-bar"
+    ],
     "experiments": {
       "typedRoutes": true
     },
