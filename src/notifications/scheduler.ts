@@ -83,13 +83,18 @@ type Playlist = {
   key: string;
   // Every snippet id in the pool at the last sync, used to spot newly added snippets
   known: string[];
-  // Rest of the current cycle that did not fit in the scheduled queue
+  // Rest of the last pass that did not fit in the scheduled queue
   tail: string[];
+  // Number of the pass the tail belongs to
+  pass: number;
   // Most recent snippet a reminder was sent for
   lastSentId: string | null;
 };
 
-type QueueEntry = { fireAt: number; snippetId: string };
+// pass counts trips through the playlist, so the end of the current one can be found
+type QueueEntry = { fireAt: number; snippetId: string; pass: number };
+
+type Upcoming = { id: string; pass: number };
 
 async function readMeta<T>(db: SQLiteDatabase, key: string): Promise<T | null> {
   const row = await db.getFirstAsync<{ value: string }>(
@@ -241,27 +246,35 @@ async function syncReminders(db: SQLiteDatabase): Promise<void> {
       ? sent[sent.length - 1].snippetId
       : (playlist?.lastSentId ?? null);
 
+  const startPass = (ids: string[], pass: number): Upcoming[] =>
+    ids.map((id) => ({ id, pass }));
+
   // Order already decided for the reminders still to come
-  let upcoming: string[];
+  let upcoming: Upcoming[];
+  let lastPass = playlist?.pass ?? 0;
   if (!playlist || playlist.key !== key) {
-    upcoming = newCycle(orderedIds, sequential, lastSentId);
+    lastPass += 1;
+    upcoming = startPass(newCycle(orderedIds, sequential, lastSentId), lastPass);
   } else if (sequential) {
     // Carry on from the snippet after the last one sent
     const lastIndex = lastSentId ? orderedIds.indexOf(lastSentId) : -1;
-    upcoming = orderedIds.slice(lastIndex + 1);
+    upcoming = startPass(orderedIds.slice(lastIndex + 1), lastPass);
   } else {
-    upcoming = [...pending.map((entry) => entry.snippetId), ...playlist.tail].filter(
-      (id) => snippetsById.has(id),
-    );
+    upcoming = [
+      ...pending.map((entry) => ({ id: entry.snippetId, pass: entry.pass ?? 0 })),
+      ...startPass(playlist.tail, lastPass),
+    ].filter((entry) => snippetsById.has(entry.id));
     const known = new Set(playlist.known);
     const added = orderedIds.filter((id) => !known.has(id));
-    if (added.length > 0) {
+    if (added.length > 0 && upcoming.length > 0) {
       // Keep only the rest of the current pass, so later passes are rebuilt with the new snippets
-      const firstRepeat = upcoming.findIndex((id, i) => upcoming.indexOf(id) < i);
-      if (firstRepeat !== -1) upcoming = upcoming.slice(0, firstRepeat);
+      const currentPass = upcoming[0].pass;
+      upcoming = upcoming.filter((entry) => entry.pass === currentPass);
+      lastPass = currentPass;
       // New snippets join at a random place among the ones still to come in this pass
       for (const id of added) {
-        upcoming.splice(Math.floor(Math.random() * (upcoming.length + 1)), 0, id);
+        const index = Math.floor(Math.random() * (upcoming.length + 1));
+        upcoming.splice(index, 0, { id, pass: currentPass });
       }
     }
   }
@@ -278,9 +291,10 @@ async function syncReminders(db: SQLiteDatabase): Promise<void> {
   let previousId = lastSentId;
   for (const fireAt of slots) {
     if (upcoming.length === 0) {
-      upcoming = newCycle(orderedIds, sequential, previousId);
+      lastPass += 1;
+      upcoming = startPass(newCycle(orderedIds, sequential, previousId), lastPass);
     }
-    const snippetId = upcoming.shift()!;
+    const { id: snippetId, pass } = upcoming.shift()!;
     const snippet = snippetsById.get(snippetId)!;
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -291,7 +305,7 @@ async function syncReminders(db: SQLiteDatabase): Promise<void> {
       },
       trigger: dateTrigger(fireAt),
     });
-    nextQueue.push({ fireAt, snippetId });
+    nextQueue.push({ fireAt, snippetId, pass });
     previousId = snippetId;
   }
 
@@ -311,7 +325,8 @@ async function syncReminders(db: SQLiteDatabase): Promise<void> {
     signature,
     key,
     known: orderedIds,
-    tail: upcoming,
+    tail: upcoming.map((entry) => entry.id),
+    pass: lastPass,
     lastSentId,
   } satisfies Playlist);
 }

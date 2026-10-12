@@ -203,6 +203,14 @@ const UNAVAILABLE_TRANSLATIONS = new Set(["NIV"]);
 // How long to wait for the provider before treating the device as offline
 const FETCH_TIMEOUT_MS = 10000;
 
+export const TRANSLATION_NAMES: Record<string, string> = {
+  NKJV: "New King James Version",
+  ESV: "English Standard Version",
+  NASB: "New American Standard Bible",
+  NLT: "New Living Translation",
+  KJV: "King James Version",
+};
+
 export type TranslationAvailability = "offline" | "online" | "unavailable";
 
 // Whether a translation is bundled with the app, fetched on demand, or not offered by the provider

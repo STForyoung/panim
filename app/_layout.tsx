@@ -4,17 +4,11 @@ import {
   scheduleNotifications,
 } from "@/src/notifications/scheduler";
 import {
-  Lora_400Regular,
-  Lora_400Regular_Italic,
-  Lora_600SemiBold,
-  Lora_700Bold,
-  useFonts,
-} from "@expo-google-fonts/lora";
-import {
   Merriweather_300Light,
   Merriweather_300Light_Italic,
   Merriweather_600SemiBold,
   Merriweather_700Bold,
+  useFonts,
 } from "@expo-google-fonts/merriweather";
 import {
   NotoRashiHebrew_400Regular,
@@ -90,10 +84,6 @@ function AppInitializer() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Lora_400Regular,
-    Lora_400Regular_Italic,
-    Lora_600SemiBold,
-    Lora_700Bold,
     Merriweather_300Light,
     Merriweather_300Light_Italic,
     Merriweather_600SemiBold,

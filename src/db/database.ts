@@ -65,8 +65,17 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
     await db.execAsync('PRAGMA user_version = 1');
   }
 
+  // v2 — record which Bible translation each snippet's passage is in.
+  // Everything saved before this was fetched in NKJV.
+  if (currentVersion < 2) {
+    await db.execAsync(
+      "ALTER TABLE snippets ADD COLUMN translation TEXT NOT NULL DEFAULT 'NKJV'",
+    );
+    await db.execAsync('PRAGMA user_version = 2');
+  }
+
   // Future migrations go here as:
-  // if (currentVersion < 2) { ... await db.execAsync('PRAGMA user_version = 2'); }
+  // if (currentVersion < 3) { ... await db.execAsync('PRAGMA user_version = 3'); }
 
   // Seed one book topic per canonical Bible book if not already present.
   // Must run before seedDefaultContent so snippets can be assigned to book topics.

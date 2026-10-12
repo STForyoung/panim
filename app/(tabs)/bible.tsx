@@ -1,3 +1,4 @@
+import { BookPicker } from "@/src/components/BookPicker";
 import { Button } from "@/src/components/Button";
 import { IconButton } from "@/src/components/IconButton";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
@@ -26,8 +27,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -35,16 +34,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const LAST_READ_KEY = "lastRead";
 const DEFAULT_POSITION = { book: "John", chapter: 1 };
-
-const OT_BOOKS = CANONICAL_BOOKS.filter((name) => BOOK_IDS[name] <= 39);
-const NT_BOOKS = CANONICAL_BOOKS.filter((name) => BOOK_IDS[name] >= 40);
 
 type Position = { book: string; chapter: number };
 
@@ -67,7 +60,6 @@ function getAdjacentChapter(
 export default function BibleScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
   const [position, setPosition] = useState<Position | null>(null);
@@ -87,8 +79,6 @@ export default function BibleScreen() {
 
   // Book and chapter picker
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [pickerBook, setPickerBook] = useState<string | null>(null);
-  const [pickerTestament, setPickerTestament] = useState<"OT" | "NT">("NT");
 
   // Restore the last chapter that was open
   useEffect(() => {
@@ -182,8 +172,16 @@ export default function BibleScreen() {
   }
 
   function handleAddReflection() {
-    if (!position || selectionStart === null || selectionEnd === null) return;
+    if (
+      !position ||
+      !shownTranslation ||
+      selectionStart === null ||
+      selectionEnd === null
+    ) {
+      return;
+    }
     setPassageDraft({
+      translation: shownTranslation,
       book: position.book,
       chapter: position.chapter,
       verseStart: selectionStart,
@@ -194,20 +192,6 @@ export default function BibleScreen() {
     });
     clearSelection();
     router.push("/snippet/create?fromReader=1");
-  }
-
-  function openPicker() {
-    // Start on the testament of the book being read
-    if (position) {
-      setPickerTestament(BOOK_IDS[position.book] <= 39 ? "OT" : "NT");
-    }
-    setPickerBook(null);
-    setPickerVisible(true);
-  }
-
-  function closePicker() {
-    setPickerVisible(false);
-    setPickerBook(null);
   }
 
   if (!position) {
@@ -231,9 +215,6 @@ export default function BibleScreen() {
       })
     : null;
 
-  // Pickers open as sheets on iOS, which start below the status bar
-  const sheetTopInset =
-    Platform.OS === "ios" ? spacing.lg : insets.top + spacing.md;
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
@@ -241,7 +222,7 @@ export default function BibleScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.chapterButton}
-          onPress={openPicker}
+          onPress={() => setPickerVisible(true)}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`${position.book} ${position.chapter}, change chapter`}
@@ -365,124 +346,16 @@ export default function BibleScreen() {
       ) : null}
 
       {/* Book and chapter picker */}
-      <Modal
+      <BookPicker
         visible={pickerVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={closePicker}
-      >
-        <View style={styles.screen}>
-          <View style={[styles.modalHeader, { paddingTop: sheetTopInset }]}>
-            <TouchableOpacity
-              style={styles.modalCancelArea}
-              onPress={() => (pickerBook ? setPickerBook(null) : closePicker())}
-            >
-              <Text style={styles.modalCancel}>
-                {pickerBook ? "Books" : "Cancel"}
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>{pickerBook ?? "Choose a book"}</Text>
-            <View style={styles.modalCancelArea} />
-          </View>
-
-          {pickerBook ? (
-            <ScrollView contentContainerStyle={styles.chapterGrid}>
-              {Array.from(
-                { length: getChapterCount(pickerBook) },
-                (_, i) => i + 1,
-              ).map((chapter) => {
-                const current =
-                  pickerBook === position.book && chapter === position.chapter;
-                return (
-                  <TouchableOpacity
-                    key={chapter}
-                    style={[
-                      styles.chapterCell,
-                      current && styles.chapterCellCurrent,
-                    ]}
-                    onPress={() => {
-                      goTo({ book: pickerBook, chapter });
-                      closePicker();
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.chapterCellText,
-                        current && styles.chapterCellTextCurrent,
-                      ]}
-                    >
-                      {chapter}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          ) : (
-            <>
-              <View style={styles.testamentToggle}>
-                {(
-                  [
-                    { key: "OT", label: "Old Testament" },
-                    { key: "NT", label: "New Testament" },
-                  ] as const
-                ).map((testament) => {
-                  const active = pickerTestament === testament.key;
-                  return (
-                    <TouchableOpacity
-                      key={testament.key}
-                      style={[
-                        styles.testamentOption,
-                        active && styles.testamentOptionActive,
-                      ]}
-                      onPress={() => setPickerTestament(testament.key)}
-                      activeOpacity={0.7}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                    >
-                      <Text
-                        style={[
-                          styles.testamentText,
-                          active && styles.testamentTextActive,
-                        ]}
-                      >
-                        {testament.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <ScrollView
-                key={pickerTestament}
-                contentContainerStyle={styles.bookList}
-              >
-                {(pickerTestament === "OT" ? OT_BOOKS : NT_BOOKS).map((name) => (
-                  <TouchableOpacity
-                    key={name}
-                    style={styles.bookRow}
-                    onPress={() => setPickerBook(name)}
-                    activeOpacity={0.6}
-                  >
-                    <Text
-                      style={[
-                        styles.bookRowText,
-                        name === position.book && styles.bookRowTextCurrent,
-                      ]}
-                    >
-                      {name}
-                    </Text>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={layout.iconSm}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </>
-          )}
-        </View>
-      </Modal>
+        selectedBook={position.book}
+        selectedChapter={position.chapter}
+        onSelectChapter={(book, chapter) => {
+          goTo({ book, chapter });
+          setPickerVisible(false);
+        }}
+        onClose={() => setPickerVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -603,93 +476,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
 
-  // Picker
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  modalCancelArea: {
-    minWidth: layout.fab + spacing.sm,
-  },
-  modalCancel: {
-    ...typography.button,
-    color: colors.accent,
-  },
-  modalTitle: {
-    ...typography.title,
-    flex: 1,
-    textAlign: "center",
-  },
-  bookList: {
-    paddingBottom: spacing.xl,
-  },
-  testamentToggle: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.xs,
-    gap: spacing.xs,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  testamentOption: {
-    flex: 1,
-    minHeight: layout.iconButton,
-    borderRadius: radius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  testamentOptionActive: {
-    backgroundColor: colors.accent,
-  },
-  testamentText: {
-    ...typography.label,
-    color: colors.textPrimary,
-    fontWeight: "600",
-  },
-  testamentTextActive: {
-    color: colors.onAccent,
-  },
-  bookRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  bookRowText: {
-    ...typography.body,
-  },
-  bookRowTextCurrent: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-  chapterGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    padding: spacing.lg,
-  },
-  chapterCell: {
-    width: layout.controlHeight,
-    height: layout.controlHeight,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chapterCellCurrent: {
-    backgroundColor: colors.accent,
-  },
-  chapterCellText: {
-    ...typography.body,
-  },
-  chapterCellTextCurrent: {
-    color: colors.onAccent,
-    fontWeight: "600",
-  },
 });

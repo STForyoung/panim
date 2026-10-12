@@ -16,6 +16,7 @@ import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import {
   BOOK_IDS,
+  TRANSLATION_NAMES,
   type TranslationAvailability,
   getTranslationAvailability,
 } from "@/src/services/bibleService";
@@ -46,14 +47,6 @@ const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "NLT",
   "KJV",
 ];
-
-const TRANSLATION_NAMES: Record<NotificationSchedule["translation"], string> = {
-  NKJV: "New King James Version",
-  ESV: "English Standard Version",
-  NASB: "New American Standard Bible",
-  NLT: "New Living Translation",
-  KJV: "King James Version",
-};
 
 // Shown under each translation so it is clear which ones need a connection
 const AVAILABILITY_NOTES: Record<TranslationAvailability, string> = {

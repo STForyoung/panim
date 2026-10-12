@@ -12,6 +12,7 @@ import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
 import { TopicChip } from "@/src/components/TopicChip";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
+import { TRANSLATION_NAMES } from "@/src/services/bibleService";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { colors, radius, spacing, typography } from "@/src/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -121,6 +122,9 @@ export default function SnippetDetailScreen() {
         <FadeIn>
           {/* Reference */}
           <Text style={styles.reference}>{getDisplayReference(snippet)}</Text>
+          <Text style={styles.translation}>
+            {TRANSLATION_NAMES[snippet.translation] ?? snippet.translation}
+          </Text>
 
           {/* Topic chips */}
           {topics.length > 0 ? (
@@ -175,6 +179,11 @@ const styles = StyleSheet.create({
   // Reference
   reference: {
     ...typography.display,
+  },
+
+  translation: {
+    ...typography.translationTag,
+    marginTop: spacing.xs,
   },
 
   // Topic chips

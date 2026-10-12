@@ -13,9 +13,8 @@ export const colors = {
   danger: "#B03A2E",
 };
 
-// Serif family for scripture, reflections and titles.
-// To go back to Lora, swap these for the Lora_* names (still loaded in app/_layout.tsx)
-// and restore the larger sizes below.
+// Merriweather, the app's serif: Light for scripture and reflections,
+// SemiBold and Bold for references and titles. Loaded in app/_layout.tsx.
 export const fonts = {
   serif: "Merriweather_300Light",
   serifItalic: "Merriweather_300Light_Italic",
@@ -109,6 +108,14 @@ export const typography = {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "500" as const,
+    color: colors.textSecondary,
+  },
+  // Bible version beside a reference: small, spaced and quiet
+  translationTag: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "500" as const,
+    letterSpacing: 0.8,
     color: colors.textSecondary,
   },
   body: {

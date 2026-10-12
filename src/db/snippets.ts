@@ -17,6 +17,7 @@ export type Snippet = {
   passage: PassageVerse[];
   reflection: string;
   prayer: string | null;
+  translation: string; // Bible translation the passage text is in, e.g. "NKJV"
   createdAt: number;
   updatedAt: number;
   isFavourite: boolean; // SQLite stores as 0/1 — always use !!snippet.isFavourite in UI
@@ -53,8 +54,8 @@ export async function createSnippet(
   const now = Date.now();
   await db.runAsync(
     `INSERT INTO snippets
-      (id, book, chapterStart, verseStart, chapterEnd, verseEnd, passage, reflection, createdAt, updatedAt, isFavourite)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      (id, book, chapterStart, verseStart, chapterEnd, verseEnd, passage, reflection, prayer, translation, createdAt, updatedAt, isFavourite)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     id,
     snippet.book,
     snippet.chapterStart,
@@ -63,6 +64,8 @@ export async function createSnippet(
     snippet.verseEnd ?? null,
     JSON.stringify(snippet.passage),
     snippet.reflection,
+    snippet.prayer ?? null,
+    snippet.translation,
     now,
     now
   );
