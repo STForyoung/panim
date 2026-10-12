@@ -1,22 +1,12 @@
-import {
-  colors,
-  radius,
-  shadows,
-  spacing,
-  typography,
-} from "@/src/constants/theme";
-import { getSnippetsForTopic } from "@/src/db/snippetTopics";
+import { ListRow } from "@/src/components/ListRow";
+import { ScreenHeader } from "@/src/components/ScreenHeader";
+import { LoadingState } from "@/src/components/StateViews";
+import { colors, spacing, typography } from "@/src/constants/theme";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TopicWithCount = Topic & { snippetCount: number };
@@ -31,12 +21,13 @@ export default function BookTopicsScreen() {
   const loadTopics = useCallback(async () => {
     const all = await getAllTopics(db);
     const book = all.filter((t) => t.type === "book");
-    const withCounts = await Promise.all(
-      book.map(async (t) => {
-        const snippets = await getSnippetsForTopic(db, t.id);
-        return { ...t, snippetCount: snippets.length };
-      }),
+    const counts = await db.getAllAsync<{ topicId: string; count: number }>(
+      `SELECT topicId, COUNT(*) as count FROM snippet_topics
+       WHERE topicId IN (SELECT id FROM topics WHERE type = 'book')
+       GROUP BY topicId`
     );
+    const countMap = Object.fromEntries(counts.map((r) => [r.topicId, r.count]));
+    const withCounts = book.map((t) => ({ ...t, snippetCount: countMap[t.id] ?? 0 }));
     setTopics(withCounts);
     setLoading(false);
   }, [db]);
@@ -50,9 +41,7 @@ export default function BookTopicsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centered}>
-          <Text style={styles.mutedText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -65,28 +54,20 @@ export default function BookTopicsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Text style={styles.backText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.title}>Book Topics</Text>
+            <ScreenHeader onBack={() => router.back()} />
+            <Text style={styles.title}>Bible Books</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
+          <ListRow
+            title={item.name}
+            subtitle={
+              item.snippetCount === 1
+                ? "1 snippet"
+                : `${item.snippetCount} snippets`
+            }
             onPress={() => router.push(`/topic/${item.id}`)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardCount}>
-                {item.snippetCount === 1
-                  ? "1 snippet"
-                  : `${item.snippetCount} snippets`}
-              </Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          />
         )}
       />
     </SafeAreaView>
@@ -99,49 +80,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
-  },
-  centered: {
-    alignItems: "center",
-    marginTop: spacing.xl,
-  },
-  mutedText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
   },
   title: {
-    ...typography.heading,
-    marginBottom: spacing.lg,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    ...shadows.card,
-  },
-  cardLeft: {
-    flex: 1,
-  },
-  cardTitle: {
-    ...typography.body,
-    fontWeight: "600",
-  },
-  cardCount: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  chevron: {
-    fontSize: 20,
-    color: colors.textSecondary,
-  },
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    ...typography.display,
+    marginBottom: spacing.md,
   },
 });

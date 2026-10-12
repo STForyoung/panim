@@ -1,5 +1,6 @@
+import { colors, layout, radius, spacing, typography } from '@/src/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, radius, spacing, typography } from '@/src/constants/theme';
 
 type Props = {
   name: string;
@@ -11,8 +12,13 @@ export function TopicChip({ name, onRemove }: Props) {
     <View style={styles.chip}>
       <Text style={styles.name}>{name}</Text>
       {onRemove && (
-        <TouchableOpacity onPress={onRemove} hitSlop={8}>
-          <Text style={styles.remove}>×</Text>
+        <TouchableOpacity
+          onPress={onRemove}
+          hitSlop={spacing.sm}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${name}`}
+        >
+          <Ionicons name="close" size={layout.iconSm - spacing.xs} color={colors.accent} />
         </TouchableOpacity>
       )}
     </View>
@@ -23,20 +29,15 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.accent,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md - spacing.xs,
+    paddingVertical: spacing.xs + spacing.xs / 2,
     gap: spacing.xs,
     alignSelf: 'flex-start',
   },
   name: {
     ...typography.label,
-    color: colors.surface,
-  },
-  remove: {
-    fontSize: 14,
-    color: colors.surface,
-    lineHeight: 16,
+    color: colors.accent,
   },
 });

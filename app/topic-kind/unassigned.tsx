@@ -1,17 +1,13 @@
+import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { SnippetCard } from "@/src/components/SnippetCard";
+import { EmptyState, LoadingState } from "@/src/components/StateViews";
 import { colors, spacing, typography } from "@/src/constants/theme";
 import { type Snippet, getAllSnippets } from "@/src/db/snippets";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function UnassignedSnippetsScreen() {
@@ -39,9 +35,7 @@ export default function UnassignedSnippetsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centered}>
-          <Text style={styles.mutedText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -54,24 +48,22 @@ export default function UnassignedSnippetsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Text style={styles.backText}>←</Text>
-            </TouchableOpacity>
+            <ScreenHeader onBack={() => router.back()} />
             <Text style={styles.title}>Unassigned Snippets</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.cardWrapper}>
-            <SnippetCard
-              snippet={item}
-              onPress={() => router.push(`/snippet/${item.id}`)}
-            />
-          </View>
+          <SnippetCard
+            snippet={item}
+            onPress={() => router.push(`/snippet/${item.id}`)}
+          />
         )}
         ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.mutedText}>No unassigned snippets.</Text>
-          </View>
+          <EmptyState
+            icon="file-tray-outline"
+            title="No unassigned snippets"
+            hint="Every snippet belongs to one of your topics."
+          />
         }
       />
     </SafeAreaView>
@@ -84,26 +76,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
-  },
-  centered: {
-    alignItems: "center",
-    marginTop: spacing.xl,
-  },
-  mutedText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
   },
   title: {
-    ...typography.heading,
-    marginBottom: spacing.lg,
-  },
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  cardWrapper: {
+    ...typography.display,
     marginBottom: spacing.sm,
   },
 });

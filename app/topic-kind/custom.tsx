@@ -1,17 +1,22 @@
+import { Button } from "@/src/components/Button";
+import { IconButton } from "@/src/components/IconButton";
+import { ListRow } from "@/src/components/ListRow";
+import { ScreenHeader } from "@/src/components/ScreenHeader";
+import { EmptyState, LoadingState } from "@/src/components/StateViews";
 import {
   colors,
+  layout,
   radius,
-  shadows,
   spacing,
   typography,
 } from "@/src/constants/theme";
-import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import {
   type Topic,
   createTopic,
   deleteTopic,
   getAllTopics,
 } from "@/src/db/topics";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
@@ -47,12 +52,13 @@ export default function CustomTopicsScreen() {
   const loadTopics = useCallback(async () => {
     const all = await getAllTopics(db);
     const custom = all.filter((t) => t.type === "custom");
-    const withCounts = await Promise.all(
-      custom.map(async (t) => {
-        const snippets = await getSnippetsForTopic(db, t.id);
-        return { ...t, snippetCount: snippets.length };
-      }),
+    const counts = await db.getAllAsync<{ topicId: string; count: number }>(
+      `SELECT topicId, COUNT(*) as count FROM snippet_topics
+       WHERE topicId IN (SELECT id FROM topics WHERE type = 'custom')
+       GROUP BY topicId`
     );
+    const countMap = Object.fromEntries(counts.map((r) => [r.topicId, r.count]));
+    const withCounts = custom.map((t) => ({ ...t, snippetCount: countMap[t.id] ?? 0 }));
     setTopics(withCounts);
     setLoading(false);
   }, [db]);
@@ -104,6 +110,7 @@ export default function CustomTopicsScreen() {
         style: "destructive",
         onPress: async () => {
           await deleteTopic(db, topic.id);
+          await scheduleNotifications(db).catch(() => {});
           await loadTopics();
         },
       },
@@ -113,9 +120,7 @@ export default function CustomTopicsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centered}>
-          <Text style={styles.mutedText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -128,41 +133,38 @@ export default function CustomTopicsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Text style={styles.backText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.title}>Custom Topics</Text>
-            <TouchableOpacity
-              style={styles.newButton}
-              onPress={openModal}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.newButtonText}>+ New Topic</Text>
-            </TouchableOpacity>
+            <ScreenHeader onBack={() => router.back()}>
+              <IconButton
+                icon="add"
+                onPress={openModal}
+                accessibilityLabel="New topic"
+                color={colors.accent}
+              />
+            </ScreenHeader>
+            <Text style={styles.title}>My Topics</Text>
+            {topics.length > 0 ? (
+              <Text style={styles.hint}>Press and hold a topic to delete it.</Text>
+            ) : null}
           </View>
         }
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
+          <ListRow
+            title={item.name}
+            subtitle={
+              item.snippetCount === 1
+                ? "1 snippet"
+                : `${item.snippetCount} snippets`
+            }
             onPress={() => router.push(`/topic/${item.id}`)}
             onLongPress={() => handleLongPress(item)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardCount}>
-                {item.snippetCount === 1
-                  ? "1 snippet"
-                  : `${item.snippetCount} snippets`}
-              </Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          />
         )}
         ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.mutedText}>No custom topics yet.</Text>
-          </View>
+          <EmptyState
+            icon="pricetags-outline"
+            title="No topics yet"
+            hint="Tap + to create your first topic."
+          />
         }
       />
 
@@ -178,12 +180,12 @@ export default function CustomTopicsScreen() {
               style={styles.modalCancelArea}
               onPress={closeModal}
               disabled={isSaving}
-              hitSlop={8}
+              hitSlop={spacing.sm}
             >
               <Text style={styles.modalCancel}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>New Topic</Text>
-            <View style={styles.modalHeaderSpacer} />
+            <View style={styles.modalCancelArea} />
           </View>
 
           <View style={styles.modalBody}>
@@ -196,20 +198,12 @@ export default function CustomTopicsScreen() {
               autoFocus
             />
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            <TouchableOpacity
-              style={[
-                styles.newButton,
-                styles.modalSaveButton,
-                isSaving && styles.buttonDisabled,
-              ]}
+            <Button
+              label={isSaving ? "Saving…" : "Save"}
               onPress={handleSave}
               disabled={isSaving}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.newButtonText}>
-                {isSaving ? "Saving…" : "Save"}
-              </Text>
-            </TouchableOpacity>
+              style={styles.modalSaveButton}
+            />
           </View>
         </View>
       </Modal>
@@ -223,83 +217,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
-  },
-  centered: {
-    alignItems: "center",
-    marginTop: spacing.xl,
-  },
-  mutedText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
   },
   title: {
-    ...typography.heading,
-    marginBottom: spacing.lg,
+    ...typography.display,
   },
-  newButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginBottom: spacing.sm,
-  },
-  newButtonText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    ...shadows.card,
-  },
-  cardLeft: {
-    flex: 1,
-  },
-  cardTitle: {
-    ...typography.body,
-    fontWeight: "600",
-  },
-  cardCount: {
+  hint: {
     ...typography.label,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
-  },
-  chevron: {
-    fontSize: 20,
-    color: colors.textSecondary,
+    marginBottom: spacing.md,
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: spacing.md,
   },
   modalCancelArea: {
-    minWidth: 60,
+    minWidth: layout.fab + spacing.sm,
   },
   modalCancel: {
     ...typography.button,
     color: colors.accent,
   },
   modalTitle: {
-    ...typography.heading,
+    ...typography.title,
     flex: 1,
     textAlign: "center",
-    fontSize: 17,
-  },
-  modalHeaderSpacer: {
-    minWidth: 60,
   },
   modalBody: {
     padding: spacing.lg,
@@ -309,18 +256,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     ...typography.body,
+    lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
     borderWidth: 1,
     borderColor: colors.border,
-    marginTop: spacing.lg,
   },
   modalSaveButton: {
     marginTop: spacing.lg,
-    marginBottom: 0,
-  },
-  backText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
   },
   errorText: {
     ...typography.label,

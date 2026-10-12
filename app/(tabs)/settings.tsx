@@ -1,7 +1,9 @@
+import { Chevron, SelectedCheck } from "@/src/components/Icons";
+import { LoadingState } from "@/src/components/StateViews";
 import {
   colors,
+  layout,
   radius,
-  shadows,
   spacing,
   typography,
 } from "@/src/constants/theme";
@@ -12,16 +14,24 @@ import {
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
+import {
+  BOOK_IDS,
+  type TranslationAvailability,
+  getTranslationAvailability,
+} from "@/src/services/bibleService";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
 import {
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -31,7 +41,6 @@ import {
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "NKJV",
-  "NIV",
   "ESV",
   "NASB",
   "NLT",
@@ -40,30 +49,119 @@ const TRANSLATIONS: NotificationSchedule["translation"][] = [
 
 const TRANSLATION_NAMES: Record<NotificationSchedule["translation"], string> = {
   NKJV: "New King James Version",
-  NIV: "New International Version",
   ESV: "English Standard Version",
   NASB: "New American Standard Bible",
   NLT: "New Living Translation",
   KJV: "King James Version",
 };
 
+// Shown under each translation so it is clear which ones need a connection
+const AVAILABILITY_NOTES: Record<TranslationAvailability, string> = {
+  offline: "Available offline",
+  online: "Online only",
+  unavailable: "Not currently available",
+};
+
+// 24h "HH:MM" strings
+const PRESETS: {
+  label: string;
+  short: string;
+  sublabel: string;
+  times: string[];
+}[] = [
+  { label: "1× Daily",
+    short: "1×", sublabel: "12:00 PM", times: ["12:00"] },
+  { label: "2× Daily",
+    short: "2×", sublabel: "9 AM · 6 PM", times: ["09:00", "18:00"] },
+  {
+    label: "3× Daily",
+    short: "3×",
+    sublabel: "9 AM · 12 PM · 6 PM",
+    times: ["09:00", "12:00", "18:00"],
+  },
+  {
+    label: "4× Daily",
+    short: "4×",
+    sublabel: "9 AM · 12 PM · 3 PM · 6 PM",
+    times: ["09:00", "12:00", "15:00", "18:00"],
+  },
+  {
+    label: "5× Daily",
+    short: "5×",
+    sublabel: "9 AM · 12 PM · 3 PM · 6 PM · 9 PM",
+    times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+  },
+  {
+    label: "Hourly",
+    short: "Hourly",
+    sublabel: "Every hour from 9 AM to 6 PM",
+    times: [
+      "09:00",
+      "10:00",
+      "11:00",
+      "12:00",
+      "13:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00",
+      "18:00",
+    ],
+  },
+];
+
+// Which snippets reminders are drawn from
+const MODE_OPTIONS = {
+  random: "All snippets",
+  topic: "One topic",
+  favourites: "Favourites only",
+};
+
+// The order reminders work through the snippets
+const ORDER_OPTIONS = {
+  random: "Shuffled",
+  sequential: "In order (oldest first)",
+};
+
+// What the notification text is taken from
+const CONTENT_OPTIONS = {
+  passage: "Passage",
+  reflection: "Reflection",
+  prayer: "Prayer",
+};
+
+function to12h(time24: string): string {
+  const [hStr, mStr] = time24.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  const suffix = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
 export default function SettingsScreen() {
   const db = useSQLiteContext();
 
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState<NotificationSchedule | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
 
   // Pending schedule state — not saved until Apply is tapped
   const [pendingTimes, setPendingTimes] = useState<string[]>([]);
-  const [pendingMode, setPendingMode] = useState<"random" | "topic" | "favourites">("random");
+  const [pendingMode, setPendingMode] = useState<
+    "random" | "topic" | "favourites"
+  >("random");
   const [pendingActiveTopic, setPendingActiveTopic] = useState<string | null>(
     null,
   );
   const [pendingSelectionOrder, setPendingSelectionOrder] = useState<
     "random" | "sequential"
   >("random");
+  const [pendingNotificationContent, setPendingNotificationContent] = useState<
+    "passage" | "reflection" | "prayer"
+  >("passage");
 
   // Apply state
   const [isApplying, setIsApplying] = useState(false);
@@ -72,23 +170,23 @@ export default function SettingsScreen() {
 
   // Add time modal
   const [addTimeVisible, setAddTimeVisible] = useState(false);
-  const [hourInput, setHourInput] = useState("");
-  const [minuteInput, setMinuteInput] = useState("");
+  const [pickerHour, setPickerHour] = useState("9");
+  const [pickerMinute, setPickerMinute] = useState("00");
+  const [pickerAmPm, setPickerAmPm] = useState<"AM" | "PM">("AM");
   const [timeError, setTimeError] = useState<string | null>(null);
+
+  // Translation picker modal
+  const [translationPickerVisible, setTranslationPickerVisible] =
+    useState(false);
 
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
   const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(
     null,
   );
-
-  // Quick Setup
-  const [qsStartHour, setQsStartHour] = useState("8");
-  const [qsStartMinute, setQsStartMinute] = useState("0");
-  const [qsEndHour, setQsEndHour] = useState("22");
-  const [qsEndMinute, setQsEndMinute] = useState("0");
-  const [qsInterval, setQsInterval] = useState<1 | 2 | 3 | 4 | null>(null);
-  const [qsError, setQsError] = useState<string | null>(null);
+  const [bookTopicSection, setBookTopicSection] = useState<"OT" | "NT" | null>(
+    null,
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -106,6 +204,7 @@ export default function SettingsScreen() {
       setPendingMode(s.mode);
       setPendingActiveTopic(s.activeTopic);
       setPendingSelectionOrder(s.selectionOrder);
+      setPendingNotificationContent(s.notificationContent);
       setTopics(t);
       setLoading(false);
     }
@@ -126,31 +225,45 @@ export default function SettingsScreen() {
     setApplyMessage(null);
   }
 
-  function handleAddTime() {
-    const hour = parseInt(hourInput, 10);
-    const minute = parseInt(minuteInput, 10);
+  function handleApplyPreset(times: string[]) {
+    setPendingTimes(times);
+    setApplyMessage(null);
+  }
 
-    if (isNaN(hour) || hour < 0 || hour > 23) {
-      setTimeError("Hour must be between 0 and 23.");
+  function handleConfirmAddTime() {
+    const h = parseInt(pickerHour, 10);
+    const m = parseInt(pickerMinute, 10);
+
+    if (isNaN(h) || h < 1 || h > 12) {
+      setTimeError("Hour must be between 1 and 12.");
       return;
     }
-    if (isNaN(minute) || minute < 0 || minute > 59) {
+    if (isNaN(m) || m < 0 || m > 59) {
       setTimeError("Minute must be between 0 and 59.");
       return;
     }
 
-    const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    let h24 = h % 12;
+    if (pickerAmPm === "PM") h24 += 12;
+    const time = `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+
     if (pendingTimes.includes(time)) {
-      setTimeError("That time is already added.");
+      setTimeError("That time is already in your schedule.");
       return;
     }
 
     setPendingTimes((prev) => [...prev, time].sort());
-    setHourInput("");
-    setMinuteInput("");
     setTimeError(null);
     setAddTimeVisible(false);
     setApplyMessage(null);
+  }
+
+  function openAddTime() {
+    setPickerHour("");
+    setPickerMinute("");
+    setPickerAmPm("AM");
+    setTimeError(null);
+    setAddTimeVisible(true);
   }
 
   function handleModeChange(mode: "random" | "topic" | "favourites") {
@@ -162,77 +275,21 @@ export default function SettingsScreen() {
   function handleTopicSelect(topicId: string) {
     setPendingActiveTopic(topicId);
     setTopicPickerType(null);
+    setBookTopicSection(null);
     setTopicPickerVisible(false);
     setApplyMessage(null);
   }
 
   function openTopicPicker() {
-    const activeTopicType = pendingActiveTopic
-      ? (topics.find((t) => t.id === pendingActiveTopic)?.type ?? null)
-      : null;
-    setTopicPickerType(activeTopicType);
+    setTopicPickerType(null);
+    setBookTopicSection(null);
     setTopicPickerVisible(true);
   }
 
   function closeTopicPicker() {
     setTopicPickerVisible(false);
     setTopicPickerType(null);
-  }
-
-  function handleGenerateTimes() {
-    const startH = parseInt(qsStartHour, 10);
-    const startM = parseInt(qsStartMinute, 10);
-    const endH = parseInt(qsEndHour, 10);
-    const endM = parseInt(qsEndMinute, 10);
-
-    if (isNaN(startH) || startH < 0 || startH > 23) {
-      setQsError("Start hour must be between 0 and 23.");
-      return;
-    }
-    if (isNaN(startM) || startM < 0 || startM > 59) {
-      setQsError("Start minute must be between 0 and 59.");
-      return;
-    }
-    if (isNaN(endH) || endH < 0 || endH > 23) {
-      setQsError("End hour must be between 0 and 23.");
-      return;
-    }
-    if (isNaN(endM) || endM < 0 || endM > 59) {
-      setQsError("End minute must be between 0 and 59.");
-      return;
-    }
-    if (startH * 60 + startM >= endH * 60 + endM) {
-      setQsError("End time must be after start time.");
-      return;
-    }
-    if (!qsInterval) {
-      setQsError("Select an interval.");
-      return;
-    }
-
-    setQsError(null);
-
-    const generated: string[] = [];
-    let currentMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
-
-    while (currentMinutes <= endMinutes) {
-      const h = Math.floor(currentMinutes / 60);
-      const m = currentMinutes % 60;
-      generated.push(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-      );
-      currentMinutes += qsInterval * 60;
-    }
-
-    const merged = Array.from(new Set([...pendingTimes, ...generated])).sort();
-    setPendingTimes(merged);
-    setApplyMessage(null);
-  }
-
-  function handleSelectionOrderChange(selectionOrder: "random" | "sequential") {
-    setPendingSelectionOrder(selectionOrder);
-    setApplyMessage(null);
+    setBookTopicSection(null);
   }
 
   async function handleApply() {
@@ -245,6 +302,7 @@ export default function SettingsScreen() {
         mode: pendingMode,
         activeTopic: pendingActiveTopic,
         selectionOrder: pendingSelectionOrder,
+        notificationContent: pendingNotificationContent,
       });
       setSchedule((prev) =>
         prev
@@ -254,6 +312,7 @@ export default function SettingsScreen() {
               mode: pendingMode,
               activeTopic: pendingActiveTopic,
               selectionOrder: pendingSelectionOrder,
+              notificationContent: pendingNotificationContent,
             }
           : prev,
       );
@@ -275,6 +334,7 @@ export default function SettingsScreen() {
     setPendingMode(schedule.mode);
     setPendingActiveTopic(schedule.activeTopic ?? null);
     setPendingSelectionOrder(schedule.selectionOrder);
+    setPendingNotificationContent(schedule.notificationContent);
   }
 
   const hasUnsavedChanges =
@@ -282,26 +342,41 @@ export default function SettingsScreen() {
     (JSON.stringify(pendingTimes) !== JSON.stringify(schedule.times) ||
       pendingMode !== schedule.mode ||
       pendingActiveTopic !== schedule.activeTopic ||
-      pendingSelectionOrder !== schedule.selectionOrder);
+      pendingSelectionOrder !== schedule.selectionOrder ||
+      pendingNotificationContent !== schedule.notificationContent);
 
   if (loading || !schedule) {
     return (
       <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
-        <View style={styles.centeredState}>
-          <Text style={styles.mutedText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
+
+  // Scheduled times sit in a three-column grid
+  const timeTileWidth = Math.floor(
+    (windowWidth - spacing.lg * 2 - spacing.sm * 2) / 3,
+  );
+
+  // Pickers open as sheets on iOS, which start below the status bar
+  const sheetTopInset =
+    Platform.OS === "ios" ? spacing.lg : insets.top + spacing.md;
 
   const activeTopicName = pendingActiveTopic
     ? (topics.find((t) => t.id === pendingActiveTopic)?.name ?? "Unknown topic")
     : null;
   const customTopics = topics.filter((topic) => topic.type === "custom");
   const bookTopics = topics.filter((topic) => topic.type === "book");
-  const topicsForSelectedType = topicPickerType
-    ? topics.filter((topic) => topic.type === topicPickerType)
-    : [];
+  const otBookTopics = bookTopics.filter((t) => (BOOK_IDS[t.name] ?? 0) <= 39);
+  const ntBookTopics = bookTopics.filter((t) => (BOOK_IDS[t.name] ?? 0) >= 40);
+  const topicsForSelectedType =
+    topicPickerType === "custom"
+      ? customTopics
+      : topicPickerType === "book" && bookTopicSection === "OT"
+        ? otBookTopics
+        : topicPickerType === "book" && bookTopicSection === "NT"
+          ? ntBookTopics
+          : [];
 
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
@@ -313,184 +388,278 @@ export default function SettingsScreen() {
       >
         <Text style={styles.title}>Settings</Text>
 
-        {/* Translation */}
-        <Text style={styles.sectionHeader}>TRANSLATION</Text>
-        <Text style={styles.sectionNote}>Applies to new snippets only</Text>
+        {/* Bible Translation */}
+        <Text style={styles.categoryHeader}>Bible Translation</Text>
+        <Text style={styles.categoryNote}>Applies to new snippets only</Text>
+
         <View style={styles.sectionCard}>
-          {TRANSLATIONS.map((t, i) => {
-            const selected = schedule.translation === t;
+          <TouchableOpacity
+            style={[styles.row, styles.rowSpaceBetween, styles.rowLast]}
+            onPress={() => setTranslationPickerVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View>
+              <Text style={styles.rowLabel}>
+                {TRANSLATION_NAMES[schedule.translation]}
+              </Text>
+              <Text style={styles.topicTypeTag}>
+                {
+                  AVAILABILITY_NOTES[
+                    getTranslationAvailability(schedule.translation)
+                  ]
+                }
+              </Text>
+            </View>
+            <Chevron />
+          </TouchableOpacity>
+        </View>
+
+        {/* Reminders */}
+        <Text style={styles.categoryHeader}>Reminders</Text>
+
+        {/* Presets */}
+        <Text style={styles.sectionHeader}>Times per day</Text>
+        <View style={styles.segmented}>
+          {PRESETS.map((preset) => {
+            const isActive =
+              JSON.stringify(pendingTimes) === JSON.stringify(preset.times);
             return (
               <TouchableOpacity
-                key={t}
-                style={[
-                  styles.row,
-                  selected && styles.rowSelected,
-                  i === TRANSLATIONS.length - 1 && styles.rowLast,
-                ]}
-                onPress={() => handleTranslationChange(t)}
+                key={preset.label}
+                style={[styles.segment, isActive && styles.segmentActive]}
+                onPress={() => handleApplyPreset(preset.times)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={preset.label}
+                accessibilityState={{ selected: isActive }}
               >
-                <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
-                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                <Text
+                  style={[
+                    styles.segmentText,
+                    isActive && styles.segmentTextActive,
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {preset.short}
+                </Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Quick Setup */}
-        <Text style={styles.sectionHeader}>QUICK SETUP</Text>
-        <View style={styles.sectionCard}>
-          {/* Start time */}
-          <View style={[styles.row, styles.rowSpaceBetween]}>
-            <Text style={styles.rowLabel}>Start time</Text>
-            <View style={styles.timeInputs}>
-              <TextInput
-                style={styles.timeInput}
-                value={qsStartHour}
-                onChangeText={setQsStartHour}
-                keyboardType="number-pad"
-                placeholder="8"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
-              <Text style={styles.timeSeparator}>:</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={qsStartMinute}
-                onChangeText={setQsStartMinute}
-                keyboardType="number-pad"
-                placeholder="00"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
+        {/* Scheduled Times */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderInline}>Your times</Text>
+          {pendingTimes.length > 0 ? (
+            <TouchableOpacity
+              onPress={() => setPendingTimes([])}
+              hitSlop={spacing.sm}
+            >
+              <Text style={styles.clearButtonText}>Clear</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        {pendingTimes.length === 0 ? (
+          <Text style={styles.timesEmpty}>
+            Reminders are off. Pick how many times a day, or add a time.
+          </Text>
+        ) : null}
+        <View style={styles.timeGrid}>
+          {pendingTimes.map((time) => (
+            <View key={time} style={[styles.timeTile, { width: timeTileWidth }]}>
+              <Text
+                style={styles.timeTileText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {to12h(time)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleRemoveTime(time)}
+                hitSlop={spacing.sm}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${to12h(time)}`}
+              >
+                <Ionicons
+                  name="close"
+                  size={layout.iconSm - spacing.xs}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
             </View>
-          </View>
-
-          {/* End time */}
-          <View style={[styles.row, styles.rowSpaceBetween]}>
-            <Text style={styles.rowLabel}>End time</Text>
-            <View style={styles.timeInputs}>
-              <TextInput
-                style={styles.timeInput}
-                value={qsEndHour}
-                onChangeText={setQsEndHour}
-                keyboardType="number-pad"
-                placeholder="22"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
-              <Text style={styles.timeSeparator}>:</Text>
-              <TextInput
-                style={styles.timeInput}
-                value={qsEndMinute}
-                onChangeText={setQsEndMinute}
-                keyboardType="number-pad"
-                placeholder="00"
-                placeholderTextColor={colors.textSecondary + "80"}
-                textAlign="center"
-              />
-            </View>
-          </View>
-
-          {/* Interval */}
-          <View style={[styles.row, styles.rowLast, styles.rowSpaceBetween]}>
-            <Text style={styles.rowLabel}>Interval</Text>
-            <View style={styles.intervalButtons}>
-              {([1, 2, 3, 4] as const).map((h) => (
-                <TouchableOpacity
-                  key={h}
-                  style={[
-                    styles.intervalButton,
-                    qsInterval === h && styles.intervalButtonActive,
-                  ]}
-                  onPress={() => setQsInterval(h)}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.intervalButtonText,
-                      qsInterval === h && styles.intervalButtonTextActive,
-                    ]}
-                  >
-                    {h}h
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.timeTile,
+              styles.addTimeTile,
+              { width: timeTileWidth },
+            ]}
+            onPress={openAddTime}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add" size={layout.iconSm} color={colors.accent} />
+            <Text style={styles.addTimeText}>Add</Text>
+          </TouchableOpacity>
         </View>
 
-        {qsError ? <Text style={styles.errorText}>{qsError}</Text> : null}
-
-        <TouchableOpacity
-          style={styles.generateButton}
-          onPress={handleGenerateTimes}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.primaryButtonText}>Generate Times</Text>
-        </TouchableOpacity>
-        <Text style={styles.generateNote}>
-          Generated times are added to your existing schedule
-        </Text>
-
-        {/* Scheduled Times */}
-        <Text style={styles.sectionHeader}>SCHEDULED TIMES</Text>
+        {/* Mode */}
+        <Text style={styles.sectionHeader}>Which snippets to send</Text>
         <View style={styles.sectionCard}>
-          {pendingTimes.length === 0 ? (
-            <View style={[styles.row, styles.rowLast]}>
-              <Text style={styles.mutedText}>No times set.</Text>
-            </View>
-          ) : (
-            pendingTimes.map((time, i) => (
-              <View
-                key={time}
+          {(["random", "topic", "favourites"] as const).map((mode) => {
+            const selected = pendingMode === mode;
+            const label = MODE_OPTIONS[mode];
+            return (
+              <View key={mode}>
+                <TouchableOpacity
+                  style={[
+                    styles.row,
+                    styles.rowSpaceBetween,
+                    mode === "favourites" && styles.rowLast,
+                  ]}
+                  onPress={() => handleModeChange(mode)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.rowLabel}>{label}</Text>
+                  {selected ? <SelectedCheck /> : null}
+                </TouchableOpacity>
+                {mode === "topic" && pendingMode === "topic" ? (
+                  <TouchableOpacity
+                    style={[styles.row, styles.topicPickerRow]}
+                    onPress={openTopicPicker}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.topicPickerText}>
+                      {activeTopicName ?? "Choose a topic…"}
+                    </Text>
+                    <Chevron />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Content */}
+        <Text style={styles.sectionHeader}>What each reminder shows</Text>
+        <View style={styles.sectionCard}>
+          {(["passage", "reflection", "prayer"] as const).map((content) => {
+            const selected = pendingNotificationContent === content;
+            const label = CONTENT_OPTIONS[content];
+            return (
+              <TouchableOpacity
+                key={content}
                 style={[
                   styles.row,
                   styles.rowSpaceBetween,
-                  i === pendingTimes.length - 1 && styles.rowLast,
+                  content === "prayer" && styles.rowLast,
                 ]}
+                onPress={() => {
+                  setPendingNotificationContent(content);
+                  setApplyMessage(null);
+                }}
+                activeOpacity={0.7}
               >
-                <Text style={styles.rowLabel}>{time}</Text>
-                <TouchableOpacity
-                  onPress={() => handleRemoveTime(time)}
-                  hitSlop={8}
-                >
-                  <Text style={styles.removeButton}>×</Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
+                <Text style={styles.rowLabel}>{label}</Text>
+                {selected ? <SelectedCheck /> : null}
+              </TouchableOpacity>
+            );
+          })}
         </View>
-        <TouchableOpacity
-          style={styles.outlineButton}
-          onPress={() => {
-            setHourInput("");
-            setMinuteInput("");
-            setTimeError(null);
-            setAddTimeVisible(true);
-          }}
-          activeOpacity={0.8}
+
+        {/* Order */}
+        <Text style={styles.sectionHeader}>Order</Text>
+        <View style={styles.sectionCard}>
+          {(["random", "sequential"] as const).map((order) => {
+            const selected = pendingSelectionOrder === order;
+            return (
+              <TouchableOpacity
+                key={order}
+                style={[
+                  styles.row,
+                  styles.rowSpaceBetween,
+                  order === "sequential" && styles.rowLast,
+                ]}
+                onPress={() => {
+                  setPendingSelectionOrder(order);
+                  setApplyMessage(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.rowLabel}>{ORDER_OPTIONS[order]}</Text>
+                {selected ? <SelectedCheck /> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
+
+        {/* Translation Picker Modal */}
+        <Modal visible={translationPickerVisible} animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setTranslationPickerVisible(false)}
         >
-          <Text style={styles.outlineButtonText}>+ Add Time</Text>
-        </TouchableOpacity>
-
-        {pendingTimes.length > 0 ? (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={() => setPendingTimes([])}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.clearButtonText}>Clear All</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {/* Add Time Modal */}
-        <Modal visible={addTimeVisible} animationType="slide">
           <View style={styles.screen}>
             <View
               style={[
                 styles.modalHeader,
-                { paddingTop: insets.top + spacing.md },
+                { paddingTop: sheetTopInset },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={() => setTranslationPickerVisible(false)}
+              >
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Translation</Text>
+              <View style={styles.modalCancelArea} />
+            </View>
+            <ScrollView>
+              {TRANSLATIONS.map((t, i) => {
+                const selected = schedule.translation === t;
+                const unavailable =
+                  getTranslationAvailability(t) === "unavailable";
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[
+                      styles.modalRow,
+                      i === TRANSLATIONS.length - 1 && styles.rowLast,
+                      unavailable && styles.rowUnavailable,
+                    ]}
+                    onPress={() => {
+                      handleTranslationChange(t);
+                      setTranslationPickerVisible(false);
+                    }}
+                    disabled={unavailable}
+                    activeOpacity={0.7}
+                  >
+                    <View>
+                      <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {AVAILABILITY_NOTES[getTranslationAvailability(t)]}
+                      </Text>
+                    </View>
+                    {selected ? <SelectedCheck /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Add Time Modal */}
+        <Modal visible={addTimeVisible} animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setAddTimeVisible(false)}
+        >
+          <View style={styles.screen}>
+            <View
+              style={[
+                styles.modalHeader,
+                { paddingTop: sheetTopInset },
               ]}
             >
               <TouchableOpacity
@@ -500,114 +669,108 @@ export default function SettingsScreen() {
                 <Text style={styles.modalCancel}>Cancel</Text>
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Add Time</Text>
-              <View style={styles.modalCancelArea} />
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={handleConfirmAddTime}
+              >
+                <Text style={[styles.modalCancel, styles.modalDone]}>Add</Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
-              <View style={styles.modalTimeRow}>
-                <View style={styles.modalTimeField}>
-                  <Text style={styles.modalTimeLabel}>HOUR (0–23)</Text>
+              <View style={styles.timePickerRow}>
+                <View style={styles.timePickerField}>
+                  <Text style={styles.pickerSectionLabel}>Hour</Text>
                   <TextInput
-                    style={styles.modalTimeInput}
-                    value={hourInput}
-                    onChangeText={setHourInput}
+                    style={styles.timePickerInput}
+                    value={pickerHour}
+                    onChangeText={setPickerHour}
                     keyboardType="number-pad"
-                    placeholder="7"
-                    placeholderTextColor={colors.textSecondary + "80"}
                     textAlign="center"
+                    maxLength={2}
                     autoFocus
                   />
                 </View>
-                <Text style={styles.modalTimeSeparator}>:</Text>
-                <View style={styles.modalTimeField}>
-                  <Text style={styles.modalTimeLabel}>MINUTE (0–59)</Text>
+                <Text style={styles.timePickerSeparator}>:</Text>
+                <View style={styles.timePickerField}>
+                  <Text style={styles.pickerSectionLabel}>Minute</Text>
                   <TextInput
-                    style={styles.modalTimeInput}
-                    value={minuteInput}
-                    onChangeText={setMinuteInput}
+                    style={styles.timePickerInput}
+                    value={pickerMinute}
+                    onChangeText={setPickerMinute}
                     keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor={colors.textSecondary + "80"}
                     textAlign="center"
+                    maxLength={2}
                   />
                 </View>
+                <View style={styles.amPmStack}>
+                  {(["AM", "PM"] as const).map((suffix) => (
+                    <TouchableOpacity
+                      key={suffix}
+                      style={[
+                        styles.amPmButton,
+                        pickerAmPm === suffix && styles.amPmButtonActive,
+                      ]}
+                      onPress={() => setPickerAmPm(suffix)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.amPmText,
+                          pickerAmPm === suffix && styles.amPmTextActive,
+                        ]}
+                      >
+                        {suffix}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
+
               {timeError ? (
                 <Text style={styles.errorText}>{timeError}</Text>
               ) : null}
-              <TouchableOpacity
-                style={[styles.generateButton, { marginTop: spacing.lg }]}
-                onPress={handleAddTime}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.primaryButtonText}>Add</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
-        {/* Notification Mode */}
-        <Text style={styles.sectionHeader}>NOTIFICATION MODE</Text>
-        <View style={styles.sectionCard}>
-          {(["random", "topic", "favourites"] as const).map((mode, i, arr) => {
-            const selected = pendingMode === mode;
-            const label = mode === "random" ? "Random" : mode === "topic" ? "Topic Focus" : "Favourites";
-            const isLast = i === arr.length - 1;
-            return (
-              <View key={mode}>
-                <TouchableOpacity
-                  style={[
-                    styles.row,
-                    styles.rowSpaceBetween,
-                    selected && styles.rowSelected,
-                    isLast && styles.rowLast,
-                  ]}
-                  onPress={() => handleModeChange(mode)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.rowLabel}>{label}</Text>
-                  {selected ? <Text style={styles.checkmark}>✓</Text> : null}
-                </TouchableOpacity>
-
-                {mode === "topic" && pendingMode === "topic" ? (
-                  <TouchableOpacity
-                    style={[styles.row, styles.topicPickerRow]}
-                    onPress={openTopicPicker}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.topicPickerText}>
-                      {activeTopicName ?? "Select a topic…"}
-                    </Text>
-                    <Text style={styles.chevron}>›</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
-
         {/* Topic Picker Modal */}
-        <Modal visible={topicPickerVisible} animationType="slide">
+        <Modal visible={topicPickerVisible} animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={closeTopicPicker}
+        >
           <View style={styles.screen}>
             <View
               style={[
                 styles.modalHeader,
-                { paddingTop: insets.top + spacing.md },
+                { paddingTop: sheetTopInset },
               ]}
             >
               <TouchableOpacity
                 style={styles.modalCancelArea}
-                onPress={() =>
-                  topicPickerType
-                    ? setTopicPickerType(null)
-                    : closeTopicPicker()
-                }
+                onPress={() => {
+                  if (bookTopicSection) {
+                    setBookTopicSection(null);
+                  } else if (topicPickerType) {
+                    setTopicPickerType(null);
+                  } else {
+                    closeTopicPicker();
+                  }
+                }}
               >
                 <Text style={styles.modalCancel}>
                   {topicPickerType ? "Back" : "Cancel"}
                 </Text>
               </TouchableOpacity>
               <Text style={styles.modalTitle}>
-                {topicPickerType ? "Select Topic" : "Select Topic Type"}
+                {bookTopicSection === "OT"
+                  ? "Old Testament"
+                  : bookTopicSection === "NT"
+                    ? "New Testament"
+                    : topicPickerType === "custom"
+                      ? "Select Topic"
+                      : topicPickerType === "book"
+                        ? "Select Testament"
+                        : "Select Topic Type"}
               </Text>
               <View style={styles.modalCancelArea} />
             </View>
@@ -624,12 +787,12 @@ export default function SettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <View>
-                      <Text style={styles.rowLabel}>Custom Topics</Text>
+                      <Text style={styles.rowLabel}>My Topics</Text>
                       <Text style={styles.topicTypeTag}>
                         {customTopics.length} available
                       </Text>
                     </View>
-                    <Text style={styles.chevron}>›</Text>
+                    <Chevron />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalRow, styles.rowLast]}
@@ -637,18 +800,47 @@ export default function SettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <View>
-                      <Text style={styles.rowLabel}>Book Topics</Text>
+                      <Text style={styles.rowLabel}>Bible Books</Text>
                       <Text style={styles.topicTypeTag}>
                         {bookTopics.length} available
                       </Text>
                     </View>
-                    <Text style={styles.chevron}>›</Text>
+                    <Chevron />
+                  </TouchableOpacity>
+                </>
+              ) : topicPickerType === "book" && !bookTopicSection ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.modalRow}
+                    onPress={() => setBookTopicSection("OT")}
+                    activeOpacity={0.7}
+                  >
+                    <View>
+                      <Text style={styles.rowLabel}>Old Testament</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {otBookTopics.length} available
+                      </Text>
+                    </View>
+                    <Chevron />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalRow, styles.rowLast]}
+                    onPress={() => setBookTopicSection("NT")}
+                    activeOpacity={0.7}
+                  >
+                    <View>
+                      <Text style={styles.rowLabel}>New Testament</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {ntBookTopics.length} available
+                      </Text>
+                    </View>
+                    <Chevron />
                   </TouchableOpacity>
                 </>
               ) : topicsForSelectedType.length === 0 ? (
                 <View style={styles.centeredState}>
                   <Text style={styles.mutedText}>
-                    No topics in this type yet.
+                    No topics in this category yet.
                   </Text>
                 </View>
               ) : (
@@ -659,7 +851,6 @@ export default function SettingsScreen() {
                       key={topic.id}
                       style={[
                         styles.modalRow,
-                        selected && styles.rowSelected,
                         i === topicsForSelectedType.length - 1 &&
                           styles.rowLast,
                       ]}
@@ -667,9 +858,7 @@ export default function SettingsScreen() {
                       activeOpacity={0.7}
                     >
                       <Text style={styles.rowLabel}>{topic.name}</Text>
-                      {selected ? (
-                        <Text style={styles.checkmark}>✓</Text>
-                      ) : null}
+                      {selected ? <SelectedCheck /> : null}
                     </TouchableOpacity>
                   );
                 })
@@ -677,33 +866,6 @@ export default function SettingsScreen() {
             </ScrollView>
           </View>
         </Modal>
-
-        {/* Selection Order */}
-        <Text style={styles.sectionHeader}>SELECTION ORDER</Text>
-        <View style={styles.sectionCard}>
-          {(["random", "sequential"] as const).map((order, i) => {
-            const selected = pendingSelectionOrder === order;
-            const label = order === "random" ? "Random" : "Sequential";
-            return (
-              <TouchableOpacity
-                key={order}
-                style={[
-                  styles.row,
-                  styles.rowSpaceBetween,
-                  selected && styles.rowSelected,
-                  i === 1 && styles.rowLast,
-                ]}
-                onPress={() => handleSelectionOrderChange(order)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rowLabel}>{label}</Text>
-                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
       </ScrollView>
 
       {hasUnsavedChanges ? (
@@ -744,7 +906,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   centeredState: {
     flex: 1,
@@ -759,170 +923,198 @@ const styles = StyleSheet.create({
 
   // Title
   title: {
+    ...typography.display,
+    marginTop: spacing.md,
+  },
+
+  // Category headers
+  categoryHeader: {
     ...typography.heading,
-    marginBottom: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  categoryNote: {
+    ...typography.label,
+    marginTop: spacing.xs / 2,
+    marginBottom: spacing.md,
   },
 
   // Section pattern
   sectionHeader: {
     ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
-  },
-  sectionNote: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
   },
   sectionCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     overflow: "hidden",
-    ...shadows.card,
   },
 
   // Rows
   row: {
     flexDirection: "row",
     alignItems: "center",
-    padding: spacing.md,
-    borderBottomWidth: 1,
+    minHeight: layout.controlHeight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   rowLast: {
     borderBottomWidth: 0,
   },
+  rowUnavailable: {
+    opacity: 0.5,
+  },
   rowSpaceBetween: {
     justifyContent: "space-between",
-  },
-  rowSelected: {
-    backgroundColor: colors.accent + "33", // ~20% opacity
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
   },
   rowLabel: {
     ...typography.body,
   },
-  checkmark: {
-    ...typography.body,
-    color: colors.accent,
-  },
 
-  // Quick setup time inputs
-  timeInputs: {
+  // Times-per-day segmented control
+  segmented: {
     flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.xs,
     gap: spacing.xs,
   },
-  timeInput: {
+  segment: {
+    flex: 1,
+    minHeight: layout.controlHeight - spacing.sm,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.xs,
+  },
+  segmentActive: {
+    backgroundColor: colors.accent,
+  },
+  segmentText: {
+    ...typography.label,
+    color: colors.textPrimary,
+    fontWeight: "600",
+  },
+  segmentTextActive: {
+    color: colors.onAccent,
+  },
+
+  // Scheduled times
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sectionHeaderInline: {
+    ...typography.label,
+  },
+  clearButtonText: {
+    ...typography.label,
+    color: colors.danger,
+  },
+  timesEmpty: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  timeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  timeTile: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.xs,
+    minHeight: layout.controlHeight - spacing.sm,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md - spacing.xs,
+    backgroundColor: colors.surface,
+  },
+  timeTileText: {
+    ...typography.body,
+    flexShrink: 1,
+  },
+  addTimeTile: {
+    backgroundColor: colors.accentSoft,
+    justifyContent: "center",
+  },
+  addTimeText: {
+    ...typography.body,
+    color: colors.accent,
+    fontWeight: "600",
+  },
+
+  // Add Time modal inputs
+  timePickerRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  timePickerField: {
+    alignItems: "center",
+  },
+  pickerSectionLabel: {
+    ...typography.label,
+    marginBottom: spacing.sm,
+  },
+  timePickerInput: {
+    ...typography.display,
+    lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.xs,
-    width: 40,
-    ...typography.body,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    minWidth: layout.fab + spacing.lg,
+    textAlign: "center",
   },
-  timeSeparator: {
-    ...typography.body,
+  timePickerSeparator: {
+    ...typography.display,
     color: colors.textSecondary,
+    marginBottom: spacing.md,
   },
-
-  // Interval buttons
-  intervalButtons: {
-    flexDirection: "row",
+  amPmStack: {
     gap: spacing.xs,
   },
-  intervalButton: {
-    borderWidth: 1,
-    borderColor: colors.border,
+  amPmButton: {
+    backgroundColor: colors.surface,
     borderRadius: radius.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: "center",
   },
-  intervalButtonActive: {
+  amPmButtonActive: {
     backgroundColor: colors.accent,
-    borderColor: colors.accent,
   },
-  intervalButtonText: {
-    ...typography.label,
+  amPmText: {
+    ...typography.button,
     color: colors.textSecondary,
   },
-  intervalButtonTextActive: {
-    color: colors.surface,
-  },
-
-  // Generate button + note
-  generateButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginTop: spacing.md,
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  generateNote: {
-    ...typography.label,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: spacing.xs,
-  },
-
-  // Remove time button
-  removeButton: {
-    ...typography.body,
-    color: colors.danger,
-  },
-
-  // Add Time outline button
-  outlineButton: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginTop: spacing.sm,
-  },
-  outlineButtonText: {
-    ...typography.button,
-    color: colors.accent,
-  },
-  clearButton: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginTop: spacing.sm,
-  },
-  clearButtonText: {
-    ...typography.button,
-    color: colors.danger,
+  amPmTextActive: {
+    color: colors.onAccent,
   },
 
   // Topic picker row (inside mode card)
   topicPickerRow: {
-    backgroundColor: colors.background,
-    paddingLeft: spacing.lg,
+    paddingLeft: spacing.xl,
     justifyContent: "space-between",
+    backgroundColor: colors.background + "80",
   },
   topicPickerText: {
     ...typography.body,
     color: colors.textSecondary,
   },
-  chevron: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
   topicTypeTag: {
     ...typography.label,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.xs / 2,
   },
 
   // Error
@@ -934,7 +1126,7 @@ const styles = StyleSheet.create({
 
   // Sticky footer
   scrollWithFooter: {
-    paddingBottom: spacing.xl * 2 + 52, // reserve space for footer
+    paddingBottom: spacing.xl * 2 + layout.controlHeight,
   },
   stickyFooter: {
     position: "absolute",
@@ -942,9 +1134,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   footerRow: {
     flexDirection: "row",
@@ -956,16 +1147,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelButton: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelButtonText: {
     ...typography.button,
@@ -978,7 +1170,10 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.accent,
     textAlign: "center",
-    marginTop: spacing.sm,
+  },
+  primaryButtonText: {
+    ...typography.button,
+    color: colors.onAccent,
   },
 
   // Modal
@@ -986,64 +1181,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: spacing.md,
   },
   modalCancelArea: {
-    minWidth: 60,
+    minWidth: layout.fab + spacing.sm,
   },
   modalCancel: {
     ...typography.button,
     color: colors.accent,
   },
+  modalDone: {
+    textAlign: "right",
+  },
   modalTitle: {
-    ...typography.heading,
+    ...typography.title,
     flex: 1,
     textAlign: "center",
-    fontSize: 17,
   },
   modalBody: {
     padding: spacing.lg,
-  },
-  modalTimeRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    gap: spacing.md,
-    marginTop: spacing.lg,
-  },
-  modalTimeField: {
-    alignItems: "center",
-  },
-  modalTimeLabel: {
-    ...typography.label,
-    letterSpacing: 1.2,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  modalTimeInput: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    width: 80,
-    ...typography.heading,
-    textAlign: "center",
-  },
-  modalTimeSeparator: {
-    ...typography.heading,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
   },
   modalRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: spacing.md,
+    minHeight: layout.controlHeight + spacing.sm,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
 });

@@ -1,34 +1,30 @@
-import {
-  colors,
-  radius,
-  shadows,
-  spacing,
-  typography,
-} from "@/src/constants/theme";
+import { Fab } from "@/src/components/Fab";
+import { FadeIn } from "@/src/components/FadeIn";
+import { type IoniconName } from "@/src/components/IconButton";
+import { ListRow } from "@/src/components/ListRow";
+import { LoadingState } from "@/src/components/StateViews";
+import { colors, layout, spacing, typography } from "@/src/constants/theme";
 import { getAllSnippets } from "@/src/db/snippets";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
 import { getAllTopics } from "@/src/db/topics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type SectionItem = {
   key: string;
   label: string;
-  route:
-    | "/topic-kind/custom"
-    | "/topic-kind/book"
-    | "/topic-kind/unassigned";
+  route: "/topic-kind/custom" | "/topic-kind/book" | "/topic-kind/unassigned";
   count: number;
   countLabel: string;
+};
+
+const SECTION_ICONS: Record<string, IoniconName> = {
+  custom: "pricetags-outline",
+  book: "book-outline",
+  unassigned: "file-tray-outline",
 };
 
 export default function LibraryScreen() {
@@ -39,14 +35,14 @@ export default function LibraryScreen() {
   const [sections, setSections] = useState<SectionItem[]>([
     {
       key: "custom",
-      label: "Custom Topics",
+      label: "My Topics",
       route: "/topic-kind/custom",
       count: 0,
       countLabel: "0 topics",
     },
     {
       key: "book",
-      label: "Book Topics",
+      label: "Bible Books",
       route: "/topic-kind/book",
       count: 0,
       countLabel: "0 topics",
@@ -66,28 +62,27 @@ export default function LibraryScreen() {
       getAllSnippets(db),
     ]);
 
-    const customCount = topics.filter(
-      (t) => t.type === "custom",
-    ).length;
+    const customCount = topics.filter((t) => t.type === "custom").length;
     const directedCount = topics.filter((t) => t.type === "book").length;
 
     const topicChecks = await Promise.all(
       snippets.map((s) => getTopicsForSnippet(db, s.id)),
     );
-    const unassignedCount = topicChecks.filter((t) => t.every((topic) => topic.type !== "custom")).length;
+    const unassignedCount = topicChecks.filter((t) =>
+      t.every((topic) => topic.type !== "custom"),
+    ).length;
 
     setSections([
       {
         key: "custom",
-        label: "Custom Topics",
+        label: "My Topics",
         route: "/topic-kind/custom",
         count: customCount,
-        countLabel:
-          customCount === 1 ? "1 topic" : `${customCount} topics`,
+        countLabel: customCount === 1 ? "1 topic" : `${customCount} topics`,
       },
       {
         key: "book",
-        label: "Book Topics",
+        label: "Bible Books",
         route: "/topic-kind/book",
         count: directedCount,
         countLabel: directedCount === 1 ? "1 topic" : `${directedCount} topics`,
@@ -113,9 +108,7 @@ export default function LibraryScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -123,31 +116,30 @@ export default function LibraryScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Library</Text>
+        <FadeIn>
+          <Text style={styles.title}>Library</Text>
+          <Text style={styles.subtitle}>
+            Your snippets, gathered by topic and by book.
+          </Text>
 
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => router.push("/snippet/create")}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.createButtonText}>+ Create Snippet</Text>
-        </TouchableOpacity>
-
-        {sections.map((item) => (
-          <TouchableOpacity
-            key={item.key}
-            style={styles.card}
-            onPress={() => router.push(item.route)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <Text style={styles.cardTitle}>{item.label}</Text>
-              <Text style={styles.cardCount}>{item.countLabel}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        ))}
+          <View style={styles.list}>
+            {sections.map((item) => (
+              <ListRow
+                key={item.key}
+                title={item.label}
+                subtitle={item.countLabel}
+                icon={SECTION_ICONS[item.key]}
+                onPress={() => router.push(item.route)}
+              />
+            ))}
+          </View>
+        </FadeIn>
       </ScrollView>
+
+      <Fab
+        onPress={() => router.push("/snippet/create")}
+        accessibilityLabel="New snippet"
+      />
     </SafeAreaView>
   );
 }
@@ -158,64 +150,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    // Leaves room for the floating button
+    paddingBottom: layout.fab + spacing.xxl,
   },
-
-  // Loading
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-
-  // Title
   title: {
-    ...typography.heading,
-    marginBottom: spacing.lg,
+    ...typography.display,
+    marginTop: spacing.md,
   },
-
-  // Create button
-  createButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginBottom: spacing.sm,
-  },
-  createButtonText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-
-  // Nav cards
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    ...shadows.card,
-  },
-  cardLeft: {
-    flex: 1,
-  },
-  cardTitle: {
+  subtitle: {
     ...typography.body,
-    fontWeight: "600",
-  },
-  cardCount: {
-    ...typography.label,
     color: colors.textSecondary,
     marginTop: spacing.xs,
   },
-  chevron: {
-    fontSize: 20,
-    color: colors.textSecondary,
+  list: {
+    gap: spacing.sm,
+    marginTop: spacing.xl,
   },
 });

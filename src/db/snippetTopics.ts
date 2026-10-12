@@ -1,5 +1,5 @@
 import { type SQLiteDatabase } from 'expo-sqlite';
-import { type Snippet } from './snippets';
+import { type Snippet, parseSnippet } from './snippets';
 import { type Topic } from './topics';
 
 export async function addSnippetToTopic(
@@ -43,11 +43,12 @@ export async function getSnippetsForTopic(
   db: SQLiteDatabase,
   topicId: string
 ): Promise<Snippet[]> {
-  return db.getAllAsync<Snippet>(
+  const rows = await db.getAllAsync<Parameters<typeof parseSnippet>[0]>(
     `SELECT s.* FROM snippets s
      INNER JOIN snippet_topics st ON st.snippetId = s.id
      WHERE st.topicId = ?
      ORDER BY s.createdAt DESC`,
     topicId
   );
+  return rows.map(parseSnippet);
 }

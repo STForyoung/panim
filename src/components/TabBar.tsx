@@ -1,14 +1,28 @@
-import { colors, spacing, typography } from "@/src/constants/theme";
-import { Feather } from "@expo/vector-icons";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { type IoniconName } from "@/src/components/IconButton";
+import { PressableScale } from "@/src/components/PressableScale";
+import {
+  colors,
+  layout,
+  radius,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
-
-const TABS: Record<string, { icon: FeatherIconName; label: string }> = {
-  index: { icon: "home", label: "Home" },
-  library: { icon: "book-open", label: "Library" },
-  settings: { icon: "settings", label: "Settings" },
+const TABS: Record<
+  string,
+  { icon: IoniconName; activeIcon: IoniconName; label: string }
+> = {
+  index: { icon: "home-outline", activeIcon: "home", label: "Home" },
+  bible: { icon: "book-outline", activeIcon: "book", label: "Bible" },
+  library: { icon: "library-outline", activeIcon: "library", label: "Library" },
+  settings: {
+    icon: "settings-outline",
+    activeIcon: "settings",
+    label: "Settings",
+  },
 };
 
 type Props = {
@@ -21,39 +35,38 @@ export function TabBar({ state, navigation }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom, spacing.sm) },
+      ]}
+    >
       {state.routes.map((route: any, index: number) => {
         const tab = TABS[route.name];
         if (!tab) return null;
         const isActive = state.index === index;
 
         return (
-          <TouchableOpacity
+          <PressableScale
             key={route.key}
             style={styles.tab}
-            activeOpacity={0.7}
+            scaleTo={0.94}
             onPress={() => navigation.navigate(route.name)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
+            accessibilityLabel={tab.label}
           >
-            <View
-              style={[
-                styles.indicator,
-                isActive ? styles.indicatorActive : styles.indicatorInactive,
-              ]}
-            />
-            <Feather
-              name={tab.icon}
-              size={18}
-              color={isActive ? colors.accent : colors.textSecondary}
-            />
-            <Text
-              style={[
-                styles.label,
-                isActive ? styles.labelActive : styles.labelInactive,
-              ]}
-            >
+            <View style={[styles.pill, isActive && styles.pillActive]}>
+              <Ionicons
+                name={isActive ? tab.activeIcon : tab.icon}
+                size={layout.icon}
+                color={isActive ? colors.accent : colors.textSecondary}
+              />
+            </View>
+            <Text style={[styles.label, isActive && styles.labelActive]}>
               {tab.label}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         );
       })}
     </View>
@@ -64,14 +77,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     backgroundColor: colors.background,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    paddingTop: spacing.xs,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 8,
+    paddingTop: spacing.sm,
   },
   tab: {
     flex: 1,
@@ -79,27 +87,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.xs,
   },
-  indicator: {
-    height: 2,
-    width: 24,
-    borderRadius: 1,
-    alignSelf: "center",
-    marginBottom: spacing.xs,
+  pill: {
+    width: layout.tabPillWidth,
+    height: layout.tabPillHeight,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  indicatorActive: {
-    backgroundColor: colors.accent,
-  },
-  indicatorInactive: {
-    backgroundColor: "transparent",
+  pillActive: {
+    backgroundColor: colors.accentSoft,
   },
   label: {
-    ...typography.label,
+    ...typography.caption,
   },
   labelActive: {
     color: colors.accent,
-    fontWeight: "600",
-  },
-  labelInactive: {
-    color: colors.textSecondary,
+    fontWeight: "700",
   },
 });

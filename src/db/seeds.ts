@@ -7,7 +7,7 @@ type SeedSnippet = {
   verseStart: number;
   chapterEnd: number | null;
   verseEnd: number | null;
-  passage: string;
+  passage: { chapter: number; verse: number; text: string }[];
   reflection: string;
 };
 
@@ -18,62 +18,39 @@ type SeedTopic = {
 
 const SEED_DATA: SeedTopic[] = [
   {
-    name: "The Love of God",
+    name: "Beholding the face of God",
     snippets: [
       {
-        book: "John",
-        chapterStart: 3,
-        verseStart: 16,
-        chapterEnd: null,
-        verseEnd: null,
-        passage:
-          "For God so loved the world that He gave His only begotten Son, that whoever believes in Him should not perish but have everlasting life.",
-        reflection:
-          "God loved me so much that He gave Himself for me. My identity is rooted in His love for me.",
-      },
-      {
-        book: "Romans",
-        chapterStart: 8,
-        verseStart: 38,
-        chapterEnd: null,
-        verseEnd: 39,
-        passage:
-          "For I am persuaded that neither death nor life, nor angels nor principalities nor powers, nor things present nor things to come, nor height nor depth, nor any other created thing, shall be able to separate us from the love of God which is in Christ Jesus our Lord.",
-        reflection:
-          "Nothing — not my failures, my fears, or my circumstances — can remove me from God's love. I rest in what cannot be taken from me.",
-      },
-      {
-        book: "1 John",
-        chapterStart: 4,
-        verseStart: 16,
-        chapterEnd: null,
-        verseEnd: null,
-        passage:
-          "And we have known and believed the love that God has for us. God is love, and he who abides in love abides in God, and God in him.",
-        reflection:
-          "Love is not just something God does — it is who He is. To know Him is to be immersed in love itself.",
-      },
-      {
-        book: "Jeremiah",
-        chapterStart: 31,
-        verseStart: 3,
-        chapterEnd: null,
-        verseEnd: null,
-        passage:
-          'The Lord has appeared of old to me, saying: "Yes, I have loved you with an everlasting love; Therefore with lovingkindness I have drawn you."',
-        reflection:
-          "God's love is everlasting — it did not begin with my faith and it will not end with my failure. It is the foundation beneath everything.",
-      },
-      {
-        book: "Romans",
-        chapterStart: 5,
+        book: "Psalms",
+        chapterStart: 27,
         verseStart: 8,
         chapterEnd: null,
         verseEnd: null,
-        passage:
-          "But God demonstrates His own love toward us, in that while we were still sinners, Christ died for us.",
+        passage: [
+          {
+            chapter: 27,
+            verse: 8,
+            text: 'When You said, "Seek My face," My heart said to You, "Your face, Lord, I will seek."',
+          },
+        ],
         reflection:
-          "God did not wait until I was worthy. His love came to me at my worst. I am even more assured of His love knowing that it was not based on my performance.",
+          "God, according to His desire, has invited me to know His presence. As I diligently seek Him, I receive His promise of intimacy and a revelation of His glory.",
+      },
+      {
+        book: "Psalms",
+        chapterStart: 27,
+        verseStart: 4,
+        chapterEnd: null,
+        verseEnd: null,
+        passage: [
+          {
+            chapter: 27,
+            verse: 4,
+            text: "One thing I have desired of the Lord, That will I seek: That I may dwell in the house of the Lord All the days of my life, To behold the beauty of the Lord, And to inquire in His temple.",
+          },
+        ],
+        reflection:
+          "The desire of a heart tuned to God is not many things, but one: to behold His beauty. This is the posture of prayer, to desire in His presence above all else.",
       },
     ],
   },
@@ -109,7 +86,7 @@ export async function seedDefaultContent(db: SQLiteDatabase): Promise<void> {
         snippet.verseStart,
         snippet.chapterEnd ?? null,
         snippet.verseEnd ?? null,
-        snippet.passage,
+        JSON.stringify(snippet.passage),
         snippet.reflection,
         now,
         now,

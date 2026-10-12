@@ -2,3 +2,8 @@ Claude leaning: Use Shift+Tab to switch between modes.
 
 
 identifier: app.panim
+
+eas build --platform android --profile preview
+
+eas build --platform ios --profile production
+eas submit --platform ios

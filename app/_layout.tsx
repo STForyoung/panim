@@ -11,11 +11,18 @@ import {
   useFonts,
 } from "@expo-google-fonts/lora";
 import {
+  Merriweather_300Light,
+  Merriweather_300Light_Italic,
+  Merriweather_600SemiBold,
+  Merriweather_700Bold,
+} from "@expo-google-fonts/merriweather";
+import {
   NotoRashiHebrew_400Regular,
   NotoRashiHebrew_700Bold,
 } from "@expo-google-fonts/noto-rashi-hebrew";
 import * as Crypto from "expo-crypto";
 import * as Notifications from "expo-notifications";
+import { AppState, Platform } from "react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
@@ -31,6 +38,14 @@ Notifications.setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+if (Platform.OS === "android") {
+  Notifications.setNotificationChannelAsync("default", {
+    name: "Reminders",
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: "default",
+  });
+}
 
 // Rendered inside SQLiteProvider so it can access the db via useSQLiteContext
 function AppInitializer() {
@@ -60,7 +75,14 @@ function AppInitializer() {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       handleNotificationTap,
     );
-    return () => subscription.remove();
+    // Returning to the app refills the queue of upcoming reminders
+    const appState = AppState.addEventListener("change", (state) => {
+      if (state === "active") scheduleNotifications(db).catch(() => {});
+    });
+    return () => {
+      subscription.remove();
+      appState.remove();
+    };
   }, [db]);
 
   return null;
@@ -72,6 +94,10 @@ export default function RootLayout() {
     Lora_400Regular_Italic,
     Lora_600SemiBold,
     Lora_700Bold,
+    Merriweather_300Light,
+    Merriweather_300Light_Italic,
+    Merriweather_600SemiBold,
+    Merriweather_700Bold,
     NotoRashiHebrew_400Regular,
     NotoRashiHebrew_700Bold,
   });

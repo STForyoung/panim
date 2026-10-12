@@ -1,4 +1,12 @@
-import { colors, radius, spacing, typography } from "@/src/constants/theme";
+import { Button } from "@/src/components/Button";
+import { FadeIn } from "@/src/components/FadeIn";
+import {
+  colors,
+  fonts,
+  radius,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
 import { getSchedule, updateSchedule } from "@/src/db/notificationSchedule";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -23,11 +31,28 @@ function ProgressDots({ active }: { active: 1 | 2 | 3 }) {
   );
 }
 
-const FREQUENCY_TIMES: Record<string, string[]> = {
-  "1": ["09:00"],
-  "3": ["09:00", "12:00", "18:00"],
-  "5": ["09:00", "12:00", "15:00", "18:00", "21:00"],
-};
+// Must match PRESETS in settings.tsx exactly so the active chip highlights on first open
+const FREQUENCY_OPTIONS = [
+  { value: "2", label: "2×", desc: "9 AM · 6 PM", times: ["09:00", "18:00"] },
+  {
+    value: "3",
+    label: "3×",
+    desc: "9 AM · 12 PM · 6 PM",
+    times: ["09:00", "12:00", "18:00"],
+  },
+  {
+    value: "4",
+    label: "4×",
+    desc: "9 AM · 12 · 3 PM · 6 PM",
+    times: ["09:00", "12:00", "15:00", "18:00"],
+  },
+  {
+    value: "5",
+    label: "5×",
+    desc: "9 AM · 12 · 3 · 6 · 9 PM",
+    times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
+  },
+];
 
 export default function OnboardingScreen() {
   const db = useSQLiteContext();
@@ -35,7 +60,9 @@ export default function OnboardingScreen() {
   const [frequency, setFrequency] = useState("3");
 
   async function handleRhythmContinue() {
-    const times = FREQUENCY_TIMES[frequency] ?? FREQUENCY_TIMES["3"];
+    const times =
+      FREQUENCY_OPTIONS.find((o) => o.value === frequency)?.times ??
+      FREQUENCY_OPTIONS[1].times;
     await getSchedule(db); // ensures the row exists before updating
     await updateSchedule(db, { times });
     await scheduleNotifications(db);
@@ -65,7 +92,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={[styles.top, styles.topCentered]}>
+          <FadeIn key="step1" style={[styles.top, styles.topCentered]}>
             <Text style={styles.hebrew}>פָּנִים</Text>
             <Text style={styles.transliteration}>pā·nîm</Text>
             <View style={styles.goldDivider} />
@@ -75,8 +102,8 @@ export default function OnboardingScreen() {
               <Text style={styles.definitionItalic}>
                 &ldquo;Face, presence, countenance.&rdquo;
               </Text>{" "}
-              — the word used throughout Scripture for the direct, personal
-              presence of God. May this app help you seek His face. Amen
+              — the word used throughout Scripture for the intimate, manifest
+              presence of God. May this app help you dwell before His face. Amen
             </Text>
             <View style={styles.verseBlock}>
               <Text style={styles.verseText}>
@@ -84,14 +111,8 @@ export default function OnboardingScreen() {
               </Text>
               <Text style={styles.verseReference}>Psalm 27:8</Text>
             </View>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={next}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Begin</Text>
-          </TouchableOpacity>
+          </FadeIn>
+          <Button label="Begin" onPress={next} />
         </View>
       </SafeAreaView>
     );
@@ -102,7 +123,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step2" style={styles.top}>
             <ProgressDots active={1} />
             <Text style={styles.sectionLabel}>Your meditations</Text>
             <View style={styles.goldDivider} />
@@ -115,14 +136,8 @@ export default function OnboardingScreen() {
               Receive them as notifications throughout your day as quiet
               reminders to pause and meditate.
             </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={next}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Next</Text>
-          </TouchableOpacity>
+          </FadeIn>
+          <Button label="Next" onPress={next} />
         </View>
       </SafeAreaView>
     );
@@ -133,32 +148,20 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step3" style={styles.top}>
             <ProgressDots active={2} />
             <Text style={styles.sectionLabel}>Notifications</Text>
             <View style={styles.goldDivider} />
             <Text style={styles.heading}>Notifications</Text>
             <Text style={styles.body}>
               Panim sends your snippets as notifications at times you choose — a
-              gentle prompt to pause and meditate. You can set your schedule in
-              Settings at any time.
+              gentle prompt to pause and meditate. You can use the Settings tab
+              to customize your notifications.
             </Text>
-          </View>
+          </FadeIn>
           <View style={styles.buttonStack}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleAllowNotifications}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>Allow Notifications</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={next}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.secondaryButtonText}>Skip for now</Text>
-            </TouchableOpacity>
+            <Button label="Allow Notifications" onPress={handleAllowNotifications} />
+            <Button label="Skip for now" variant="ghost" onPress={next} />
           </View>
         </View>
       </SafeAreaView>
@@ -167,16 +170,10 @@ export default function OnboardingScreen() {
 
   // Step 4 — Rhythm
   if (step === 4) {
-    const options = [
-      { value: "1", freq: "1×", desc: "Morning" },
-      { value: "3", freq: "3×", desc: "Morn · Noon\n· Eve" },
-      { value: "5", freq: "5×", desc: "Throughout\nthe day" },
-    ];
-
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step4" style={styles.top}>
             <ProgressDots active={3} />
             <Text style={styles.sectionLabel}>Your rhythm</Text>
             <View style={styles.goldDivider} />
@@ -184,8 +181,8 @@ export default function OnboardingScreen() {
             <Text style={styles.subheading}>
               You can adjust this anytime in Settings.
             </Text>
-            <View style={styles.frequencyRow}>
-              {options.map((opt) => (
+            <View style={styles.frequencyGrid}>
+              {FREQUENCY_OPTIONS.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   style={[
@@ -195,19 +192,13 @@ export default function OnboardingScreen() {
                   onPress={() => setFrequency(opt.value)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.freqLabel}>{opt.freq}</Text>
+                  <Text style={styles.freqLabel}>{opt.label}</Text>
                   <Text style={styles.freqDesc}>{opt.desc}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleRhythmContinue}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Continue</Text>
-          </TouchableOpacity>
+          </FadeIn>
+          <Button label="Continue" onPress={handleRhythmContinue} />
         </View>
       </SafeAreaView>
     );
@@ -218,28 +209,16 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step5" style={styles.top}>
             <Text style={styles.heading}>You&apos;re all set</Text>
             <Text style={styles.body}>
               We&apos;ve added a few scripture collections to get you started.
               Feel free to explore, or create your first snippet now.
             </Text>
-          </View>
+          </FadeIn>
           <View style={styles.buttonStack}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => handleComplete("home")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>Explore Snippets</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => handleComplete("create")}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.secondaryButtonText}>Create a Snippet</Text>
-            </TouchableOpacity>
+            <Button label="Explore Snippets" onPress={() => handleComplete("home")} />
+            <Button label="Create a Snippet" variant="ghost" onPress={() => handleComplete("create")} />
           </View>
         </View>
       </SafeAreaView>
@@ -273,35 +252,14 @@ const styles = StyleSheet.create({
   buttonStack: {
     gap: spacing.sm,
   },
-  primaryButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  secondaryButton: {
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    ...typography.button,
-    color: colors.textSecondary,
-  },
 
   // Shared text
   heading: {
-    ...typography.heading,
+    ...typography.display,
     marginBottom: spacing.lg,
   },
   body: {
-    ...typography.body,
-    fontSize: 18,
-    lineHeight: 28,
+    ...typography.bodyLarge,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
@@ -345,14 +303,14 @@ const styles = StyleSheet.create({
     fontFamily: "NotoRashiHebrew_400Regular",
     fontSize: 72,
     lineHeight: 86,
-    color: colors.textPrimary,
+    color: colors.textSoft,
     textAlign: "center",
     writingDirection: "rtl",
     marginBottom: spacing.sm,
   },
   transliteration: {
     ...typography.scriptureItalic,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: "center",
     letterSpacing: 1.5,
@@ -360,7 +318,7 @@ const styles = StyleSheet.create({
   },
   appName: {
     ...typography.heading,
-    fontSize: 28,
+    fontSize: 24,
     letterSpacing: 3,
     textTransform: "uppercase",
     textAlign: "center",
@@ -374,14 +332,14 @@ const styles = StyleSheet.create({
   },
   definition: {
     ...typography.scripture,
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 16,
+    lineHeight: 28,
     color: colors.textSecondary,
     textAlign: "center",
     marginBottom: spacing.lg,
   },
   definitionItalic: {
-    fontFamily: "Lora_400Regular_Italic",
+    fontFamily: fonts.serifItalic,
   },
   verseBlock: {
     borderLeftWidth: 2,
@@ -392,9 +350,9 @@ const styles = StyleSheet.create({
   },
   verseText: {
     ...typography.scriptureItalic,
-    fontSize: 13,
-    lineHeight: 21,
-    color: "#4a3f3a",
+    fontSize: 14,
+    lineHeight: 24,
+    color: colors.textSoft,
   },
   verseReference: {
     ...typography.reference,
@@ -404,32 +362,31 @@ const styles = StyleSheet.create({
   // Step 4 — Rhythm
   subheading: {
     ...typography.body,
-    fontSize: 14,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  frequencyRow: {
+  frequencyGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   freqCard: {
-    flex: 1,
-    paddingVertical: spacing.md,
+    width: "48%",
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.surface,
     backgroundColor: colors.surface,
     alignItems: "center",
   },
   freqCardSelected: {
     borderColor: colors.accent,
-    backgroundColor: "#faf7f3",
+    backgroundColor: colors.accentSoft,
   },
   freqLabel: {
-    ...typography.button,
-    fontSize: 16,
-    color: colors.textPrimary,
+    ...typography.title,
+    color: colors.textSoft,
     marginBottom: spacing.xs,
   },
   freqDesc: {
