@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Chevron } from "@/src/components/Icons";
+import { BookPicker } from "@/src/components/BookPicker";
 import { IconButton } from "@/src/components/IconButton";
 import { PassageText } from "@/src/components/PassageText";
 import { getSchedule } from "@/src/db/notificationSchedule";
@@ -15,7 +16,7 @@ import { type PassageVerse, createSnippet } from "@/src/db/snippets";
 import { addSnippetToTopic } from "@/src/db/snippetTopics";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
-import { BOOK_IDS, fetchPassage } from "@/src/services/bibleService";
+import { fetchPassage } from "@/src/services/bibleService";
 import { getPassageDraft } from "@/src/services/passageDraft";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { router, useLocalSearchParams } from "expo-router";
@@ -36,13 +37,6 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-
-// Derive ordered, deduplicated book list from BOOK_IDS (aliases share an ID — keep first occurrence)
-const allBooks = Object.entries(BOOK_IDS)
-  .filter(([, id], idx, arr) => arr.findIndex(([, i]) => i === id) === idx)
-  .sort(([, a], [, b]) => a - b);
-const OT_BOOKS = allBooks.filter(([, id]) => id <= 39).map(([name]) => name);
-const NT_BOOKS = allBooks.filter(([, id]) => id >= 40).map(([name]) => name);
 
 export default function CreateSnippetScreen() {
   const db = useSQLiteContext();
@@ -75,9 +69,6 @@ export default function CreateSnippetScreen() {
   const [reflection, setReflection] = useState("");
   const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
-  const [bookPickerSection, setBookPickerSection] = useState<
-    "OT" | "NT" | null
-  >(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +103,6 @@ export default function CreateSnippetScreen() {
   function selectBook(name: string) {
     setBook(name);
     setBookPickerVisible(false);
-    setBookPickerSection(null);
     setPassage([]);
     setError(null);
   }
@@ -248,6 +238,10 @@ export default function CreateSnippetScreen() {
     (t) => t.type === "custom" && !assignedTopics.some((a) => a.id === t.id),
   );
 
+  // Pickers open as sheets on iOS, which start below the status bar
+  const sheetTopInset =
+    Platform.OS === "ios" ? spacing.lg : insets.top + spacing.md;
+
   // The reference fields stay hidden while a fetched passage is showing
   const showReferenceFields = editingReference || passage.length === 0;
 
@@ -304,80 +298,13 @@ export default function CreateSnippetScreen() {
                   <Chevron />
                 </TouchableOpacity>
 
-                {/* Book picker modal */}
-                <Modal visible={bookPickerVisible} animationType="slide">
-                  <View style={styles.screen}>
-                    <View
-                      style={[
-                        styles.modalHeader,
-                        { paddingTop: insets.top + spacing.md },
-                      ]}
-                    >
-                      <TouchableOpacity
-                        style={styles.modalCancelArea}
-                        onPress={() =>
-                          bookPickerSection
-                            ? setBookPickerSection(null)
-                            : setBookPickerVisible(false)
-                        }
-                      >
-                        <Text style={styles.modalCancel}>
-                          {bookPickerSection ? "Back" : "Cancel"}
-                        </Text>
-                      </TouchableOpacity>
-                      <Text style={styles.modalTitle}>
-                        {bookPickerSection === "OT"
-                          ? "Old Testament"
-                          : bookPickerSection === "NT"
-                            ? "New Testament"
-                            : "Select Book"}
-                      </Text>
-                      <View style={styles.modalCancelArea} />
-                    </View>
-                    <ScrollView>
-                      {!bookPickerSection ? (
-                        <>
-                          <TouchableOpacity
-                            style={styles.bookRow}
-                            onPress={() => setBookPickerSection("OT")}
-                            activeOpacity={0.6}
-                          >
-                            <Text style={styles.bookRowText}>Old Testament</Text>
-                            <Chevron />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.bookRow}
-                            onPress={() => setBookPickerSection("NT")}
-                            activeOpacity={0.6}
-                          >
-                            <Text style={styles.bookRowText}>New Testament</Text>
-                            <Chevron />
-                          </TouchableOpacity>
-                        </>
-                      ) : (
-                        (bookPickerSection === "OT" ? OT_BOOKS : NT_BOOKS).map(
-                          (name) => (
-                            <TouchableOpacity
-                              key={name}
-                              style={styles.bookRow}
-                              onPress={() => selectBook(name)}
-                              activeOpacity={0.6}
-                            >
-                              <Text
-                                style={[
-                                  styles.bookRowText,
-                                  book === name && styles.bookRowTextSelected,
-                                ]}
-                              >
-                                {name}
-                              </Text>
-                            </TouchableOpacity>
-                          ),
-                        )
-                      )}
-                    </ScrollView>
-                  </View>
-                </Modal>
+                {/* Book picker */}
+                <BookPicker
+                  visible={bookPickerVisible}
+                  selectedBook={book || null}
+                  onSelectBook={selectBook}
+                  onClose={() => setBookPickerVisible(false)}
+                />
 
                 {/* Start chapter and verse */}
                 <View style={styles.inputRow}>
@@ -578,12 +505,17 @@ export default function CreateSnippetScreen() {
             ) : null}
 
             {/* Topic picker modal */}
-            <Modal visible={topicPickerVisible} animationType="slide">
+            <Modal
+              visible={topicPickerVisible}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={() => setTopicPickerVisible(false)}
+            >
               <View style={styles.screen}>
                 <View
                   style={[
                     styles.modalHeader,
-                    { paddingTop: insets.top + spacing.md },
+                    { paddingTop: sheetTopInset },
                   ]}
                 >
                   <TouchableOpacity
@@ -808,10 +740,6 @@ const styles = StyleSheet.create({
   },
   bookRowText: {
     ...typography.body,
-  },
-  bookRowTextSelected: {
-    color: colors.accent,
-    fontWeight: "600",
   },
   topicTypeTag: {
     ...typography.label,
