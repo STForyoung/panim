@@ -37,7 +37,7 @@ npm run ios / npm run android    # Native build and run (android/ and ios/ are g
 - **Expo Router** — file-based routing, routes live in `app/`
 - **expo-sqlite** — all user data
 - **expo-notifications** — locally scheduled reminders
-- **AsyncStorage** — two flags only: `hasLaunched` (onboarding done) and `lastRead` (Bible position)
+- **AsyncStorage** — small device-only values: `hasLaunched` (onboarding done), `lastRead` (Bible position), `removedTranslations`
 - **Fonts** — Merriweather (the app's only serif) and Noto Rashi Hebrew (the onboarding wordmark), via `@expo-google-fonts`
 - **Icons** — Ionicons from `@expo/vector-icons`
 
@@ -106,7 +106,7 @@ Snippet {
   passage: PassageVerse[]     // [{ chapter, verse, text }], stored as JSON; cached permanently
   reflection: string
   prayer: string | null
-  translation: string         // Version the passage text is in, e.g. "NKJV"
+  translation: string         // Version the passage text is in, e.g. "KJV"
   isFavourite: boolean        // Stored as 0/1
   createdAt: number           // Unix ms
   updatedAt: number
@@ -128,7 +128,7 @@ NotificationSchedule {               // Single row, id "singleton"
   activeTopic: string | null                   // topicId when mode is "topic"
   selectionOrder: "random" | "sequential"      // Shuffled, or oldest first
   notificationContent: "passage" | "reflection" | "prayer"
-  translation: "NKJV" | "ESV" | "NASB" | "NLT" | "KJV"   // Global preference; also lives here
+  translation: "KJV" | "BSB" | "NKJV" | "ESV" | "NASB" | "NLT"   // Global preference; also lives here
   lastSentIndex: number                        // Unused leftover
 }
 
@@ -140,7 +140,7 @@ metadata (key/value)
 
 - Every snippet is automatically linked to its **book topic** on save. "Unassigned" therefore means "has no custom topic".
 - **Migrations** live in `src/db/database.ts` and are versioned with `PRAGMA user_version` (currently **2**). Add the next one as `if (currentVersion < 3) { … PRAGMA user_version = 3 }`. See Lessons for the Android rules.
-- On first run, 66 book topics and a small set of default content are seeded.
+- On first run, 66 book topics and a small set of default content (KJV text) are seeded.
 
 ### Reference Display Logic
 
@@ -182,30 +182,45 @@ Always use `getDisplayReference(snippet)` from `src/utils/displayReference.ts` �
 
 ### Translations
 
-| Code | Name                        | Availability                    |
-| ---- | --------------------------- | ------------------------------- |
-| NKJV | New King James Version      | Online only (default)           |
-| ESV  | English Standard Version    | Online only                     |
-| NASB | New American Standard Bible | Online only                     |
-| NLT  | New Living Translation      | Online only                     |
-| KJV  | King James Version          | Bundled — works offline         |
+| Code | Name                        | Availability                                   |
+| ---- | --------------------------- | ---------------------------------------------- |
+| KJV  | King James Version          | Bundled, public domain — works offline. Default |
+| BSB  | Berean Standard Bible       | Bundled, public domain — works offline         |
+| NKJV | New King James Version      | Online only (copyrighted)                      |
+| ESV  | English Standard Version    | Online only (copyrighted)                      |
+| NASB | New American Standard Bible | Online only (copyrighted)                      |
+| NLT  | New Living Translation      | Online only (copyrighted)                      |
 
-- **NIV is not offered.** The provider returns a publisher notice in place of NIV text. `bibleService` still refuses NIV as a safeguard, and a stored NIV preference falls back to NKJV
-- `TRANSLATION_NAMES` and `getTranslationAvailability()` in `bibleService.ts` are the source for names and the labels shown in Settings
+- Settings lists them in this order: bundled first, then online. The list lives in `src/db/notificationSchedule.ts` and `app/(tabs)/settings.tsx`
+- Bundled text is in `assets/bible/kjv` and `assets/bible/bsb`, loaded through `src/services/offlineBible.ts`. The BSB leaves out 16 later-manuscript verses (for example Acts 8:37); they are stored empty and skipped
+- **NIV is not offered** — the provider serves a publisher notice in its place
+- `TRANSLATION_NAMES` and `getTranslationAvailability()` in `bibleService.ts` are the source for names and the labels shown in Settings ("Online only", "Not currently available"; bundled translations show no label)
 
-### Provider (Bolls.life)
+### When an online translation is withdrawn
+
+The online translations come from a free service with no agreement, so any of them can disappear, as NIV did. The app is built to survive that without a release:
+
+- The first time an online translation is used in a session, `bibleService` asks for two known verses. A withdrawn translation comes back empty or with the same notice for every verse; either marks it **removed**. Being offline is never treated as removal
+- Removed translations are remembered on the device (AsyncStorage `removedTranslations`, loaded at launch by `loadTranslationStatus()`), re-checked when Settings opens, and offered again if they return
+- **Settings** greys the translation out, labels it "Not currently available", and it cannot be chosen
+- **Bible tab** shows KJV with a note saying the translation is no longer available and to choose another in Settings
+- **Typed references** show a clear error and save nothing. Text is only accepted from a translation confirmed to be served, so a notice can never be stored as a passage
+- **Existing snippets** in that translation are unaffected: they keep their stored text and label
+
+### Online provider (Bolls.life)
 
 - Free, no API key, no agreement. Base URL `https://bolls.life`. Books are referenced by number (Genesis = 1, John = 43)
+- It rejects bursts of requests (HTTP 429) — make calls one at a time, never in a parallel batch
 - Verse ranges: POST `/get-verses/` — the response is an array of arrays, always `.flat()` it
 - Whole chapters: GET `/get-text/<translation>/<bookId>/<chapter>/`
 - All provider text goes through `stripHtml`, which removes markup, Strong's numbers and footnotes
 
 ### Offline behaviour
 
-- KJV is served from `assets/bible/kjv` with no network use
-- **Bible tab:** if the chosen translation cannot be fetched (offline, or no response in 10 seconds) it shows KJV with a note and a Retry link, and tries the chosen translation again on the next visit. Online chapters are kept in memory for the session only
-- **Typed references** (New/Edit Snippet): work offline only when KJV is the chosen translation. Other translations show the fetch error with a retry — they never silently substitute KJV
-- A reflection added while the Bible tab is on the KJV fallback saves KJV text and records KJV
+- KJV and BSB need no connection anywhere in the app
+- **Bible tab, online translation:** if it cannot be fetched (offline, or no response in 10 seconds) it shows KJV with a note and a Retry link, and tries again on the next visit. Online chapters are kept in memory for the session only
+- **Typed references, online translation:** show a connection error with a retry — they never silently substitute another translation
+- A reflection added while the Bible tab is showing the KJV fallback saves KJV text and records KJV
 
 ## Creating a Snippet
 
@@ -335,7 +350,7 @@ In order:
 
 1. **Test on real devices** — an iPhone and an Android development build. Not yet exercised by hand: verse selection and "Add reflection" in the Bible tab, the reworked New/Edit forms, the pickers, reminder delivery and rotation, the offline KJV fallback, and everything on Android
 2. **New app icon and splash** — the assets are still the old brown artwork, and the splash and Android icon backgrounds in app.json still use an old colour. A new logo (a white tree on the accent green, after Psalm 1) is wanted; the design is not settled
-3. **Settle Bible licensing before release** — NKJV, ESV, NASB and NLT come from a free site with no agreement, and the Bible tab shows whole chapters of them. Consider a modern public-domain translation (for example the Berean Standard Bible or World English Bible) as the bundled default
+3. **Settle Bible licensing before release** — KJV and BSB are public domain and bundled (confirm the BSB dedication at berean.bible; the KJV has Crown printing restrictions in the UK). NKJV, ESV, NASB and NLT are still served from a free site with no agreement, and the Bible tab shows whole chapters of them. Decide before going live whether to ship them, license them, or hold them back for a premium tier
 4. **Dark mode** — `userInterfaceStyle` is already `automatic`; no dark palette exists yet. Colours are all tokens, so this is mainly a second palette plus a way to switch
 5. **Premium backend** — see below
 
@@ -347,8 +362,8 @@ A premium version is expected to add a remote backend for accounts and cross-dev
 
 - Keep three kinds of data apart. Only the first would ever sync:
   1. **User-created data** — snippets, reflections, prayers, topics, favourites, settings
-  2. **Device-only state** — the reminder playlist and queue (`metadata.reminderPlaylist`, `metadata.reminderQueue`), last-read Bible position (AsyncStorage `lastRead`)
-  3. **Disposable copies of Bible text** — chapters fetched for the Bible tab (in memory only today)
+  2. **Device-only state** — the reminder playlist and queue (`metadata.reminderPlaylist`, `metadata.reminderQueue`), last-read Bible position (AsyncStorage `lastRead`), withdrawn translations (AsyncStorage `removedTranslations`)
+  3. **Disposable copies of Bible text** — chapters of online translations fetched for the Bible tab (in memory only today)
 - Every user record keeps a stable UUID and, where it exists, a last-changed time
 - Each snippet records its Bible `translation`, so another device can re-fetch the passage from reference + version. The cloud is expected to store references and the user's own words, not a library of Bible text
 - All Bible text access stays behind `src/services/bibleService.ts`, so the source can move to a licensed API (API.Bible is the candidate) behind our own server

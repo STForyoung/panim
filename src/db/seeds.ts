@@ -30,7 +30,7 @@ const SEED_DATA: SeedTopic[] = [
           {
             chapter: 27,
             verse: 8,
-            text: 'When You said, "Seek My face," My heart said to You, "Your face, Lord, I will seek."',
+            text: "When thou saidst, Seek ye my face; my heart said unto thee, Thy face, LORD, will I seek.",
           },
         ],
         reflection:
@@ -46,7 +46,7 @@ const SEED_DATA: SeedTopic[] = [
           {
             chapter: 27,
             verse: 4,
-            text: "One thing I have desired of the Lord, That will I seek: That I may dwell in the house of the Lord All the days of my life, To behold the beauty of the Lord, And to inquire in His temple.",
+            text: "One thing have I desired of the LORD, that will I seek after; that I may dwell in the house of the LORD all the days of my life, to behold the beauty of the LORD, and to enquire in his temple.",
           },
         ],
         reflection:
@@ -78,8 +78,8 @@ export async function seedDefaultContent(db: SQLiteDatabase): Promise<void> {
       const snippetId = Crypto.randomUUID();
       await db.runAsync(
         `INSERT INTO snippets
-          (id, book, chapterStart, verseStart, chapterEnd, verseEnd, passage, reflection, prayer, createdAt, updatedAt, isFavourite)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0)`,
+          (id, book, chapterStart, verseStart, chapterEnd, verseEnd, passage, reflection, prayer, translation, createdAt, updatedAt, isFavourite)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'KJV', ?, ?, 0)`,
         snippetId,
         snippet.book,
         snippet.chapterStart,

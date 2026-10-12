@@ -17,6 +17,7 @@ import {
 import * as Crypto from "expo-crypto";
 import * as Notifications from "expo-notifications";
 import { AppState, Platform } from "react-native";
+import { loadTranslationStatus } from "@/src/services/bibleService";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
@@ -59,6 +60,9 @@ function AppInitializer() {
           Crypto.randomUUID(),
         );
       }
+
+      // Remember which online translations were found withdrawn in earlier sessions
+      loadTranslationStatus();
 
       scheduleNotifications(db).catch(() => {
         // Scheduling errors are non-fatal — silently ignore

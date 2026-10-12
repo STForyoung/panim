@@ -19,6 +19,7 @@ import {
   TRANSLATION_NAMES,
   type TranslationAvailability,
   getTranslationAvailability,
+  refreshTranslationStatus,
 } from "@/src/services/bibleService";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -41,16 +42,19 @@ import {
 } from "react-native-safe-area-context";
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
+  // Bundled translations first, then the ones fetched online
+  "KJV",
+  "BSB",
   "NKJV",
   "ESV",
   "NASB",
   "NLT",
-  "KJV",
 ];
 
-// Shown under each translation so it is clear which ones need a connection
-const AVAILABILITY_NOTES: Record<TranslationAvailability, string> = {
-  offline: "Available offline",
+// Shown under a translation that needs a connection or has been withdrawn.
+// Bundled translations carry no note — working everywhere is the unremarkable case.
+const AVAILABILITY_NOTES: Record<TranslationAvailability, string | null> = {
+  offline: null,
   online: "Online only",
   unavailable: "Not currently available",
 };
@@ -179,6 +183,17 @@ export default function SettingsScreen() {
   );
   const [bookTopicSection, setBookTopicSection] = useState<"OT" | "NT" | null>(
     null,
+  );
+
+  // Re-check the online translations whenever Settings opens, so one the provider has
+  // withdrawn is labelled and cannot be chosen
+  const [, setStatusCheckedAt] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      refreshTranslationStatus(TRANSLATIONS).then(() =>
+        setStatusCheckedAt(Date.now()),
+      );
+    }, []),
   );
 
   useFocusEffect(
@@ -355,6 +370,8 @@ export default function SettingsScreen() {
   const sheetTopInset =
     Platform.OS === "ios" ? spacing.lg : insets.top + spacing.md;
 
+  const selectedTranslationNote =
+    AVAILABILITY_NOTES[getTranslationAvailability(schedule.translation)];
   const activeTopicName = pendingActiveTopic
     ? (topics.find((t) => t.id === pendingActiveTopic)?.name ?? "Unknown topic")
     : null;
@@ -395,13 +412,9 @@ export default function SettingsScreen() {
               <Text style={styles.rowLabel}>
                 {TRANSLATION_NAMES[schedule.translation]}
               </Text>
-              <Text style={styles.topicTypeTag}>
-                {
-                  AVAILABILITY_NOTES[
-                    getTranslationAvailability(schedule.translation)
-                  ]
-                }
-              </Text>
+              {selectedTranslationNote ? (
+                <Text style={styles.topicTypeTag}>{selectedTranslationNote}</Text>
+              ) : null}
             </View>
             <Chevron />
           </TouchableOpacity>
@@ -612,8 +625,9 @@ export default function SettingsScreen() {
             <ScrollView>
               {TRANSLATIONS.map((t, i) => {
                 const selected = schedule.translation === t;
-                const unavailable =
-                  getTranslationAvailability(t) === "unavailable";
+                const availability = getTranslationAvailability(t);
+                const unavailable = availability === "unavailable";
+                const note = AVAILABILITY_NOTES[availability];
                 return (
                   <TouchableOpacity
                     key={t}
@@ -631,9 +645,9 @@ export default function SettingsScreen() {
                   >
                     <View>
                       <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
-                      <Text style={styles.topicTypeTag}>
-                        {AVAILABILITY_NOTES[getTranslationAvailability(t)]}
-                      </Text>
+                      {note ? (
+                        <Text style={styles.topicTypeTag}>{note}</Text>
+                      ) : null}
                     </View>
                     {selected ? <SelectedCheck /> : null}
                   </TouchableOpacity>

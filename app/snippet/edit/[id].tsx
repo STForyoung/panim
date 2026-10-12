@@ -30,7 +30,10 @@ import {
   getTopicsForSnippet,
   removeSnippetFromTopic,
 } from "@/src/db/snippetTopics";
-import { fetchPassage } from "@/src/services/bibleService";
+import {
+  TranslationRemovedError,
+  fetchPassage,
+} from "@/src/services/bibleService";
 import { TopicChip } from "@/src/components/TopicChip";
 import { colors, layout, radius, spacing, typography } from "@/src/constants/theme";
 
@@ -161,7 +164,8 @@ export default function EditSnippetScreen() {
           ? e.message
           : "Failed to fetch passage. Check your connection and try again.",
       );
-      setShowRetry(true);
+      // Retrying cannot bring back a translation the provider has withdrawn
+      setShowRetry(!(e instanceof TranslationRemovedError));
     } finally {
       setIsFetching(false);
     }
