@@ -166,7 +166,7 @@ Always use `getDisplayReference(snippet)` from `src/utils/displayReference.ts` �
 
 **New / Edit Snippet** — fixed top bar with back, title and a save tick (there is also a save button at the bottom). The passage shows as a card with a "Change" link; the reference fields (book, chapter, verse, optional end chapter and verse, fetch button) appear only when there is no passage yet or after "Change". Then Reflection, Prayer (optional) and Topics.
 
-**Settings** — Bible Translation, then Reminders: a notice with a "Turn on" / "Open Settings" action when notification permission is off, Times per day (segmented presets), Your times (grid with add and remove), Which snippets to send, What each reminder shows, Order. Translation saves immediately; reminder changes are held until "Apply".
+**Settings** — Select Translation, then Reminders: a notice with a "Turn on" / "Open Settings" action when notification permission is off, Times per day (segmented presets), Your times (grid with add and remove), Which snippets to send, What each reminder shows, Order. At the bottom, a "Scripture versions" row opens a sheet crediting each version. Translation saves immediately; reminder changes are held until "Apply".
 
 **Onboarding** — shown until `hasLaunched` is set.
 
@@ -194,6 +194,7 @@ Always use `getDisplayReference(snippet)` from `src/utils/displayReference.ts` �
 - Settings lists them in this order: bundled first, then online. The list lives in `src/db/notificationSchedule.ts` and `app/(tabs)/settings.tsx`
 - Bundled text is in `assets/bible/kjv` and `assets/bible/bsb`, loaded through `src/services/offlineBible.ts`. The BSB leaves out 16 later-manuscript verses (for example Acts 8:37); they are stored empty and skipped
 - **NIV is not offered** — the provider serves a publisher notice in its place
+- `TRANSLATION_CREDITS` in `bibleService.ts` holds each version's ownership line for the credits sheet. The lines state who owns the text and nothing more: never add "Used by permission" unless a licence is actually in place
 - `TRANSLATION_NAMES` and `getTranslationAvailability()` in `bibleService.ts` are the source for names and the labels shown in Settings ("Online only", "Not currently available"; bundled translations show no label)
 
 ### When an online translation is withdrawn
@@ -276,6 +277,7 @@ All colors, typography, spacing, radius, layout sizes and shadows live in `src/c
 - An end chapter requires an end verse
 - A passage must be present before saving
 - Topic assignment is optional
+- Reflection is deliberately **not** required: saving must never be blocked at the moment someone finds a verse. It is encouraged instead — the form labels it "Reflection" with no "(optional)" (Prayer is marked optional), and a snippet without one shows an "Add a reflection" prompt on its detail screen
 
 ## Delete Behavior
 
@@ -350,7 +352,7 @@ In order:
 
 1. **Test on real devices** — an iPhone and an Android development build. Not yet exercised by hand: verse selection and "Add reflection" in the Bible tab, the reworked New/Edit forms, the pickers, reminder delivery and rotation, the offline KJV fallback, and everything on Android
 2. **New app icon and splash** — the assets are still the old brown artwork, and the splash and Android icon backgrounds in app.json still use an old colour. A new logo (a white tree on the accent green, after Psalm 1) is wanted; the design is not settled
-3. **Settle Bible licensing before release** — KJV and BSB are public domain and bundled (confirm the BSB dedication at berean.bible; the KJV has Crown printing restrictions in the UK). NKJV, ESV, NASB and NLT are still served from a free site with no agreement, and the Bible tab shows whole chapters of them. Decide before going live whether to ship them, license them, or hold them back for a premium tier
+3. **Bible licensing — decided for the MVP (2026-10-12):** launch with the four online versions (NKJV, ESV, NASB, NLT) as they are, unlicensed, accepting the risk. Panim is positioned as a meditation and journaling app, not a Bible app. Licensing, or removing a version, is to be handled when the premium version is built or if a publisher objects. Do not re-raise this as a blocker. Note that removing a version at a publisher's request needs an app update (the automatic handling only covers the provider withdrawing it). KJV and BSB are public domain
 4. **Dark mode** — `userInterfaceStyle` is already `automatic`; no dark palette exists yet. Colours are all tokens, so this is mainly a second palette plus a way to switch
 5. **Premium backend** — see below
 
@@ -378,7 +380,6 @@ A premium version is expected to add a remote backend for accounts and cross-dev
 
 ## Known Gaps
 
-- **Reflection is not enforced** — the forms allow saving a snippet with an empty reflection
 - **Reminders don't show the translation** — the notification title is the reference only
 - **Bible tab** — one chapter at a time (no selection across chapters), and verses that already have snippets are not marked
 - **Settings** — custom times are typed into hour and minute boxes; translation saves instantly while reminder changes wait for "Apply"

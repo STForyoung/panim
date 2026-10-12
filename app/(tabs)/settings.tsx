@@ -16,6 +16,7 @@ import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import {
   BOOK_IDS,
+  TRANSLATION_CREDITS,
   TRANSLATION_NAMES,
   type TranslationAvailability,
   getTranslationAvailability,
@@ -178,6 +179,9 @@ export default function SettingsScreen() {
   // Translation picker modal
   const [translationPickerVisible, setTranslationPickerVisible] =
     useState(false);
+
+  // Scripture credits modal
+  const [creditsVisible, setCreditsVisible] = useState(false);
 
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
@@ -435,7 +439,7 @@ export default function SettingsScreen() {
         <Text style={styles.title}>Settings</Text>
 
         {/* Bible Translation */}
-        <Text style={styles.categoryHeader}>Bible Translation</Text>
+        <Text style={styles.categoryHeader}>Select Translation</Text>
         <Text style={styles.categoryNote}>Applies to new snippets only</Text>
 
         <View style={styles.sectionCard}>
@@ -659,6 +663,47 @@ export default function SettingsScreen() {
 
         {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
 
+        {/* Scripture credits */}
+        <View style={[styles.sectionCard, styles.creditsCard]}>
+          <TouchableOpacity
+            style={[styles.row, styles.rowSpaceBetween, styles.rowLast]}
+            onPress={() => setCreditsVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.rowLabel}>Scripture versions</Text>
+            <Chevron />
+          </TouchableOpacity>
+        </View>
+
+        {/* Scripture Credits Modal */}
+        <Modal
+          visible={creditsVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setCreditsVisible(false)}
+        >
+          <View style={styles.screen}>
+            <View style={[styles.modalHeader, { paddingTop: sheetTopInset }]}>
+              <View style={styles.modalCancelArea} />
+              <Text style={styles.modalTitle}>Scripture versions</Text>
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={() => setCreditsVisible(false)}
+              >
+                <Text style={[styles.modalCancel, styles.modalDone]}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.creditsList}>
+              {TRANSLATIONS.map((t) => (
+                <View key={t} style={styles.creditItem}>
+                  <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
+                  <Text style={styles.creditText}>{TRANSLATION_CREDITS[t]}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+
         {/* Translation Picker Modal */}
         <Modal visible={translationPickerVisible} animationType="slide"
           presentationStyle="pageSheet"
@@ -677,7 +722,7 @@ export default function SettingsScreen() {
               >
                 <Text style={styles.modalCancel}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Translation</Text>
+              <Text style={styles.modalTitle}>Select Translation</Text>
               <View style={styles.modalCancelArea} />
             </View>
             <ScrollView>
@@ -1277,6 +1322,22 @@ const styles = StyleSheet.create({
   },
   modalDone: {
     textAlign: "right",
+  },
+
+  // Scripture credits
+  creditsCard: {
+    marginTop: spacing.xl,
+  },
+  creditsList: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.lg,
+  },
+  creditItem: {
+    gap: spacing.xs,
+  },
+  creditText: {
+    ...typography.label,
   },
   modalTitle: {
     ...typography.title,

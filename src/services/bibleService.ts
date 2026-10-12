@@ -320,6 +320,17 @@ export const TRANSLATION_NAMES: Record<string, string> = {
   NLT: "New Living Translation",
 };
 
+// Who owns each translation's text, shown on the "Scripture versions" sheet in Settings.
+// These state ownership only. Do not add "Used by permission" unless a licence is in place.
+export const TRANSLATION_CREDITS: Record<string, string> = {
+  KJV: "King James Version. Public domain.",
+  BSB: "Berean Standard Bible. Public domain. berean.bible",
+  NKJV: "New King James Version®. Copyright © 1982 by Thomas Nelson. All rights reserved.",
+  ESV: "The Holy Bible, English Standard Version®. Copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. All rights reserved.",
+  NASB: "New American Standard Bible®. Copyright © 1960, 1971, 1977, 1995 by The Lockman Foundation. All rights reserved. lockman.org",
+  NLT: "Holy Bible, New Living Translation. Copyright © 1996, 2004, 2015 by Tyndale House Foundation. All rights reserved.",
+};
+
 export type TranslationAvailability = "offline" | "online" | "unavailable";
 
 // Whether a translation is bundled with the app, fetched on demand, or not offered by the provider

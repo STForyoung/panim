@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -7,14 +8,16 @@ import { type Topic } from "@/src/db/topics";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
 import { FadeIn } from "@/src/components/FadeIn";
 import { IconButton } from "@/src/components/IconButton";
+import { Chevron } from "@/src/components/Icons";
 import { PassageText } from "@/src/components/PassageText";
+import { PressableScale } from "@/src/components/PressableScale";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
 import { TopicChip } from "@/src/components/TopicChip";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { TRANSLATION_NAMES } from "@/src/services/bibleService";
 import { getDisplayReference } from "@/src/utils/displayReference";
-import { colors, radius, spacing, typography } from "@/src/constants/theme";
+import { colors, layout, radius, spacing, typography } from "@/src/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SnippetDetailScreen() {
@@ -145,7 +148,28 @@ export default function SnippetDetailScreen() {
               <Text style={styles.sectionTitle}>Reflection</Text>
               <Text style={styles.sectionText}>{snippet.reflection}</Text>
             </View>
-          ) : null}
+          ) : (
+            // No reflection yet — an invitation to write one, in the card's place
+            <PressableScale
+              style={styles.reflectionPrompt}
+              onPress={() => router.push(`/snippet/edit/${id}`)}
+              accessibilityRole="button"
+              accessibilityLabel="Add a reflection"
+            >
+              <Ionicons
+                name="create-outline"
+                size={layout.icon}
+                color={colors.accent}
+              />
+              <View style={styles.reflectionPromptText}>
+                <Text style={styles.reflectionPromptTitle}>Add a reflection</Text>
+                <Text style={styles.reflectionPromptHint}>
+                  Record your thoughts here.
+                </Text>
+              </View>
+              <Chevron />
+            </PressableScale>
+          )}
 
           {/* Prayer */}
           {snippet.prayer ? (
@@ -214,5 +238,27 @@ const styles = StyleSheet.create({
   sectionText: {
     ...typography.reflectionLarge,
     color: colors.textSoft,
+  },
+
+  // Invitation shown when the snippet has no reflection
+  reflectionPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.accentTint,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  reflectionPromptText: {
+    flex: 1,
+  },
+  reflectionPromptTitle: {
+    ...typography.title,
+    color: colors.accent,
+  },
+  reflectionPromptHint: {
+    ...typography.label,
+    marginTop: spacing.xs / 2,
   },
 });
