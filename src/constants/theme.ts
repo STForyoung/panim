@@ -2,57 +2,112 @@ export const colors = {
   background: "#F5F4F0",
   surface: "#FDFCF9",
   textPrimary: "#2A2421",
+  textSoft: "#4A3F3A",
   textSecondary: "#6B6460",
   textHeading: "#2E1F0F",
   accent: "#9B7355",
+  accentSoft: "#EBE3DA",
+  onAccent: "#FDFCF9",
   border: "#E8E4DF",
   danger: "#B03A2E",
 };
 
+// Serif family for scripture, reflections and titles.
+// To go back to Lora, swap these for the Lora_* names (still loaded in app/_layout.tsx)
+// and restore the larger sizes below.
+export const fonts = {
+  serif: "Merriweather_300Light",
+  serifItalic: "Merriweather_300Light_Italic",
+  serifSemiBold: "Merriweather_600SemiBold",
+  serifBold: "Merriweather_700Bold",
+};
+
 export const typography = {
-  scripture: {
-    fontFamily: "Lora_400Regular",
-    fontSize: 17,
-    lineHeight: 27,
-    color: "#2A2421",
-  },
-  scriptureItalic: {
-    fontFamily: "Lora_400Regular_Italic",
-    fontSize: 18,
-    lineHeight: 28,
-    color: "#2A2421",
-  },
-  reflection: {
-    fontFamily: "Lora_400Regular_Italic",
-    fontSize: 15,
-    lineHeight: 24,
-    color: "#2A2421",
-  },
-  reference: {
-    fontFamily: "Lora_600SemiBold",
-    fontSize: 13,
-    letterSpacing: 0.5,
-    color: "#2A2421",
+  // Screen titles
+  display: {
+    fontFamily: fonts.serifBold,
+    fontSize: 26,
+    lineHeight: 34,
+    letterSpacing: -0.3,
+    color: colors.textHeading,
   },
   heading: {
-    fontFamily: "Lora_700Bold",
-    fontSize: 22,
+    fontFamily: fonts.serifBold,
+    fontSize: 19,
+    lineHeight: 28,
+    color: colors.textHeading,
+  },
+  // Section and card titles
+  title: {
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.textHeading,
+  },
+  // Passage on the Home card and the snippet screen
+  scriptureLarge: {
+    fontFamily: fonts.serif,
+    fontSize: 17,
     lineHeight: 30,
-    color: "#3B2B1E",
+    color: colors.textPrimary,
+  },
+  scripture: {
+    fontFamily: fonts.serif,
+    fontSize: 15,
+    lineHeight: 26,
+    color: colors.textPrimary,
+  },
+  scriptureItalic: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 15,
+    lineHeight: 26,
+    color: colors.textPrimary,
+  },
+  reflection: {
+    fontFamily: fonts.serif,
+    fontSize: 14,
+    lineHeight: 24,
+    color: colors.textPrimary,
+  },
+  // Reflection and prayer where they are read in full
+  reflectionLarge: {
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    lineHeight: 28,
+    color: colors.textPrimary,
+  },
+  reference: {
+    fontFamily: fonts.serifSemiBold,
+    fontSize: 13,
+    lineHeight: 20,
+    letterSpacing: 0.3,
+    color: colors.textPrimary,
   },
   label: {
-    fontSize: 12,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: "500" as const,
     color: colors.textSecondary,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+  },
+  caption: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500" as const,
+    color: colors.textSecondary,
   },
   body: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#2A2421",
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.textPrimary,
+  },
+  bodyLarge: {
+    fontSize: 18,
+    lineHeight: 28,
+    color: colors.textPrimary,
   },
   button: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600" as const,
   },
 };
@@ -72,12 +127,26 @@ export const radius = {
   lg: 20,
 };
 
+// Fixed control dimensions
+export const layout = {
+  controlHeight: 52,
+  textArea: 128,
+  iconButton: 40,
+  fab: 56,
+  icon: 22,
+  iconSm: 18,
+  miniCardWidth: 232,
+  tabPillWidth: 64,
+  tabPillHeight: 32,
+};
+
+// Cards are flat; only elements that float above content cast a shadow
 export const shadows = {
-  card: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+  floating: {
+    shadowColor: colors.textHeading,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
   },
 };

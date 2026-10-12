@@ -11,6 +11,12 @@ import {
   useFonts,
 } from "@expo-google-fonts/lora";
 import {
+  Merriweather_300Light,
+  Merriweather_300Light_Italic,
+  Merriweather_600SemiBold,
+  Merriweather_700Bold,
+} from "@expo-google-fonts/merriweather";
+import {
   NotoRashiHebrew_400Regular,
   NotoRashiHebrew_700Bold,
 } from "@expo-google-fonts/noto-rashi-hebrew";
@@ -81,6 +87,10 @@ export default function RootLayout() {
     Lora_400Regular_Italic,
     Lora_600SemiBold,
     Lora_700Bold,
+    Merriweather_300Light,
+    Merriweather_300Light_Italic,
+    Merriweather_600SemiBold,
+    Merriweather_700Bold,
     NotoRashiHebrew_400Regular,
     NotoRashiHebrew_700Bold,
   });

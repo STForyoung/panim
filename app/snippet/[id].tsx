@@ -1,12 +1,16 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, deleteSnippet, getSnippet, toggleFavourite } from "@/src/db/snippets";
 import { type Topic } from "@/src/db/topics";
 import { getTopicsForSnippet } from "@/src/db/snippetTopics";
+import { FadeIn } from "@/src/components/FadeIn";
+import { IconButton } from "@/src/components/IconButton";
 import { PassageText } from "@/src/components/PassageText";
+import { ScreenHeader } from "@/src/components/ScreenHeader";
+import { EmptyState, LoadingState } from "@/src/components/StateViews";
+import { TopicChip } from "@/src/components/TopicChip";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { colors, radius, spacing, typography } from "@/src/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -60,9 +64,7 @@ export default function SnippetDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centeredState}>
-          <Text style={styles.stateText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -70,11 +72,9 @@ export default function SnippetDetailScreen() {
   if (notFound || !snippet) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centeredState}>
-          <Text style={styles.stateText}>Snippet not found.</Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButtonState}>
-            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
+        <View style={styles.notFound}>
+          <ScreenHeader onBack={() => router.back()} />
+          <EmptyState icon="help-circle-outline" title="Snippet not found" />
         </View>
       </SafeAreaView>
     );
@@ -84,86 +84,70 @@ export default function SnippetDetailScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <ScreenHeader onBack={() => router.back()}>
+          <IconButton
+            icon={isFavourite ? "heart" : "heart-outline"}
+            color={isFavourite ? colors.accent : colors.textSecondary}
+            accessibilityLabel={
+              isFavourite ? "Remove from favourites" : "Add to favourites"
+            }
+            onPress={async () => {
+              const next = !isFavourite;
+              await toggleFavourite(db, id, next);
+              setSnippet({ ...snippet, isFavourite: next });
+            }}
+          />
+          <IconButton
+            icon="create-outline"
+            color={colors.textSecondary}
+            accessibilityLabel="Edit snippet"
+            onPress={() => router.push(`/snippet/edit/${id}`)}
+          />
+          <IconButton
+            icon="trash-outline"
+            color={colors.textSecondary}
+            accessibilityLabel="Delete snippet"
+            onPress={handleDelete}
+          />
+        </ScreenHeader>
 
-        {/* Header row */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push(`/snippet/edit/${id}`)} hitSlop={8}>
-            <Text style={styles.editText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
+        <FadeIn>
+          {/* Reference */}
+          <Text style={styles.reference}>{getDisplayReference(snippet)}</Text>
 
-        {/* Reference */}
-        <Text style={styles.reference}>
-          {getDisplayReference(snippet).toUpperCase()}
-        </Text>
+          {/* Topic chips */}
+          {topics.length > 0 ? (
+            <View style={styles.chips}>
+              {topics.map((t) => (
+                <TopicChip key={t.id} name={t.name} />
+              ))}
+            </View>
+          ) : null}
 
-        {/* Topic chips */}
-        {topics.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipsScroll}
-            contentContainerStyle={styles.chipsContent}
-          >
-            {topics.map((t) => (
-              <View key={t.id} style={styles.chip}>
-                <Text style={styles.chipText}>{t.name}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        ) : null}
+          {/* Passage */}
+          <View style={styles.passage}>
+            <PassageText verses={snippet.passage} large />
+          </View>
 
-        <View style={styles.divider} />
+          {snippet.reflection ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>My reflection</Text>
+              <Text style={styles.sectionText}>{snippet.reflection}</Text>
+            </View>
+          ) : null}
 
-        {/* Passage */}
-        <Text style={styles.sectionLabel}>PASSAGE</Text>
-        <PassageText verses={snippet.passage} />
-
-        {snippet.reflection ? (
-          <>
-            <View style={styles.divider} />
-            <Text style={styles.sectionLabel}>MY REFLECTION</Text>
-            <Text style={styles.reflectionText}>{snippet.reflection}</Text>
-          </>
-        ) : null}
-
-        {/* Prayer */}
-        {snippet.prayer ? (
-          <>
-            <View style={styles.divider} />
-            <Text style={styles.sectionLabel}>MY PRAYER</Text>
-            <Text style={styles.prayerText}>{snippet.prayer}</Text>
-          </>
-        ) : null}
-
-        {/* Favourite button */}
-        <TouchableOpacity
-          style={isFavourite ? styles.favButtonFilled : styles.favButtonOutline}
-          activeOpacity={0.8}
-          onPress={async () => {
-            const next = !isFavourite;
-            await toggleFavourite(db, id, next);
-            setSnippet({ ...snippet, isFavourite: next });
-          }}
-        >
-          <Text style={isFavourite ? styles.favButtonFilledText : styles.favButtonOutlineText}>
-            {isFavourite ? "★ Remove from Favourites" : "☆ Add to Favourites"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Delete button */}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          activeOpacity={0.8}
-          onPress={handleDelete}
-        >
-          <Text style={styles.deleteText}>Delete Snippet</Text>
-        </TouchableOpacity>
-
+          {/* Prayer */}
+          {snippet.prayer ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>My prayer</Text>
+              <Text style={styles.sectionText}>{snippet.prayer}</Text>
+            </View>
+          ) : null}
+        </FadeIn>
       </ScrollView>
     </SafeAreaView>
   );
@@ -175,129 +159,48 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
-
-  // Loading / not found
-  centeredState: {
+  notFound: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stateText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  backButtonState: {
-    marginTop: spacing.md,
-  },
-
-  // Header
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  backButton: {
-    marginBottom: spacing.lg,
-  },
-  editText: {
-    ...typography.button,
-    color: colors.accent,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
 
   // Reference
   reference: {
-    ...typography.reference,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
+    ...typography.display,
   },
 
   // Topic chips
-  chipsScroll: {
-    marginBottom: spacing.sm,
-  },
-  chipsContent: {
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  chip: {
-    backgroundColor: colors.accent + "26", // 15% opacity
-    borderRadius: radius.lg,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  chipText: {
-    ...typography.label,
-    color: colors.accent,
-  },
-
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.lg,
-  },
-
-  // Section label
-  sectionLabel: {
-    ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-
-  // Reflection
-  reflectionText: {
-    ...typography.scripture,
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
 
   // Passage
-  // Prayer
-  prayerText: {
-    ...typography.scripture,
+  passage: {
+    marginTop: spacing.xl,
   },
 
-  // Favourite button
-  favButtonFilled: {
-    backgroundColor: colors.accent,
+  // Reflection and prayer
+  section: {
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
+    padding: spacing.lg,
     marginTop: spacing.lg,
   },
-  favButtonFilledText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  favButtonOutline: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginTop: spacing.lg,
-  },
-  favButtonOutlineText: {
-    ...typography.button,
+  sectionTitle: {
+    ...typography.label,
     color: colors.accent,
+    marginBottom: spacing.sm,
   },
-
-  // Delete button
-  deleteButton: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    marginTop: spacing.sm,
-  },
-  deleteText: {
-    ...typography.button,
-    color: colors.danger,
+  sectionText: {
+    ...typography.reflectionLarge,
+    color: colors.textSoft,
   },
 });

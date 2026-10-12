@@ -1,7 +1,9 @@
+import { Chevron, SelectedCheck } from "@/src/components/Icons";
+import { LoadingState } from "@/src/components/StateViews";
 import {
   colors,
+  layout,
   radius,
-  shadows,
   spacing,
   typography,
 } from "@/src/constants/theme";
@@ -13,6 +15,7 @@ import {
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { BOOK_IDS } from "@/src/services/bibleService";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
@@ -307,9 +310,7 @@ export default function SettingsScreen() {
   if (loading || !schedule) {
     return (
       <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
-        <View style={styles.centeredState}>
-          <Text style={styles.mutedText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -353,7 +354,7 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>
               {TRANSLATION_NAMES[schedule.translation]}
             </Text>
-            <Text style={styles.chevron}>›</Text>
+            <Chevron />
           </TouchableOpacity>
         </View>
 
@@ -383,7 +384,6 @@ export default function SettingsScreen() {
                     key={t}
                     style={[
                       styles.modalRow,
-                      selected && styles.rowSelected,
                       i === TRANSLATIONS.length - 1 && styles.rowLast,
                     ]}
                     onPress={() => {
@@ -393,7 +393,7 @@ export default function SettingsScreen() {
                     activeOpacity={0.7}
                   >
                     <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
-                    {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                    {selected ? <SelectedCheck /> : null}
                   </TouchableOpacity>
                 );
               })}
@@ -406,7 +406,7 @@ export default function SettingsScreen() {
         <Text style={styles.categoryNote}>When you receive reminders</Text>
 
         {/* Presets */}
-        <Text style={styles.sectionHeader}>PRESETS</Text>
+        <Text style={styles.sectionHeader}>Presets</Text>
         <View style={styles.presetChipRow}>
           {PRESETS.map((preset) => {
             const isActive =
@@ -440,7 +440,7 @@ export default function SettingsScreen() {
         })()}
 
         {/* Scheduled Times */}
-        <Text style={styles.sectionHeader}>YOUR TIMES</Text>
+        <Text style={styles.sectionHeader}>Your times</Text>
         {pendingTimes.length === 0 ? (
           <Text style={styles.mutedText}>No times set.</Text>
         ) : (
@@ -457,9 +457,13 @@ export default function SettingsScreen() {
                 <Text style={styles.rowLabel}>{to12h(time)}</Text>
                 <TouchableOpacity
                   onPress={() => handleRemoveTime(time)}
-                  hitSlop={8}
+                  hitSlop={spacing.sm}
                 >
-                  <Text style={styles.removeButton}>×</Text>
+                  <Ionicons
+                    name="close-circle"
+                    size={layout.icon}
+                    color={colors.textSecondary}
+                  />
                 </TouchableOpacity>
               </View>
             ))}
@@ -471,7 +475,8 @@ export default function SettingsScreen() {
           onPress={openAddTime}
           activeOpacity={0.8}
         >
-          <Text style={styles.outlineButtonText}>+ Custom Time</Text>
+          <Ionicons name="add" size={layout.iconSm} color={colors.accent} />
+          <Text style={styles.outlineButtonText}>Custom time</Text>
         </TouchableOpacity>
 
         {pendingTimes.length > 0 ? (
@@ -510,7 +515,7 @@ export default function SettingsScreen() {
             <View style={styles.modalBody}>
               <View style={styles.timePickerRow}>
                 <View style={styles.timePickerField}>
-                  <Text style={styles.pickerSectionLabel}>HOUR</Text>
+                  <Text style={styles.pickerSectionLabel}>Hour</Text>
                   <TextInput
                     style={styles.timePickerInput}
                     value={pickerHour}
@@ -523,7 +528,7 @@ export default function SettingsScreen() {
                 </View>
                 <Text style={styles.timePickerSeparator}>:</Text>
                 <View style={styles.timePickerField}>
-                  <Text style={styles.pickerSectionLabel}>MINUTE</Text>
+                  <Text style={styles.pickerSectionLabel}>Minute</Text>
                   <TextInput
                     style={styles.timePickerInput}
                     value={pickerMinute}
@@ -624,7 +629,7 @@ export default function SettingsScreen() {
                         {customTopics.length} available
                       </Text>
                     </View>
-                    <Text style={styles.chevron}>›</Text>
+                    <Chevron />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalRow, styles.rowLast]}
@@ -637,7 +642,7 @@ export default function SettingsScreen() {
                         {bookTopics.length} available
                       </Text>
                     </View>
-                    <Text style={styles.chevron}>›</Text>
+                    <Chevron />
                   </TouchableOpacity>
                 </>
               ) : topicPickerType === "book" && !bookTopicSection ? (
@@ -653,7 +658,7 @@ export default function SettingsScreen() {
                         {otBookTopics.length} available
                       </Text>
                     </View>
-                    <Text style={styles.chevron}>›</Text>
+                    <Chevron />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalRow, styles.rowLast]}
@@ -666,7 +671,7 @@ export default function SettingsScreen() {
                         {ntBookTopics.length} available
                       </Text>
                     </View>
-                    <Text style={styles.chevron}>›</Text>
+                    <Chevron />
                   </TouchableOpacity>
                 </>
               ) : topicsForSelectedType.length === 0 ? (
@@ -683,7 +688,6 @@ export default function SettingsScreen() {
                       key={topic.id}
                       style={[
                         styles.modalRow,
-                        selected && styles.rowSelected,
                         i === topicsForSelectedType.length - 1 &&
                           styles.rowLast,
                       ]}
@@ -691,9 +695,7 @@ export default function SettingsScreen() {
                       activeOpacity={0.7}
                     >
                       <Text style={styles.rowLabel}>{topic.name}</Text>
-                      {selected ? (
-                        <Text style={styles.checkmark}>✓</Text>
-                      ) : null}
+                      {selected ? <SelectedCheck /> : null}
                     </TouchableOpacity>
                   );
                 })
@@ -702,13 +704,9 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
+        {/* Mode */}
+        <Text style={styles.sectionHeader}>Mode</Text>
         <View style={styles.sectionCard}>
-          {/* Mode */}
-          <View
-            style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}
-          >
-            <Text style={styles.prefLabel}>MODE</Text>
-          </View>
           {(["random", "topic", "favourites"] as const).map((mode) => {
             const selected = pendingMode === mode;
             const label =
@@ -723,13 +721,13 @@ export default function SettingsScreen() {
                   style={[
                     styles.row,
                     styles.rowSpaceBetween,
-                    selected && styles.rowSelected,
+                    mode === "favourites" && styles.rowLast,
                   ]}
                   onPress={() => handleModeChange(mode)}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.rowLabel}>{label}</Text>
-                  {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                  {selected ? <SelectedCheck /> : null}
                 </TouchableOpacity>
                 {mode === "topic" && pendingMode === "topic" ? (
                   <TouchableOpacity
@@ -740,19 +738,18 @@ export default function SettingsScreen() {
                     <Text style={styles.topicPickerText}>
                       {activeTopicName ?? "Select a topic…"}
                     </Text>
-                    <Text style={styles.chevron}>›</Text>
+                    <Chevron />
                   </TouchableOpacity>
                 ) : null}
               </View>
             );
           })}
 
-          {/* Content */}
-          <View
-            style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}
-          >
-            <Text style={styles.prefLabel}>CONTENT</Text>
           </View>
+
+        {/* Content */}
+        <Text style={styles.sectionHeader}>Content</Text>
+        <View style={styles.sectionCard}>
           {(["passage", "reflection", "prayer"] as const).map((content) => {
             const selected = pendingNotificationContent === content;
             const label =
@@ -767,7 +764,7 @@ export default function SettingsScreen() {
                 style={[
                   styles.row,
                   styles.rowSpaceBetween,
-                  selected && styles.rowSelected,
+                  content === "prayer" && styles.rowLast,
                 ]}
                 onPress={() => {
                   setPendingNotificationContent(content);
@@ -776,17 +773,16 @@ export default function SettingsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.rowLabel}>{label}</Text>
-                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                {selected ? <SelectedCheck /> : null}
               </TouchableOpacity>
             );
           })}
 
-          {/* Selection Order */}
-          <View
-            style={[styles.row, styles.rowSpaceBetween, styles.prefGroupLabel]}
-          >
-            <Text style={styles.prefLabel}>SELECTION ORDER</Text>
           </View>
+
+        {/* Selection Order */}
+        <Text style={styles.sectionHeader}>Selection order</Text>
+        <View style={styles.sectionCard}>
           {(["random", "sequential"] as const).map((order, i) => {
             const selected = pendingSelectionOrder === order;
             const label = order === "random" ? "Random" : "Sequential";
@@ -796,14 +792,13 @@ export default function SettingsScreen() {
                 style={[
                   styles.row,
                   styles.rowSpaceBetween,
-                  selected && styles.rowSelected,
                   i === 1 && styles.rowLast,
                 ]}
                 onPress={() => handleSelectionOrderChange(order)}
                 activeOpacity={0.7}
               >
                 <Text style={styles.rowLabel}>{label}</Text>
-                {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+                {selected ? <SelectedCheck /> : null}
               </TouchableOpacity>
             );
           })}
@@ -852,7 +847,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingTop: spacing.lg,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   centeredState: {
     flex: 1,
@@ -867,46 +862,41 @@ const styles = StyleSheet.create({
 
   // Title
   title: {
-    ...typography.heading,
+    ...typography.display,
     marginTop: spacing.md,
-    marginBottom: spacing.xs,
   },
 
   // Category headers
   categoryHeader: {
     ...typography.heading,
-    fontSize: 18,
-    color: colors.textHeading,
     marginTop: spacing.xl,
-    marginBottom: spacing.xs,
   },
   categoryNote: {
     ...typography.label,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs / 2,
+    marginBottom: spacing.md,
   },
 
   // Section pattern
   sectionHeader: {
     ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
   sectionCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     overflow: "hidden",
-    ...shadows.card,
   },
 
   // Rows
   row: {
     flexDirection: "row",
     alignItems: "center",
-    padding: spacing.md,
-    borderBottomWidth: 1,
+    minHeight: layout.controlHeight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   rowLast: {
@@ -915,17 +905,8 @@ const styles = StyleSheet.create({
   rowSpaceBetween: {
     justifyContent: "space-between",
   },
-  rowSelected: {
-    backgroundColor: colors.accent + "33",
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
-  },
   rowLabel: {
     ...typography.body,
-  },
-  checkmark: {
-    ...typography.body,
-    color: colors.accent,
   },
 
   // Preset chips
@@ -935,57 +916,45 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   presetChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surface,
-    ...shadows.card,
   },
   presetChipActive: {
     backgroundColor: colors.accent,
-    borderColor: colors.accent,
   },
   presetChipText: {
     ...typography.body,
     color: colors.textPrimary,
   },
   presetChipTextActive: {
-    color: colors.surface,
+    color: colors.onAccent,
     fontWeight: "600",
   },
   presetActiveDetail: {
     ...typography.label,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-
-  // Remove time button
-  removeButton: {
-    ...typography.body,
-    color: colors.danger,
-  },
-
-  // Add Time outline button
-  outlineButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
     marginTop: spacing.sm,
+  },
+
+  // Add custom time button
+  outlineButton: {
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    minHeight: layout.controlHeight,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   outlineButtonText: {
     ...typography.button,
-    color: colors.surface,
+    color: colors.accent,
   },
   clearButton: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: radius.md,
     paddingVertical: spacing.md,
     alignItems: "center",
-    marginTop: spacing.sm,
   },
   clearButtonText: {
     ...typography.button,
@@ -1005,84 +974,58 @@ const styles = StyleSheet.create({
   },
   pickerSectionLabel: {
     ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   timePickerInput: {
+    ...typography.display,
+    lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
-    width: 72,
-    fontSize: 32,
-    fontWeight: "300" as const,
-    color: colors.textHeading,
+    minWidth: layout.fab + spacing.lg,
     textAlign: "center",
   },
   timePickerSeparator: {
-    fontSize: 32,
-    fontWeight: "300" as const,
+    ...typography.display,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   amPmStack: {
     gap: spacing.xs,
   },
   amPmButton: {
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: radius.sm,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     alignItems: "center",
   },
   amPmButtonActive: {
     backgroundColor: colors.accent,
-    borderColor: colors.accent,
   },
   amPmText: {
     ...typography.button,
     color: colors.textSecondary,
   },
   amPmTextActive: {
-    color: colors.surface,
-  },
-
-  // Preference group labels (inside consolidated card)
-  prefGroupLabel: {
-    backgroundColor: colors.background,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  prefLabel: {
-    ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
+    color: colors.onAccent,
   },
 
   // Topic picker row (inside mode card)
   topicPickerRow: {
     paddingLeft: spacing.xl,
     justifyContent: "space-between",
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
-    backgroundColor: colors.accent + "0D",
+    backgroundColor: colors.background + "80",
   },
   topicPickerText: {
     ...typography.body,
     color: colors.textSecondary,
   },
-  chevron: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
   topicTypeTag: {
     ...typography.label,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.xs / 2,
   },
 
   // Error
@@ -1094,7 +1037,7 @@ const styles = StyleSheet.create({
 
   // Sticky footer
   scrollWithFooter: {
-    paddingBottom: spacing.xl * 2 + 52,
+    paddingBottom: spacing.xl * 2 + layout.controlHeight,
   },
   stickyFooter: {
     position: "absolute",
@@ -1102,9 +1045,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   footerRow: {
     flexDirection: "row",
@@ -1116,16 +1058,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelButton: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelButtonText: {
     ...typography.button,
@@ -1138,11 +1081,10 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.accent,
     textAlign: "center",
-    marginTop: spacing.sm,
   },
   primaryButtonText: {
     ...typography.button,
-    color: colors.surface,
+    color: colors.onAccent,
   },
 
   // Modal
@@ -1150,12 +1092,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: spacing.md,
   },
   modalCancelArea: {
-    minWidth: 60,
+    minWidth: layout.fab + spacing.sm,
   },
   modalCancel: {
     ...typography.button,
@@ -1165,10 +1105,9 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   modalTitle: {
-    ...typography.heading,
+    ...typography.title,
     flex: 1,
     textAlign: "center",
-    fontSize: 17,
   },
   modalBody: {
     padding: spacing.lg,
@@ -1177,9 +1116,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: spacing.md,
+    minHeight: layout.controlHeight + spacing.sm,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
 });

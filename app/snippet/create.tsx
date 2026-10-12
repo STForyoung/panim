@@ -1,10 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Chevron } from "@/src/components/Icons";
 import { PassageText } from "@/src/components/PassageText";
+import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { TopicChip } from "@/src/components/TopicChip";
 import {
   colors,
+  layout,
   radius,
-  shadows,
   spacing,
   typography,
 } from "@/src/constants/theme";
@@ -233,20 +234,16 @@ export default function CreateSnippetScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView contentContainerStyle={styles.scroll}>
-          <TouchableOpacity
-            onPress={() =>
+          <ScreenHeader
+            onBack={() =>
               router.canGoBack() ? router.back() : router.replace("/(tabs)")
             }
-            hitSlop={8}
-            style={styles.cancelText}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
+          />
 
           <Text style={styles.screenTitle}>New Snippet</Text>
 
           {/* Book picker */}
-          <Text style={styles.sectionLabel}>BOOK</Text>
+          <Text style={styles.sectionLabel}>Book</Text>
           <TouchableOpacity
             style={styles.bookButton}
             onPress={() => setBookPickerVisible(true)}
@@ -259,7 +256,7 @@ export default function CreateSnippetScreen() {
             >
               {book || "Select a book"}
             </Text>
-            <Text style={styles.chevron}>›</Text>
+            <Chevron />
           </TouchableOpacity>
 
           {/* Book picker modal */}
@@ -301,7 +298,7 @@ export default function CreateSnippetScreen() {
                       activeOpacity={0.6}
                     >
                       <Text style={styles.bookRowText}>Old Testament</Text>
-                      <Text style={styles.chevron}>›</Text>
+                      <Chevron />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.bookRow}
@@ -309,7 +306,7 @@ export default function CreateSnippetScreen() {
                       activeOpacity={0.6}
                     >
                       <Text style={styles.bookRowText}>New Testament</Text>
-                      <Text style={styles.chevron}>›</Text>
+                      <Chevron />
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -340,7 +337,7 @@ export default function CreateSnippetScreen() {
           {/* Start chapter and verse */}
           <View style={styles.inputRow}>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabel}>CHAPTER</Text>
+              <Text style={styles.sectionLabel}>Chapter</Text>
               <TextInput
                 style={[styles.input, inputBorder("chapterStart")]}
                 value={chapterStart}
@@ -353,7 +350,7 @@ export default function CreateSnippetScreen() {
               />
             </View>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabel}>VERSE</Text>
+              <Text style={styles.sectionLabel}>Verse</Text>
               <TextInput
                 style={[styles.input, inputBorder("verseStart")]}
                 value={verseStart}
@@ -370,7 +367,7 @@ export default function CreateSnippetScreen() {
           {/* End chapter and verse */}
           <View style={styles.inputRow}>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabelOptional}>END CHAPTER</Text>
+              <Text style={styles.sectionLabelOptional}>End chapter</Text>
               <TextInput
                 style={[styles.input, inputBorder("chapterEnd")]}
                 value={chapterEnd}
@@ -383,7 +380,7 @@ export default function CreateSnippetScreen() {
               />
             </View>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabelOptional}>END VERSE</Text>
+              <Text style={styles.sectionLabelOptional}>End verse</Text>
               <TextInput
                 style={[styles.input, inputBorder("verseEnd")]}
                 value={verseEnd}
@@ -404,7 +401,7 @@ export default function CreateSnippetScreen() {
             disabled={isFetching}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>
+            <Text style={styles.fetchButtonText}>
               {isFetching ? "Fetching…" : "Fetch Passage"}
             </Text>
           </TouchableOpacity>
@@ -412,7 +409,7 @@ export default function CreateSnippetScreen() {
           {/* Passage display */}
           {passage.length > 0 ? (
             <View style={styles.passageCard}>
-              <Text style={styles.sectionLabel}>PASSAGE</Text>
+              <Text style={styles.sectionLabel}>Passage</Text>
               <PassageText verses={passage} />
             </View>
           ) : null}
@@ -436,7 +433,7 @@ export default function CreateSnippetScreen() {
 
           {/* Reflection */}
           <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
-            MY REFLECTION
+            My reflection
           </Text>
           <TextInput
             style={[styles.reflectionInput, inputBorder("reflection")]}
@@ -452,7 +449,7 @@ export default function CreateSnippetScreen() {
 
           {/* Prayer */}
           <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
-            MY PRAYER (optional)
+            My prayer (optional)
           </Text>
           <TextInput
             style={[styles.reflectionInput, inputBorder("prayer")]}
@@ -468,7 +465,7 @@ export default function CreateSnippetScreen() {
 
           {/* Topics */}
           <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>
-            TOPICS
+            Topics
           </Text>
 
           {assignedTopics.length > 0 || pendingNewTopicNames.length > 0 ? (
@@ -615,30 +612,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    padding: spacing.lg,
-  },
-
-  cancelText: {
-    marginBottom: spacing.lg,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
   },
 
   // Screen title
   screenTitle: {
-    ...typography.heading,
+    ...typography.display,
     marginBottom: spacing.lg,
   },
 
   // Section labels
   sectionLabel: {
     ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   sectionLabelOptional: {
     ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
     opacity: 0.6,
   },
@@ -650,11 +641,13 @@ const styles = StyleSheet.create({
   bookButton: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
+    minHeight: layout.controlHeight,
+    paddingHorizontal: spacing.md,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   bookButtonText: {
     ...typography.body,
@@ -663,40 +656,25 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
   },
-  chevron: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
 
-  // Book picker modal
+  // Picker modals
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: spacing.md,
   },
   modalCancelArea: {
-    minWidth: 60,
+    minWidth: layout.fab + spacing.sm,
   },
   modalCancel: {
     ...typography.button,
     color: colors.accent,
   },
   modalTitle: {
-    ...typography.heading,
+    ...typography.title,
     flex: 1,
     textAlign: "center",
-    fontSize: 17,
-  },
-  bookSectionHeader: {
-    ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.lg,
   },
   bookRow: {
     flexDirection: "row",
@@ -704,7 +682,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   bookRowText: {
@@ -712,16 +690,16 @@ const styles = StyleSheet.create({
   },
   bookRowTextSelected: {
     color: colors.accent,
+    fontWeight: "600",
   },
   topicTypeTag: {
     ...typography.label,
-    color: colors.textSecondary,
   },
 
   // Inputs
   inputRow: {
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: spacing.md,
     marginTop: spacing.md,
   },
   inputColumn: {
@@ -730,7 +708,8 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
+    minHeight: layout.controlHeight,
+    paddingHorizontal: spacing.md,
     ...typography.body,
     lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
     borderWidth: 1,
@@ -742,15 +721,20 @@ const styles = StyleSheet.create({
 
   // Fetch button
   primaryButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
     marginTop: spacing.lg,
+  },
+  fetchButtonText: {
+    ...typography.button,
+    color: colors.accent,
   },
   primaryButtonText: {
     ...typography.button,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -760,24 +744,20 @@ const styles = StyleSheet.create({
   passageCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginTop: spacing.lg,
-    ...shadows.card,
   },
+
   // Error
   errorContainer: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   errorText: {
     ...typography.label,
     color: colors.danger,
   },
   retryButton: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
     alignSelf: "flex-start",
   },
   retryText: {
@@ -791,7 +771,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     ...typography.scripture,
-    minHeight: 120,
+    minHeight: layout.textArea,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -800,75 +780,20 @@ const styles = StyleSheet.create({
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
 
-  // Auto-suggestion
-  suggestionRow: {
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  suggestionText: {
-    ...typography.body,
-    color: colors.accent,
-  },
-
-  // Topic picker trigger
-  topicPickerButton: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.sm,
-  },
-  topicPickerText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-
-  // Inline create topic
-  inlineCreateLabel: {
-    ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
-  },
+  // Topic actions
   newTopicInput: {
     marginBottom: spacing.sm,
   },
-  typeToggleRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  typeButton: {
-    flex: 1,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  typeButtonActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent + "26", // 15% opacity
-  },
-  typeButtonText: {
-    ...typography.label,
-    color: colors.textSecondary,
-  },
-  typeButtonTextActive: {
-    color: colors.accent,
-  },
   addTopicButton: {
-    borderWidth: 1,
-    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
+    minHeight: layout.controlHeight - spacing.sm,
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.sm,
   },
   addTopicText: {
@@ -881,16 +806,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     alignItems: "stretch",
   },
-  flex1: {
-    flex: 1,
-  },
   addTopicButtonSecondary: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
+    minHeight: layout.controlHeight - spacing.sm,
     alignItems: "center",
+    justifyContent: "center",
   },
   addTopicTextSecondary: {
     ...typography.button,
@@ -901,9 +823,10 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
     marginTop: spacing.xl,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
 });

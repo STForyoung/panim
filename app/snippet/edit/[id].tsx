@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -15,7 +14,10 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type PassageVerse, type Snippet, getSnippet, updateSnippet } from "@/src/db/snippets";
+import { Chevron } from "@/src/components/Icons";
 import { PassageText } from "@/src/components/PassageText";
+import { ScreenHeader } from "@/src/components/ScreenHeader";
+import { EmptyState, LoadingState } from "@/src/components/StateViews";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
 import {
   addSnippetToTopic,
@@ -24,7 +26,7 @@ import {
 } from "@/src/db/snippetTopics";
 import { fetchPassage, BOOK_IDS } from "@/src/services/bibleService";
 import { TopicChip } from "@/src/components/TopicChip";
-import { colors, radius, shadows, spacing, typography } from "@/src/constants/theme";
+import { colors, layout, radius, spacing, typography } from "@/src/constants/theme";
 
 // Derive ordered, deduplicated book list from BOOK_IDS (aliases share an ID — keep first occurrence)
 const allBooks = Object.entries(BOOK_IDS)
@@ -249,9 +251,7 @@ export default function EditSnippetScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centeredState}>
-          <Text style={styles.mutedText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -259,11 +259,9 @@ export default function EditSnippetScreen() {
   if (notFound || !originalSnippet) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centeredState}>
-          <Text style={styles.mutedText}>Snippet not found.</Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButtonState}>
-            <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
+        <View style={styles.notFound}>
+          <ScreenHeader onBack={() => router.back()} />
+          <EmptyState icon="help-circle-outline" title="Snippet not found" />
         </View>
       </SafeAreaView>
     );
@@ -277,24 +275,14 @@ export default function EditSnippetScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll}>
 
-          {/* Header row */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <Text style={styles.screenTitle}>Edit Snippet</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          {/* Editing banner */}
-          <View style={styles.editingBanner}>
-            <Text style={styles.editingBannerText}>
-              Editing existing snippet — tap Save Changes when done
-            </Text>
-          </View>
+          <ScreenHeader onBack={() => router.back()} />
+          <Text style={styles.screenTitle}>Edit Snippet</Text>
+          <Text style={styles.editingNote}>
+            Editing existing snippet — tap Save Changes when done
+          </Text>
 
           {/* Book picker */}
-          <Text style={styles.sectionLabel}>BOOK</Text>
+          <Text style={styles.sectionLabel}>Book</Text>
           <TouchableOpacity
             style={styles.bookButton}
             onPress={() => setBookPickerVisible(true)}
@@ -303,7 +291,7 @@ export default function EditSnippetScreen() {
             <Text style={book ? styles.bookButtonText : styles.bookButtonPlaceholder}>
               {book || "Select a book"}
             </Text>
-            <Text style={styles.chevron}>›</Text>
+            <Chevron />
           </TouchableOpacity>
 
           {/* Book picker modal */}
@@ -340,7 +328,7 @@ export default function EditSnippetScreen() {
                       activeOpacity={0.6}
                     >
                       <Text style={styles.bookRowText}>Old Testament</Text>
-                      <Text style={styles.chevron}>›</Text>
+                      <Chevron />
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.bookRow}
@@ -348,7 +336,7 @@ export default function EditSnippetScreen() {
                       activeOpacity={0.6}
                     >
                       <Text style={styles.bookRowText}>New Testament</Text>
-                      <Text style={styles.chevron}>›</Text>
+                      <Chevron />
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -372,7 +360,7 @@ export default function EditSnippetScreen() {
           {/* Start chapter and verse */}
           <View style={styles.inputRow}>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabel}>CHAPTER</Text>
+              <Text style={styles.sectionLabel}>Chapter</Text>
               <TextInput
                 style={[styles.input, inputBorder("chapterStart")]}
                 value={chapterStart}
@@ -385,7 +373,7 @@ export default function EditSnippetScreen() {
               />
             </View>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabel}>VERSE</Text>
+              <Text style={styles.sectionLabel}>Verse</Text>
               <TextInput
                 style={[styles.input, inputBorder("verseStart")]}
                 value={verseStart}
@@ -402,7 +390,7 @@ export default function EditSnippetScreen() {
           {/* End chapter and verse */}
           <View style={styles.inputRow}>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabelOptional}>END CHAPTER</Text>
+              <Text style={styles.sectionLabelOptional}>End chapter</Text>
               <TextInput
                 style={[styles.input, inputBorder("chapterEnd")]}
                 value={chapterEnd}
@@ -415,7 +403,7 @@ export default function EditSnippetScreen() {
               />
             </View>
             <View style={styles.inputColumn}>
-              <Text style={styles.sectionLabelOptional}>END VERSE</Text>
+              <Text style={styles.sectionLabelOptional}>End verse</Text>
               <TextInput
                 style={[styles.input, inputBorder("verseEnd")]}
                 value={verseEnd}
@@ -436,7 +424,7 @@ export default function EditSnippetScreen() {
             disabled={isFetching}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>
+            <Text style={styles.fetchButtonText}>
               {isFetching ? "Fetching…" : "Re-fetch Passage"}
             </Text>
           </TouchableOpacity>
@@ -444,7 +432,7 @@ export default function EditSnippetScreen() {
           {/* Passage display */}
           {passage.length > 0 ? (
             <View style={styles.passageCard}>
-              <Text style={styles.sectionLabel}>PASSAGE</Text>
+              <Text style={styles.sectionLabel}>Passage</Text>
               <PassageText verses={passage} />
             </View>
           ) : null}
@@ -467,7 +455,7 @@ export default function EditSnippetScreen() {
           ) : null}
 
           {/* Reflection */}
-          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>MY REFLECTION</Text>
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>My reflection</Text>
           <TextInput
             style={[styles.reflectionInput, inputBorder("reflection")]}
             value={reflection}
@@ -481,7 +469,7 @@ export default function EditSnippetScreen() {
           />
 
           {/* Prayer */}
-          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>MY PRAYER (optional)</Text>
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>My prayer (optional)</Text>
           <TextInput
             style={[styles.reflectionInput, inputBorder("prayer")]}
             value={prayer}
@@ -495,7 +483,7 @@ export default function EditSnippetScreen() {
           />
 
           {/* Topics */}
-          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>TOPICS</Text>
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>Topics</Text>
 
           {(assignedTopics.length > 0 || pendingNewTopicNames.length > 0) ? (
             <View style={styles.chipsRow}>
@@ -631,66 +619,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scroll: {
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.xl,
   },
-
-  // Loading / not found
-  centeredState: {
+  notFound: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backButtonState: {
-    marginTop: spacing.md,
-  },
-  mutedText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
 
-  // Header
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-  },
-  backButton: {
-    marginBottom: spacing.lg,
-  },
+  // Screen title
   screenTitle: {
-    ...typography.heading,
-    fontSize: 17,
+    ...typography.display,
   },
-  headerSpacer: {
-    minWidth: 24,
-  },
-
-  // Editing banner
-  editingBanner: {
-    backgroundColor: colors.accent + "1A", // 10% opacity
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  editingBannerText: {
+  editingNote: {
     ...typography.label,
-    color: colors.accent,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
   },
 
   // Section labels
   sectionLabel: {
     ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   sectionLabelOptional: {
     ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
     marginBottom: spacing.sm,
     opacity: 0.6,
   },
@@ -702,11 +657,13 @@ const styles = StyleSheet.create({
   bookButton: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
+    minHeight: layout.controlHeight,
+    paddingHorizontal: spacing.md,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   bookButtonText: {
     ...typography.body,
@@ -715,40 +672,25 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
   },
-  chevron: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
 
-  // Book picker modal
+  // Picker modals
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: spacing.md,
   },
   modalCancelArea: {
-    minWidth: 60,
+    minWidth: layout.fab + spacing.sm,
   },
   modalCancel: {
     ...typography.button,
     color: colors.accent,
   },
   modalTitle: {
-    ...typography.heading,
+    ...typography.title,
     flex: 1,
     textAlign: "center",
-    fontSize: 17,
-  },
-  bookSectionHeader: {
-    ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.lg,
   },
   bookRow: {
     flexDirection: "row",
@@ -756,7 +698,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   bookRowText: {
@@ -764,16 +706,16 @@ const styles = StyleSheet.create({
   },
   bookRowTextSelected: {
     color: colors.accent,
+    fontWeight: "600",
   },
   topicTypeTag: {
     ...typography.label,
-    color: colors.textSecondary,
   },
 
   // Inputs
   inputRow: {
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: spacing.md,
     marginTop: spacing.md,
   },
   inputColumn: {
@@ -782,7 +724,8 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
+    minHeight: layout.controlHeight,
+    paddingHorizontal: spacing.md,
     ...typography.body,
     lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
     borderWidth: 1,
@@ -794,15 +737,20 @@ const styles = StyleSheet.create({
 
   // Fetch button
   primaryButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
     marginTop: spacing.lg,
+  },
+  fetchButtonText: {
+    ...typography.button,
+    color: colors.accent,
   },
   primaryButtonText: {
     ...typography.button,
-    color: colors.surface,
+    color: colors.onAccent,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -812,24 +760,20 @@ const styles = StyleSheet.create({
   passageCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.md,
+    padding: spacing.lg,
     marginTop: spacing.lg,
-    ...shadows.card,
   },
+
   // Error
   errorContainer: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   errorText: {
     ...typography.label,
     color: colors.danger,
   },
   retryButton: {
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
     alignSelf: "flex-start",
   },
   retryText: {
@@ -843,7 +787,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     ...typography.scripture,
-    minHeight: 120,
+    minHeight: layout.textArea,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -852,75 +796,20 @@ const styles = StyleSheet.create({
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
 
-  // Auto-suggestion
-  suggestionRow: {
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  suggestionText: {
-    ...typography.body,
-    color: colors.accent,
-  },
-
-  // Topic picker trigger
-  topicPickerButton: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.sm,
-  },
-  topicPickerText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-
-  // Inline create topic
-  inlineCreateLabel: {
-    ...typography.label,
-    letterSpacing: 1.5,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    marginTop: spacing.md,
-  },
+  // Topic actions
   newTopicInput: {
     marginBottom: spacing.sm,
   },
-  typeToggleRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  typeButton: {
-    flex: 1,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  typeButtonActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent + "26", // 15% opacity
-  },
-  typeButtonText: {
-    ...typography.label,
-    color: colors.textSecondary,
-  },
-  typeButtonTextActive: {
-    color: colors.accent,
-  },
   addTopicButton: {
-    borderWidth: 1,
-    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
+    minHeight: layout.controlHeight - spacing.sm,
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.sm,
   },
   addTopicText: {
@@ -933,16 +822,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     alignItems: "stretch",
   },
-  flex1: {
-    flex: 1,
-  },
   addTopicButtonSecondary: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
-    paddingVertical: spacing.sm,
+    minHeight: layout.controlHeight - spacing.sm,
     alignItems: "center",
+    justifyContent: "center",
   },
   addTopicTextSecondary: {
     ...typography.button,
@@ -953,9 +839,10 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: colors.accent,
     borderRadius: radius.md,
-    paddingVertical: spacing.md,
+    minHeight: layout.controlHeight,
     alignItems: "center",
+    justifyContent: "center",
     marginTop: spacing.xl,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
 });

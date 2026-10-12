@@ -1,22 +1,12 @@
-import { Ionicons } from "@expo/vector-icons";
-import {
-  colors,
-  radius,
-  shadows,
-  spacing,
-  typography,
-} from "@/src/constants/theme";
+import { ListRow } from "@/src/components/ListRow";
+import { ScreenHeader } from "@/src/components/ScreenHeader";
+import { LoadingState } from "@/src/components/StateViews";
+import { colors, spacing, typography } from "@/src/constants/theme";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TopicWithCount = Topic & { snippetCount: number };
@@ -51,9 +41,7 @@ export default function BookTopicsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.screen}>
-        <View style={styles.centered}>
-          <Text style={styles.mutedText}>Loading…</Text>
-        </View>
+        <LoadingState />
       </SafeAreaView>
     );
   }
@@ -66,28 +54,20 @@ export default function BookTopicsScreen() {
         contentContainerStyle={styles.scroll}
         ListHeaderComponent={
           <View>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <ScreenHeader onBack={() => router.back()} />
             <Text style={styles.title}>Bible Books</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
+          <ListRow
+            title={item.name}
+            subtitle={
+              item.snippetCount === 1
+                ? "1 snippet"
+                : `${item.snippetCount} snippets`
+            }
             onPress={() => router.push(`/topic/${item.id}`)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardCount}>
-                {item.snippetCount === 1
-                  ? "1 snippet"
-                  : `${item.snippetCount} snippets`}
-              </Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
+          />
         )}
       />
     </SafeAreaView>
@@ -100,49 +80,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scroll: {
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-  },
-  centered: {
-    alignItems: "center",
-    marginTop: spacing.xl,
-  },
-  mutedText: {
-    ...typography.body,
-    color: colors.textSecondary,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
   },
   title: {
-    ...typography.heading,
-    marginBottom: spacing.lg,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    ...shadows.card,
-  },
-  cardLeft: {
-    flex: 1,
-  },
-  cardTitle: {
-    ...typography.body,
-    fontWeight: "600",
-  },
-  cardCount: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  chevron: {
-    fontSize: 20,
-    color: colors.textSecondary,
-  },
-  backButton: {
-    marginBottom: spacing.lg,
+    ...typography.display,
+    marginBottom: spacing.md,
   },
 });

@@ -1,4 +1,12 @@
-import { colors, radius, spacing, typography } from "@/src/constants/theme";
+import { Button } from "@/src/components/Button";
+import { FadeIn } from "@/src/components/FadeIn";
+import {
+  colors,
+  fonts,
+  radius,
+  spacing,
+  typography,
+} from "@/src/constants/theme";
 import { getSchedule, updateSchedule } from "@/src/db/notificationSchedule";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -84,7 +92,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={[styles.top, styles.topCentered]}>
+          <FadeIn key="step1" style={[styles.top, styles.topCentered]}>
             <Text style={styles.hebrew}>פָּנִים</Text>
             <Text style={styles.transliteration}>pā·nîm</Text>
             <View style={styles.goldDivider} />
@@ -103,14 +111,8 @@ export default function OnboardingScreen() {
               </Text>
               <Text style={styles.verseReference}>Psalm 27:8</Text>
             </View>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={next}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Begin</Text>
-          </TouchableOpacity>
+          </FadeIn>
+          <Button label="Begin" onPress={next} />
         </View>
       </SafeAreaView>
     );
@@ -121,7 +123,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step2" style={styles.top}>
             <ProgressDots active={1} />
             <Text style={styles.sectionLabel}>Your meditations</Text>
             <View style={styles.goldDivider} />
@@ -134,14 +136,8 @@ export default function OnboardingScreen() {
               Receive them as notifications throughout your day as quiet
               reminders to pause and meditate.
             </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={next}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Next</Text>
-          </TouchableOpacity>
+          </FadeIn>
+          <Button label="Next" onPress={next} />
         </View>
       </SafeAreaView>
     );
@@ -152,7 +148,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step3" style={styles.top}>
             <ProgressDots active={2} />
             <Text style={styles.sectionLabel}>Notifications</Text>
             <View style={styles.goldDivider} />
@@ -162,22 +158,10 @@ export default function OnboardingScreen() {
               gentle prompt to pause and meditate. You can use the Settings tab
               to customize your notifications.
             </Text>
-          </View>
+          </FadeIn>
           <View style={styles.buttonStack}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleAllowNotifications}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>Allow Notifications</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={next}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.secondaryButtonText}>Skip for now</Text>
-            </TouchableOpacity>
+            <Button label="Allow Notifications" onPress={handleAllowNotifications} />
+            <Button label="Skip for now" variant="ghost" onPress={next} />
           </View>
         </View>
       </SafeAreaView>
@@ -189,7 +173,7 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step4" style={styles.top}>
             <ProgressDots active={3} />
             <Text style={styles.sectionLabel}>Your rhythm</Text>
             <View style={styles.goldDivider} />
@@ -213,14 +197,8 @@ export default function OnboardingScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleRhythmContinue}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Continue</Text>
-          </TouchableOpacity>
+          </FadeIn>
+          <Button label="Continue" onPress={handleRhythmContinue} />
         </View>
       </SafeAreaView>
     );
@@ -231,28 +209,16 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.content}>
-          <View style={styles.top}>
+          <FadeIn key="step5" style={styles.top}>
             <Text style={styles.heading}>You&apos;re all set</Text>
             <Text style={styles.body}>
               We&apos;ve added a few scripture collections to get you started.
               Feel free to explore, or create your first snippet now.
             </Text>
-          </View>
+          </FadeIn>
           <View style={styles.buttonStack}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => handleComplete("home")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>Explore Snippets</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => handleComplete("create")}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.secondaryButtonText}>Create a Snippet</Text>
-            </TouchableOpacity>
+            <Button label="Explore Snippets" onPress={() => handleComplete("home")} />
+            <Button label="Create a Snippet" variant="ghost" onPress={() => handleComplete("create")} />
           </View>
         </View>
       </SafeAreaView>
@@ -286,35 +252,14 @@ const styles = StyleSheet.create({
   buttonStack: {
     gap: spacing.sm,
   },
-  primaryButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  secondaryButton: {
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    ...typography.button,
-    color: colors.textSecondary,
-  },
 
   // Shared text
   heading: {
-    ...typography.heading,
+    ...typography.display,
     marginBottom: spacing.lg,
   },
   body: {
-    ...typography.body,
-    fontSize: 18,
-    lineHeight: 28,
+    ...typography.bodyLarge,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
@@ -358,14 +303,14 @@ const styles = StyleSheet.create({
     fontFamily: "NotoRashiHebrew_400Regular",
     fontSize: 72,
     lineHeight: 86,
-    color: "#4a3f3a",
+    color: colors.textSoft,
     textAlign: "center",
     writingDirection: "rtl",
     marginBottom: spacing.sm,
   },
   transliteration: {
     ...typography.scriptureItalic,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: "center",
     letterSpacing: 1.5,
@@ -373,7 +318,7 @@ const styles = StyleSheet.create({
   },
   appName: {
     ...typography.heading,
-    fontSize: 28,
+    fontSize: 24,
     letterSpacing: 3,
     textTransform: "uppercase",
     textAlign: "center",
@@ -387,14 +332,14 @@ const styles = StyleSheet.create({
   },
   definition: {
     ...typography.scripture,
-    fontSize: 18,
+    fontSize: 16,
     lineHeight: 28,
     color: colors.textSecondary,
     textAlign: "center",
     marginBottom: spacing.lg,
   },
   definitionItalic: {
-    fontFamily: "Lora_400Regular_Italic",
+    fontFamily: fonts.serifItalic,
   },
   verseBlock: {
     borderLeftWidth: 2,
@@ -405,9 +350,9 @@ const styles = StyleSheet.create({
   },
   verseText: {
     ...typography.scriptureItalic,
-    fontSize: 15,
-    lineHeight: 23,
-    color: "#4a3f3a",
+    fontSize: 14,
+    lineHeight: 24,
+    color: colors.textSoft,
   },
   verseReference: {
     ...typography.reference,
@@ -417,7 +362,6 @@ const styles = StyleSheet.create({
   // Step 4 — Rhythm
   subheading: {
     ...typography.body,
-    fontSize: 14,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
@@ -428,22 +372,21 @@ const styles = StyleSheet.create({
   },
   freqCard: {
     width: "48%",
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.surface,
     backgroundColor: colors.surface,
     alignItems: "center",
   },
   freqCardSelected: {
     borderColor: colors.accent,
-    backgroundColor: "#faf7f3",
+    backgroundColor: colors.accentSoft,
   },
   freqLabel: {
-    ...typography.button,
-    fontSize: 16,
-    color: "#4a3f3a",
+    ...typography.title,
+    color: colors.textSoft,
     marginBottom: spacing.xs,
   },
   freqDesc: {
