@@ -45,7 +45,14 @@ export const typography = {
     lineHeight: 24,
     color: colors.textHeading,
   },
-  // Passage on the Home card and the snippet screen
+  // Passage preview on the Home card
+  scriptureHero: {
+    fontFamily: fonts.serif,
+    fontSize: 17.5,
+    lineHeight: 31,
+    color: colors.textPrimary,
+  },
+  // Passage where it is read in full: the snippet screen and the Bible tab
   scriptureLarge: {
     fontFamily: fonts.serif,
     fontSize: 18,

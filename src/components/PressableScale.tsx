@@ -13,6 +13,9 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 type Props = Omit<PressableProps, "style" | "children"> & {
   style?: StyleProp<ViewStyle>;
   scaleTo?: number;
+  // Fade slightly while pressed. Turn off for cards with tinted areas inside,
+  // where the fade shows through as uneven colour.
+  dim?: boolean;
   children?: React.ReactNode;
 };
 
@@ -20,6 +23,7 @@ type Props = Omit<PressableProps, "style" | "children"> & {
 export function PressableScale({
   style,
   scaleTo = 0.97,
+  dim = true,
   onPressIn,
   onPressOut,
   children,
@@ -42,7 +46,7 @@ export function PressableScale({
   });
   const opacity = pressed.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 0.85],
+    outputRange: [1, dim ? 0.85 : 1],
   });
 
   return (

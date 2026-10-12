@@ -269,6 +269,7 @@ export default function HomeScreen() {
             <PressableScale
               style={styles.hero}
               scaleTo={0.985}
+              dim={false}
               onPress={() => router.push(`/snippet/${current.id}`)}
               accessibilityRole="button"
             >
@@ -299,6 +300,7 @@ export default function HomeScreen() {
 
               {current.reflection ? (
                 <View style={styles.heroReflection}>
+                  <View style={styles.heroReflectionBar} />
                   <Text style={styles.heroReflectionText} numberOfLines={4}>
                     {current.reflection}
                   </Text>
@@ -420,7 +422,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   heroPassage: {
-    ...typography.scriptureLarge,
+    ...typography.scriptureHero,
   },
   heroVerseNumber: {
     color: colors.accent,
@@ -437,18 +439,21 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   heroReflection: {
+    flexDirection: "row",
     backgroundColor: colors.accentTint,
-    borderLeftWidth: spacing.xs - 1,
-    borderLeftColor: colors.accent,
     borderTopRightRadius: radius.md,
     borderBottomRightRadius: radius.md,
-    paddingVertical: spacing.md,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.md,
+    overflow: "hidden",
     marginTop: spacing.lg,
+  },
+  heroReflectionBar: {
+    width: spacing.xs - 1,
+    backgroundColor: colors.accent,
   },
   heroReflectionText: {
     ...typography.bodySmall,
+    flex: 1,
+    padding: spacing.md,
     color: colors.textSecondary,
   },
 
