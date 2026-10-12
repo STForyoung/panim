@@ -152,7 +152,7 @@ Always use `getDisplayReference(snippet)` from `src/utils/displayReference.ts` �
 
 ## Screens
 
-**Home** — greeting with a time-of-day icon and the next reminder time. The main card is the snippet the next reminder will send: passage (4 lines, inline verse numbers), reference with a quiet version tag, topic chips, and the reflection in a tinted box. "Coming up" shows the three after it; "Favourites" is a second carousel. Floating "+" creates a snippet.
+**Home** — greeting with a time-of-day icon and the next reminder time (or, when times are set but notification permission is off, a line saying so; tapping it shows the system prompt, or opens the phone's settings for the app if permission was already declined). The main card is the snippet the next reminder will send: passage (4 lines, inline verse numbers), reference with a quiet version tag, topic chips, and the reflection in a tinted box. "Coming up" shows the three after it; "Favourites" is a second carousel. Floating "+" creates a snippet.
 
 **Bible** — chapter reader. Tap the chapter title for the BookPicker; arrows move between chapters and across books. Tap a verse to select it, tap further verses to extend or trim a continuous range, then "Add reflection" opens New Snippet with the passage filled in. Remembers the last chapter read.
 
@@ -166,7 +166,7 @@ Always use `getDisplayReference(snippet)` from `src/utils/displayReference.ts` �
 
 **New / Edit Snippet** — fixed top bar with back, title and a save tick (there is also a save button at the bottom). The passage shows as a card with a "Change" link; the reference fields (book, chapter, verse, optional end chapter and verse, fetch button) appear only when there is no passage yet or after "Change". Then Reflection, Prayer (optional) and Topics.
 
-**Settings** — Bible Translation, then Reminders: Times per day (segmented presets), Your times (grid with add and remove), Which snippets to send, What each reminder shows, Order. Translation saves immediately; reminder changes are held until "Apply".
+**Settings** — Bible Translation, then Reminders: a notice with a "Turn on" / "Open Settings" action when notification permission is off, Times per day (segmented presets), Your times (grid with add and remove), Which snippets to send, What each reminder shows, Order. Translation saves immediately; reminder changes are held until "Apply".
 
 **Onboarding** — shown until `hasLaunched` is set.
 
@@ -381,7 +381,7 @@ A premium version is expected to add a remote backend for accounts and cross-dev
 - **Reflection is not enforced** — the forms allow saving a snippet with an empty reflection
 - **Reminders don't show the translation** — the notification title is the reference only
 - **Bible tab** — one chapter at a time (no selection across chapters), and verses that already have snippets are not marked
-- **Settings** — no indication when notification permission is denied; custom times are typed into hour and minute boxes; translation saves instantly while reminder changes wait for "Apply"
+- **Settings** — custom times are typed into hour and minute boxes; translation saves instantly while reminder changes wait for "Apply"
 - **`migrateDb` uses prepared statements** (`getFirstAsync` / `runAsync`) for the version check and seeding, which the Android lesson above warns against. Verify on Android
 - **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`; explicit columns would be safer as the schema grows
 - **No pagination** — `getAllSnippets` fetches every row, and several screens look up topics per snippet

@@ -22,10 +22,13 @@ import {
   refreshTranslationStatus,
 } from "@/src/services/bibleService";
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
 import {
+  AppState,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -195,6 +198,39 @@ export default function SettingsScreen() {
       );
     }, []),
   );
+
+  // Notification permission: null until first checked
+  const [canNotify, setCanNotify] = useState<boolean | null>(null);
+  const [canAskToNotify, setCanAskToNotify] = useState(false);
+
+  const checkNotificationPermission = useCallback(async () => {
+    const permission = await Notifications.getPermissionsAsync();
+    setCanNotify(permission.status === "granted");
+    setCanAskToNotify(permission.canAskAgain);
+  }, []);
+
+  // Checked when Settings opens and when the user comes back from the system settings
+  useFocusEffect(
+    useCallback(() => {
+      checkNotificationPermission();
+      const appState = AppState.addEventListener("change", (state) => {
+        if (state === "active") checkNotificationPermission();
+      });
+      return () => appState.remove();
+    }, [checkNotificationPermission]),
+  );
+
+  async function handleTurnOnNotifications() {
+    if (canAskToNotify) {
+      await Notifications.requestPermissionsAsync();
+      await checkNotificationPermission();
+      // Reminders that were waiting on permission can be scheduled now
+      await scheduleNotifications(db).catch(() => {});
+    } else {
+      // Already declined once — it can only be changed in the system settings
+      await Linking.openSettings();
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -422,6 +458,28 @@ export default function SettingsScreen() {
 
         {/* Reminders */}
         <Text style={styles.categoryHeader}>Reminders</Text>
+
+        {canNotify === false ? (
+          <View style={styles.permissionNotice}>
+            <Ionicons
+              name="notifications-off-outline"
+              size={layout.icon}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.permissionNoticeText}>
+              Notifications are off for Panim, so reminders won&apos;t arrive.
+            </Text>
+            <TouchableOpacity
+              onPress={handleTurnOnNotifications}
+              hitSlop={spacing.sm}
+              accessibilityRole="button"
+            >
+              <Text style={styles.permissionNoticeAction}>
+                {canAskToNotify ? "Turn on" : "Open Settings"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Presets */}
         <Text style={styles.sectionHeader}>Times per day</Text>
@@ -1122,6 +1180,26 @@ const styles = StyleSheet.create({
   topicTypeTag: {
     ...typography.label,
     marginTop: spacing.xs / 2,
+  },
+
+  // Notification permission notice
+  permissionNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  permissionNoticeText: {
+    ...typography.label,
+    flex: 1,
+  },
+  permissionNoticeAction: {
+    ...typography.label,
+    color: colors.accent,
+    fontWeight: "600",
   },
 
   // Error
