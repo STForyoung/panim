@@ -16,6 +16,7 @@ const TABS: Record<
   { icon: IoniconName; activeIcon: IoniconName; label: string }
 > = {
   index: { icon: "home-outline", activeIcon: "home", label: "Home" },
+  bible: { icon: "book-outline", activeIcon: "book", label: "Bible" },
   library: { icon: "library-outline", activeIcon: "library", label: "Library" },
   settings: {
     icon: "settings-outline",

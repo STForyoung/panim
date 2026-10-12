@@ -14,7 +14,11 @@ import {
 } from "@/src/db/notificationSchedule";
 import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
-import { BOOK_IDS } from "@/src/services/bibleService";
+import {
+  BOOK_IDS,
+  type TranslationAvailability,
+  getTranslationAvailability,
+} from "@/src/services/bibleService";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
@@ -37,7 +41,6 @@ import {
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
   "NKJV",
-  "NIV",
   "ESV",
   "NASB",
   "NLT",
@@ -46,11 +49,17 @@ const TRANSLATIONS: NotificationSchedule["translation"][] = [
 
 const TRANSLATION_NAMES: Record<NotificationSchedule["translation"], string> = {
   NKJV: "New King James Version",
-  NIV: "New International Version",
   ESV: "English Standard Version",
   NASB: "New American Standard Bible",
   NLT: "New Living Translation",
   KJV: "King James Version",
+};
+
+// Shown under each translation so it is clear which ones need a connection
+const AVAILABILITY_NOTES: Record<TranslationAvailability, string> = {
+  offline: "Available offline",
+  online: "Online only",
+  unavailable: "Not currently available",
 };
 
 // 24h "HH:MM" strings
@@ -383,9 +392,18 @@ export default function SettingsScreen() {
             onPress={() => setTranslationPickerVisible(true)}
             activeOpacity={0.7}
           >
-            <Text style={styles.rowLabel}>
-              {TRANSLATION_NAMES[schedule.translation]}
-            </Text>
+            <View>
+              <Text style={styles.rowLabel}>
+                {TRANSLATION_NAMES[schedule.translation]}
+              </Text>
+              <Text style={styles.topicTypeTag}>
+                {
+                  AVAILABILITY_NOTES[
+                    getTranslationAvailability(schedule.translation)
+                  ]
+                }
+              </Text>
+            </View>
             <Chevron />
           </TouchableOpacity>
         </View>
@@ -569,20 +587,29 @@ export default function SettingsScreen() {
             <ScrollView>
               {TRANSLATIONS.map((t, i) => {
                 const selected = schedule.translation === t;
+                const unavailable =
+                  getTranslationAvailability(t) === "unavailable";
                 return (
                   <TouchableOpacity
                     key={t}
                     style={[
                       styles.modalRow,
                       i === TRANSLATIONS.length - 1 && styles.rowLast,
+                      unavailable && styles.rowUnavailable,
                     ]}
                     onPress={() => {
                       handleTranslationChange(t);
                       setTranslationPickerVisible(false);
                     }}
+                    disabled={unavailable}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
+                    <View>
+                      <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
+                      <Text style={styles.topicTypeTag}>
+                        {AVAILABILITY_NOTES[getTranslationAvailability(t)]}
+                      </Text>
+                    </View>
                     {selected ? <SelectedCheck /> : null}
                   </TouchableOpacity>
                 );
@@ -903,6 +930,9 @@ const styles = StyleSheet.create({
   },
   rowLast: {
     borderBottomWidth: 0,
+  },
+  rowUnavailable: {
+    opacity: 0.5,
   },
   rowSpaceBetween: {
     justifyContent: "space-between",

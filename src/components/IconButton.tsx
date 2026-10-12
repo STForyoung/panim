@@ -11,6 +11,8 @@ type Props = {
   accessibilityLabel: string;
   color?: string;
   disabled?: boolean;
+  // Solid accent background, for the primary action on a screen
+  filled?: boolean;
 };
 
 export function IconButton({
@@ -19,10 +21,15 @@ export function IconButton({
   accessibilityLabel,
   color = colors.textPrimary,
   disabled,
+  filled,
 }: Props) {
   return (
     <PressableScale
-      style={styles.button}
+      style={[
+        styles.button,
+        filled && styles.filled,
+        disabled && filled && styles.disabled,
+      ]}
       scaleTo={0.9}
       onPress={onPress}
       disabled={disabled}
@@ -30,7 +37,11 @@ export function IconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <Ionicons name={icon} size={layout.icon} color={color} />
+      <Ionicons
+        name={icon}
+        size={layout.icon}
+        color={filled ? colors.onAccent : color}
+      />
     </PressableScale>
   );
 }
@@ -43,5 +54,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
+  },
+  filled: {
+    backgroundColor: colors.accent,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });

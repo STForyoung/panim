@@ -7,6 +7,7 @@ export const colors = {
   textHeading: "#1B1D1F",
   accent: "#2F6B62",
   accentSoft: "#DCE7E2",
+  accentTint: "#EEF3F0",
   onAccent: "#FDFCF9",
   border: "#DEDBD4",
   danger: "#B03A2E",
@@ -65,8 +66,8 @@ export const typography = {
   },
   reflection: {
     fontFamily: fonts.serif,
-    fontSize: 14,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 26,
     color: colors.textPrimary,
   },
   // Reflection preview on the Home card
@@ -85,7 +86,7 @@ export const typography = {
   },
   reference: {
     fontFamily: fonts.serifSemiBold,
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 20,
     letterSpacing: 0.3,
     color: colors.textPrimary,
@@ -106,6 +107,11 @@ export const typography = {
   body: {
     fontSize: 16,
     lineHeight: 24,
+    color: colors.textPrimary,
+  },
+  bodySmall: {
+    fontSize: 15,
+    lineHeight: 23,
     color: colors.textPrimary,
   },
   bodyLarge: {

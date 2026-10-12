@@ -160,20 +160,26 @@ export default function HomeScreen() {
         const snippetCountChanged = lastSnippetCount.current !== snippets.length;
         if (snippetCountChanged) lastSnippetCount.current = snippets.length;
 
-        const snippetIds = new Set(snippets.map((s) => s.id));
+        const snippetsById = new Map(snippets.map((s) => [s.id, s]));
 
-        // Always purge stale snippets from Coming Up (handles topic/snippet deletions).
-        setComingUp((prev) => prev.filter((s) => snippetIds.has(s.id)));
+        // Swap in the latest version of each Coming Up snippet (picks up edits)
+        // and drop any that no longer exist (handles topic/snippet deletions).
+        setComingUp((prev) =>
+          prev.flatMap((s) => snippetsById.get(s.id) ?? []),
+        );
 
         // Re-pick if: no current snippet, snippet was deleted, schedule changed, or new snippets added.
         setCurrent((prev) => {
-          const stillExists = prev && snippetIds.has(prev.id);
-          if (!prev || !stillExists || scheduleChanged || snippetCountChanged) {
+          const latest = prev ? snippetsById.get(prev.id) : undefined;
+          if (!prev || !latest || scheduleChanged || snippetCountChanged) {
             if (snippets.length > 0) {
               pickFromSchedule(snippets);
             }
+            return prev;
           }
-          return prev;
+          // Same snippet stays on the card, but show its latest text and topics
+          getTopicsForSnippet(db, latest.id).then(setCurrentTopics);
+          return latest;
         });
       }
       onFocus();
@@ -431,13 +437,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   heroReflection: {
-    borderLeftWidth: spacing.xs / 2,
-    borderLeftColor: colors.accentSoft,
+    backgroundColor: colors.accentTint,
+    borderLeftWidth: spacing.xs - 1,
+    borderLeftColor: colors.accent,
+    borderTopRightRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    paddingVertical: spacing.md,
     paddingLeft: spacing.md,
+    paddingRight: spacing.md,
     marginTop: spacing.lg,
   },
   heroReflectionText: {
-    ...typography.reflectionMedium,
+    ...typography.bodySmall,
     color: colors.textSecondary,
   },
 

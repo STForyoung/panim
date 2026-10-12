@@ -135,7 +135,7 @@ export default function SnippetDetailScreen() {
 
           {snippet.reflection ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>My reflection</Text>
+              <Text style={styles.sectionTitle}>Reflection</Text>
               <Text style={styles.sectionText}>{snippet.reflection}</Text>
             </View>
           ) : null}
@@ -143,7 +143,7 @@ export default function SnippetDetailScreen() {
           {/* Prayer */}
           {snippet.prayer ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>My prayer</Text>
+              <Text style={styles.sectionTitle}>Prayer</Text>
               <Text style={styles.sectionText}>{snippet.prayer}</Text>
             </View>
           ) : null}

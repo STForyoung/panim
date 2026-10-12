@@ -1,3 +1,5 @@
+import { OFFLINE_TRANSLATION, getOfflineChapter } from "@/src/services/offlineBible";
+
 // Canonical ordered list of the 66 Bible books (no aliases)
 export const CANONICAL_BOOKS: string[] = [
   "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy",
@@ -15,6 +17,28 @@ export const CANONICAL_BOOKS: string[] = [
   "1 Peter", "2 Peter", "1 John", "2 John", "3 John",
   "Jude", "Revelation",
 ];
+
+// Number of chapters in each book, in the same order as CANONICAL_BOOKS
+const CHAPTER_COUNTS: number[] = [
+  50, 40, 27, 36, 34,
+  24, 21, 4, 31, 24,
+  22, 25, 29, 36, 10,
+  13, 10, 42, 150, 31,
+  12, 8, 66, 52, 5,
+  48, 12, 14, 3, 9,
+  1, 4, 7, 3, 3,
+  3, 2, 14, 4,
+  28, 16, 24, 21, 28,
+  16, 16, 13, 6, 6,
+  4, 4, 5, 3, 6,
+  4, 3, 1, 13, 5,
+  5, 3, 5, 1, 1,
+  1, 22,
+];
+
+export function getChapterCount(book: string): number {
+  return CHAPTER_COUNTS[getBookId(book) - 1];
+}
 
 export const BOOK_IDS: Record<string, number> = {
   // Old Testament
@@ -176,6 +200,20 @@ function buildRequests(
 // Bolls.life serves a publisher notice in place of the text for these translations
 const UNAVAILABLE_TRANSLATIONS = new Set(["NIV"]);
 
+// How long to wait for the provider before treating the device as offline
+const FETCH_TIMEOUT_MS = 10000;
+
+export type TranslationAvailability = "offline" | "online" | "unavailable";
+
+// Whether a translation is bundled with the app, fetched on demand, or not offered by the provider
+export function getTranslationAvailability(
+  translation: string,
+): TranslationAvailability {
+  if (translation === OFFLINE_TRANSLATION) return "offline";
+  if (UNAVAILABLE_TRANSLATIONS.has(translation)) return "unavailable";
+  return "online";
+}
+
 function stripHtml(text: string): string {
   if (!text) return "";
   return text
@@ -202,6 +240,32 @@ export async function fetchPassage(
   }
 
   const bookId = getBookId(book);
+
+  if (translation === OFFLINE_TRANSLATION) {
+    const lastChapter = chapterEnd ?? chapterStart;
+    const verses: { chapter: number; verse: number; text: string }[] = [];
+    for (let chapter = chapterStart; chapter <= lastChapter; chapter++) {
+      const from = chapter === chapterStart ? verseStart : 1;
+      const to =
+        verseEnd === null
+          ? verseStart
+          : chapter === lastChapter
+            ? verseEnd
+            : Infinity;
+      verses.push(
+        ...getOfflineChapter(bookId, chapter).filter(
+          (v) => v.verse >= from && v.verse <= to,
+        ),
+      );
+    }
+    if (verses.length === 0) {
+      throw new Error(
+        `No verses returned for "${book} ${chapterStart}:${verseStart}"`,
+      );
+    }
+    return verses;
+  }
+
   const requests = buildRequests(
     bookId,
     chapterStart,
@@ -236,4 +300,79 @@ export async function fetchPassage(
   return data
     .map((v) => ({ chapter: v.chapter, verse: v.verse, text: stripHtml(v.text) }))
     .filter((v) => v.text.length > 0);
+}
+
+export type ChapterResult = {
+  verses: { chapter: number; verse: number; text: string }[];
+  // The translation actually shown, which differs from the one asked for when offline
+  translation: string;
+  // True when the bundled translation is standing in because the provider could not be reached
+  offlineFallback: boolean;
+};
+
+// Chapters already fetched this session, keyed by translation, book and chapter
+const chapterCache = new Map<string, ChapterResult["verses"]>();
+
+// Fetches a whole chapter for reading. Online chapters are kept in memory only.
+// If the provider cannot be reached, the bundled translation is returned instead.
+export async function fetchChapter(
+  book: string,
+  chapter: number,
+  translation: string,
+): Promise<ChapterResult> {
+  if (UNAVAILABLE_TRANSLATIONS.has(translation)) {
+    throw new Error(
+      `${translation} is not available from the Bible provider. Choose another translation in Settings.`,
+    );
+  }
+
+  const bookId = getBookId(book);
+
+  if (translation === OFFLINE_TRANSLATION) {
+    return {
+      verses: getOfflineChapter(bookId, chapter),
+      translation,
+      offlineFallback: false,
+    };
+  }
+
+  const cacheKey = `${translation}:${bookId}:${chapter}`;
+  const cached = chapterCache.get(cacheKey);
+  if (cached) return { verses: cached, translation, offlineFallback: false };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      `https://bolls.life/get-text/${translation}/${bookId}/${chapter}/`,
+      { signal: controller.signal },
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Bible API error: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const data: { verse: number; text: string }[] = await response.json();
+    const verses = data
+      .map((v) => ({ chapter, verse: v.verse, text: stripHtml(v.text) }))
+      .filter((v) => v.text.length > 0)
+      .sort((a, b) => a.verse - b.verse);
+
+    if (verses.length === 0) {
+      throw new Error(`No verses returned for "${book} ${chapter}"`);
+    }
+
+    chapterCache.set(cacheKey, verses);
+    return { verses, translation, offlineFallback: false };
+  } catch {
+    // Offline or provider unreachable — fall back to the bundled translation
+    return {
+      verses: getOfflineChapter(bookId, chapter),
+      translation: OFFLINE_TRANSLATION,
+      offlineFallback: true,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
