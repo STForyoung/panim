@@ -283,10 +283,32 @@ Translation preference and notification schedule configuration.
 - **Only touch what's necessary** — no side effects, no introducing new issues while fixing old ones
 - After every change ensure `npx expo start` runs without TypeScript errors
 
+## Future backend (premium)
+
+A premium version is expected to add a remote backend for accounts and cross-device sync. The MVP stays on-device, but new work should not make that harder.
+
+### Principles to follow now
+
+- Keep three kinds of data apart. Only the first would ever sync:
+  1. **User-created data** — snippets, reflections, prayers, topics, favourites, settings
+  2. **Device-only state** — the reminder playlist and queue (`metadata.reminderPlaylist`, `metadata.reminderQueue`), last-read Bible position (AsyncStorage `lastRead`)
+  3. **Disposable copies of Bible text** — chapters fetched for the Bible tab (in memory only today)
+- Every user record keeps a stable UUID and, where it exists, a last-changed time
+- Each snippet records its Bible `translation`, so another device can re-fetch the passage from reference + version. The cloud is expected to store references and the user's own words, not a library of Bible text
+- All Bible text access stays behind `src/services/bibleService.ts`, so the source can move to a licensed API behind our own server
+- Do not persist whole chapters of copyrighted translations on the device without checking the licence terms
+
+### Deliberately deferred until cloud work starts
+
+- Recording deletions (soft delete or a deletions log) for snippets, topics and topic links — deletes are permanent today
+- `updatedAt` on topics; timestamps on `snippet_topics`
+- Using the existing `snippets.syncedAt` column and `metadata.deviceId`
+- A persistent on-device chapter cache (depends on the Bible source and its licence)
+
 ## Out of Scope for MVP
 
-- User accounts or cross-device sync
-- Cloud backup
+- User accounts or cross-device sync (see "Future backend")
+- Cloud backup (see "Future backend")
 - Sharing snippets
 - Per-slot or per-day topic assignment for notifications
 - Topic editing or merging
@@ -300,7 +322,6 @@ Translation preference and notification schedule configuration.
 
 Known issues to address before significant feature expansion:
 
-1. **DB migration versioning** — migrations run via blind try/catch every launch with no version tracking. Replace with `PRAGMA user_version` so each migration runs exactly once. Critical before remote DB sync or premium features.
 4. **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`. Explicit column handling would be safer as the schema grows.
 5. **No pagination** — `getAllSnippets` fetches all rows. Will cause load time and memory pressure with hundreds of snippets.
 6. **Seed guard is one-way** — seeds never re-run once any snippets exist. A `seeded_version` metadata key would allow shipping new default content to existing users.

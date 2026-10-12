@@ -7,6 +7,8 @@ export type PassageDraft = {
   verseStart: number;
   verseEnd: number | null;
   verses: PassageVerse[];
+  // Translation the verses were shown in (the offline one when the reader had fallen back)
+  translation: string;
 };
 
 let draft: PassageDraft | null = null;

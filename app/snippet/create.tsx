@@ -68,6 +68,10 @@ export default function CreateSnippetScreen() {
     draft?.verseEnd ? String(draft.verseEnd) : "",
   );
   const [passage, setPassage] = useState<PassageVerse[]>(draft?.verses ?? []);
+  // Translation the current passage text is in
+  const [passageTranslation, setPassageTranslation] = useState(
+    draft?.translation ?? "",
+  );
   const [reflection, setReflection] = useState("");
   const [prayer, setPrayer] = useState("");
   const [bookPickerVisible, setBookPickerVisible] = useState(false);
@@ -147,6 +151,7 @@ export default function CreateSnippetScreen() {
         translation,
       );
       setPassage(verses);
+      setPassageTranslation(translation);
       setEditingReference(false);
     } catch (e) {
       setError(
@@ -212,6 +217,7 @@ export default function CreateSnippetScreen() {
         passage,
         reflection: reflection.trim(),
         prayer: prayer.trim() || null,
+        translation: passageTranslation,
       });
       // Create and assign any pending new topics
       for (const name of pendingNewTopicNames) {
@@ -457,15 +463,20 @@ export default function CreateSnippetScreen() {
           ) : (
             <View style={[styles.passageCard, styles.passageSummary]}>
               <View style={styles.passageSummaryHeader}>
-                <Text style={styles.passageReference}>
-                  {getDisplayReference({
-                    book,
-                    chapterStart: parseInt(chapterStart, 10),
-                    verseStart: parseInt(verseStart, 10),
-                    chapterEnd: chapterEnd ? parseInt(chapterEnd, 10) : null,
-                    verseEnd: verseEnd ? parseInt(verseEnd, 10) : null,
-                  })}
-                </Text>
+                <View style={styles.passageReferenceRow}>
+                  <Text style={styles.passageReference}>
+                    {getDisplayReference({
+                      book,
+                      chapterStart: parseInt(chapterStart, 10),
+                      verseStart: parseInt(verseStart, 10),
+                      chapterEnd: chapterEnd ? parseInt(chapterEnd, 10) : null,
+                      verseEnd: verseEnd ? parseInt(verseEnd, 10) : null,
+                    })}
+                  </Text>
+                  <Text style={styles.passageTranslation}>
+                    {passageTranslation}
+                  </Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => setEditingReference(true)}
                   hitSlop={spacing.sm}
@@ -713,8 +724,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.md,
   },
+  passageReferenceRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "baseline",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
   passageReference: {
     ...typography.title,
+  },
+  passageTranslation: {
+    ...typography.translationTag,
   },
   changeLink: {
     ...typography.label,

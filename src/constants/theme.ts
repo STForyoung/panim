@@ -111,6 +111,14 @@ export const typography = {
     fontWeight: "500" as const,
     color: colors.textSecondary,
   },
+  // Bible version beside a reference: small, spaced and quiet
+  translationTag: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: "500" as const,
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
+  },
   body: {
     fontSize: 16,
     lineHeight: 24,

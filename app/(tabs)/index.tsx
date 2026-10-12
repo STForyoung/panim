@@ -192,9 +192,12 @@ export default function HomeScreen() {
                   </Text>
                 ))}
               </Text>
-              <Text style={styles.heroReference}>
-                {getDisplayReference(current)}
-              </Text>
+              <View style={styles.heroReferenceRow}>
+                <Text style={styles.heroReference}>
+                  {getDisplayReference(current)}
+                </Text>
+                <Text style={styles.heroTranslation}>{current.translation}</Text>
+              </View>
 
               {displayTopics.length > 0 ? (
                 <View style={styles.topicsRow}>
@@ -333,10 +336,18 @@ const styles = StyleSheet.create({
   heroVerseNumber: {
     color: colors.accent,
   },
+  heroReferenceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
   heroReference: {
     ...typography.reference,
     color: colors.accent,
-    marginTop: spacing.lg,
+  },
+  heroTranslation: {
+    ...typography.translationTag,
   },
   topicsRow: {
     flexDirection: "row",

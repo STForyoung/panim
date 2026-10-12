@@ -182,8 +182,16 @@ export default function BibleScreen() {
   }
 
   function handleAddReflection() {
-    if (!position || selectionStart === null || selectionEnd === null) return;
+    if (
+      !position ||
+      !shownTranslation ||
+      selectionStart === null ||
+      selectionEnd === null
+    ) {
+      return;
+    }
     setPassageDraft({
+      translation: shownTranslation,
       book: position.book,
       chapter: position.chapter,
       verseStart: selectionStart,
