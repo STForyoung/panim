@@ -107,7 +107,7 @@ export default function OnboardingScreen() {
             </Text>
             <View style={styles.verseBlock}>
               <Text style={styles.verseText}>
-                Your face, Lord, I will seek.
+                Your face, O LORD, I will seek.
               </Text>
               <Text style={styles.verseReference}>Psalm 27:8</Text>
             </View>

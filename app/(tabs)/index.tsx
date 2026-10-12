@@ -28,10 +28,20 @@ import {
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { toSuperscript } from "@/src/utils/superscript";
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  AppState,
+  FlatList,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 function getGreeting(): string {
@@ -59,38 +69,64 @@ export default function HomeScreen() {
   const [comingUp, setComingUp] = useState<Snippet[]>([]);
   const [favourites, setFavourites] = useState<Snippet[]>([]);
   const [nextReminder, setNextReminder] = useState<string | null>(null);
+  // True when reminder times are set but the phone will not deliver them
+  const [notificationsOff, setNotificationsOff] = useState(false);
+  const [canAskToNotify, setCanAskToNotify] = useState(false);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    const [snippets, favs, schedule, permission] = await Promise.all([
+      getAllSnippets(db),
+      getFavouriteSnippets(db),
+      getSchedule(db),
+      Notifications.getPermissionsAsync(),
+    ]);
+
+    // Bring the reminder queue up to date first, so the card shows what will really be sent.
+    // Scheduling errors are non-fatal — the playlist order is still readable.
+    await scheduleNotifications(db).catch(() => {});
+    const upcoming = await getUpcomingReminders(db, 4);
+    const next = upcoming[0] ?? null;
+    const topics = next ? await getTopicsForSnippet(db, next.id) : [];
+
+    setAllSnippets(snippets);
+    setFavourites(favs);
+    setCurrent(next);
+    setCurrentTopics(topics);
+    setComingUp(upcoming.slice(1));
+    setActiveTopicId(
+      schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null,
+    );
+    setNextReminder(getNextReminderTime(schedule.times));
+    setNotificationsOff(
+      schedule.times.length > 0 && permission.status !== "granted",
+    );
+    setCanAskToNotify(permission.canAskAgain);
+    setLoading(false);
+  }, [db]);
+
+  // Reloads when the tab gains focus and when the user returns to the app,
+  // for example after changing notification settings on the phone
   useFocusEffect(
     useCallback(() => {
-      async function load() {
-        const [snippets, favs, schedule] = await Promise.all([
-          getAllSnippets(db),
-          getFavouriteSnippets(db),
-          getSchedule(db),
-        ]);
-
-        // Bring the reminder queue up to date first, so the card shows what will really be sent.
-        // Scheduling errors are non-fatal — the playlist order is still readable.
-        await scheduleNotifications(db).catch(() => {});
-        const upcoming = await getUpcomingReminders(db, 4);
-        const next = upcoming[0] ?? null;
-        const topics = next ? await getTopicsForSnippet(db, next.id) : [];
-
-        setAllSnippets(snippets);
-        setFavourites(favs);
-        setCurrent(next);
-        setCurrentTopics(topics);
-        setComingUp(upcoming.slice(1));
-        setActiveTopicId(
-          schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null,
-        );
-        setNextReminder(getNextReminderTime(schedule.times));
-        setLoading(false);
-      }
       load();
-    }, [db]),
+      const appState = AppState.addEventListener("change", (state) => {
+        if (state === "active") load();
+      });
+      return () => appState.remove();
+    }, [load]),
   );
+
+  async function handleTurnOnNotifications() {
+    if (canAskToNotify) {
+      // Not asked yet — the system prompt can be shown right here
+      await Notifications.requestPermissionsAsync();
+      await load();
+    } else {
+      // Already declined once — it can only be changed in the phone's settings for this app
+      await Linking.openSettings();
+    }
+  }
 
   if (loading) {
     return (
@@ -156,17 +192,38 @@ export default function HomeScreen() {
               color={colors.accent}
             />
           </View>
-          <View style={styles.reminderRow}>
-            <Ionicons
-              name="notifications-outline"
-              size={layout.iconSm}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.reminderText}>
-              {nextReminder ??
-                "Set a schedule in Settings to start receiving reminders"}
-            </Text>
-          </View>
+          {notificationsOff ? (
+            <TouchableOpacity
+              style={styles.reminderRow}
+              onPress={handleTurnOnNotifications}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="notifications-off-outline"
+                size={layout.iconSm}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.reminderText}>
+                Notifications are off.{" "}
+                <Text style={styles.reminderAction}>
+                  {canAskToNotify ? "Turn them on" : "Turn them on in Settings"}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.reminderRow}>
+              <Ionicons
+                name="notifications-outline"
+                size={layout.iconSm}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.reminderText}>
+                {nextReminder ??
+                  "Set a schedule in Settings to start receiving reminders"}
+              </Text>
+            </View>
+          )}
         </FadeIn>
 
         {/* Next in Playlist */}
@@ -315,6 +372,10 @@ const styles = StyleSheet.create({
   reminderText: {
     ...typography.label,
     flex: 1,
+  },
+  reminderAction: {
+    color: colors.accent,
+    fontWeight: "600",
   },
 
   // Hero snippet

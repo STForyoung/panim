@@ -17,7 +17,8 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F5F4F0"
+        "monochromeImage": "./assets/monochrome-icon.png",
+        "backgroundColor": "#2F6B62"
       },
       "package": "app.panim"
     },
@@ -30,9 +31,12 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",
+          "imageWidth": 170,
           "resizeMode": "contain",
-          "backgroundColor": "#F5F4F0",
-          "enableFullScreenImage_legacy": true
+          "backgroundColor": "#EEECE6",
+          "android": {
+            "image": "./assets/splash-android.png"
+          }
         }
       ],
       "expo-status-bar"

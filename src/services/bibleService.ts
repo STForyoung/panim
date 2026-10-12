@@ -1,4 +1,10 @@
-import { OFFLINE_TRANSLATION, getOfflineChapter } from "@/src/services/offlineBible";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import {
+  FALLBACK_TRANSLATION,
+  getOfflineChapter,
+  isOfflineTranslation,
+} from "@/src/services/offlineBible";
 
 // Canonical ordered list of the 66 Bible books (no aliases)
 export const CANONICAL_BOOKS: string[] = [
@@ -197,18 +203,132 @@ function buildRequests(
   return requests;
 }
 
-// Bolls.life serves a publisher notice in place of the text for these translations
-const UNAVAILABLE_TRANSLATIONS = new Set(["NIV"]);
-
 // How long to wait for the provider before treating the device as offline
 const FETCH_TIMEOUT_MS = 10000;
 
+// Translations the provider no longer serves. NIV is known; others are added when a check
+// finds them gone, and remembered on the device so Settings can show it straight away.
+const REMOVED_KEY = "removedTranslations";
+const removedTranslations = new Set<string>(["NIV"]);
+
+// Online translations already confirmed to be working since the app started
+const confirmedTranslations = new Set<string>();
+
+const UNREACHABLE_MESSAGE =
+  "Couldn't reach the Bible service. Check your connection and try again.";
+
+// Two short verses with different text, used to check that a translation is really served
+const PROBE = { book: 43, chapter: 11, verses: [35, 36] };
+
+// Thrown when the provider has stopped serving a translation (as opposed to being offline)
+export class TranslationRemovedError extends Error {
+  constructor(translation: string) {
+    super(
+      `${TRANSLATION_NAMES[translation] ?? translation} is no longer available. Choose another version in Settings.`,
+    );
+    this.name = "TranslationRemovedError";
+  }
+}
+
+async function fetchWithTimeout(url: string, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function saveRemovedTranslations() {
+  AsyncStorage.setItem(REMOVED_KEY, JSON.stringify([...removedTranslations])).catch(
+    () => {
+      // Remembering this is a convenience — the check runs again next session
+    },
+  );
+}
+
+// Loads the translations found to be gone in earlier sessions. Call once at app start.
+export async function loadTranslationStatus(): Promise<void> {
+  try {
+    const stored = await AsyncStorage.getItem(REMOVED_KEY);
+    for (const code of stored ? (JSON.parse(stored) as string[]) : []) {
+      removedTranslations.add(code);
+    }
+  } catch {
+    // Nothing stored, or unreadable — start from the known list
+  }
+}
+
+// Asks the provider for two known verses. A translation that has been withdrawn comes back
+// either empty or with the same notice in place of every verse.
+// Returns null when the provider cannot be reached, so being offline is never mistaken for removal.
+async function probeTranslation(translation: string): Promise<boolean | null> {
+  try {
+    const response = await fetchWithTimeout("https://bolls.life/get-verses/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([{ translation, ...PROBE }]),
+    });
+    if (!response.ok) return null;
+    const verses: VerseResponse[] = (await response.json()).flat();
+    const texts = verses.map((v) => stripHtml(v.text));
+    return texts.length === 2 && texts[0].length > 0 && texts[0] !== texts[1];
+  } catch {
+    return null;
+  }
+}
+
+// Checks an online translation the first time it is used each session.
+// "removed" is remembered; a translation that comes back is cleared again.
+async function checkTranslation(
+  translation: string,
+): Promise<"ok" | "removed" | "unreachable"> {
+  if (confirmedTranslations.has(translation)) return "ok";
+  const served = await probeTranslation(translation);
+  if (served === null) {
+    // Can't check right now — trust what was found last time
+    return removedTranslations.has(translation) ? "removed" : "unreachable";
+  }
+  if (served) {
+    confirmedTranslations.add(translation);
+    if (removedTranslations.delete(translation)) saveRemovedTranslations();
+    return "ok";
+  }
+  if (!removedTranslations.has(translation)) {
+    removedTranslations.add(translation);
+    saveRemovedTranslations();
+  }
+  return "removed";
+}
+
+// Re-checks the online translations in a list, so Settings can label them correctly.
+// One at a time: the provider rejects bursts of requests.
+export async function refreshTranslationStatus(translations: string[]): Promise<void> {
+  for (const translation of translations) {
+    if (!isOfflineTranslation(translation)) await checkTranslation(translation);
+  }
+}
+
+// Includes translations no longer offered, so older snippets still show their full name
 export const TRANSLATION_NAMES: Record<string, string> = {
+  KJV: "King James Version",
+  BSB: "Berean Standard Bible",
   NKJV: "New King James Version",
   ESV: "English Standard Version",
   NASB: "New American Standard Bible",
   NLT: "New Living Translation",
-  KJV: "King James Version",
+};
+
+// Who owns each translation's text, shown on the "Scripture versions" sheet in Settings.
+// These state ownership only. Do not add "Used by permission" unless a licence is in place.
+export const TRANSLATION_CREDITS: Record<string, string> = {
+  KJV: "King James Version. Public domain.",
+  BSB: "Berean Standard Bible. Public domain. berean.bible",
+  NKJV: "New King James Version®. Copyright © 1982 by Thomas Nelson. All rights reserved.",
+  ESV: "The Holy Bible, English Standard Version®. Copyright © 2001 by Crossway, a publishing ministry of Good News Publishers. All rights reserved.",
+  NASB: "New American Standard Bible®. Copyright © 1960, 1971, 1977, 1995 by The Lockman Foundation. All rights reserved. lockman.org",
+  NLT: "Holy Bible, New Living Translation. Copyright © 1996, 2004, 2015 by Tyndale House Foundation. All rights reserved.",
 };
 
 export type TranslationAvailability = "offline" | "online" | "unavailable";
@@ -217,8 +337,8 @@ export type TranslationAvailability = "offline" | "online" | "unavailable";
 export function getTranslationAvailability(
   translation: string,
 ): TranslationAvailability {
-  if (translation === OFFLINE_TRANSLATION) return "offline";
-  if (UNAVAILABLE_TRANSLATIONS.has(translation)) return "unavailable";
+  if (isOfflineTranslation(translation)) return "offline";
+  if (removedTranslations.has(translation)) return "unavailable";
   return "online";
 }
 
@@ -241,15 +361,9 @@ export async function fetchPassage(
   verseEnd: number | null,
   translation: string,
 ): Promise<{ chapter: number; verse: number; text: string }[]> {
-  if (UNAVAILABLE_TRANSLATIONS.has(translation)) {
-    throw new Error(
-      `${translation} is not available from the Bible provider. Choose another translation in Settings.`,
-    );
-  }
-
   const bookId = getBookId(book);
 
-  if (translation === OFFLINE_TRANSLATION) {
+  if (isOfflineTranslation(translation)) {
     const lastChapter = chapterEnd ?? chapterStart;
     const verses: { chapter: number; verse: number; text: string }[] = [];
     for (let chapter = chapterStart; chapter <= lastChapter; chapter++) {
@@ -261,7 +375,7 @@ export async function fetchPassage(
             ? verseEnd
             : Infinity;
       verses.push(
-        ...getOfflineChapter(bookId, chapter).filter(
+        ...getOfflineChapter(translation, bookId, chapter).filter(
           (v) => v.verse >= from && v.verse <= to,
         ),
       );
@@ -274,6 +388,12 @@ export async function fetchPassage(
     return verses;
   }
 
+  // Text is only accepted from a translation confirmed to be served, so a publisher
+  // notice can never be saved as a passage
+  const status = await checkTranslation(translation);
+  if (status === "removed") throw new TranslationRemovedError(translation);
+  if (status === "unreachable") throw new Error(UNREACHABLE_MESSAGE);
+
   const requests = buildRequests(
     bookId,
     chapterStart,
@@ -283,11 +403,16 @@ export async function fetchPassage(
     translation,
   );
 
-  const response = await fetch("https://bolls.life/get-verses/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requests),
-  });
+  let response: Response;
+  try {
+    response = await fetchWithTimeout("https://bolls.life/get-verses/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requests),
+    });
+  } catch {
+    throw new Error(UNREACHABLE_MESSAGE);
+  }
 
   if (!response.ok) {
     throw new Error(
@@ -314,73 +439,61 @@ export type ChapterResult = {
   verses: { chapter: number; verse: number; text: string }[];
   // The translation actually shown, which differs from the one asked for when offline
   translation: string;
-  // True when the bundled translation is standing in because the provider could not be reached
-  offlineFallback: boolean;
+  // Why the bundled translation is standing in, if it is:
+  // "offline" — the provider could not be reached; "removed" — it no longer serves the translation
+  fallback: "offline" | "removed" | null;
 };
 
 // Chapters already fetched this session, keyed by translation, book and chapter
 const chapterCache = new Map<string, ChapterResult["verses"]>();
 
 // Fetches a whole chapter for reading. Online chapters are kept in memory only.
-// If the provider cannot be reached, the bundled translation is returned instead.
+// If the translation cannot be fetched, the bundled fallback is returned with the reason.
 export async function fetchChapter(
   book: string,
   chapter: number,
   translation: string,
 ): Promise<ChapterResult> {
-  if (UNAVAILABLE_TRANSLATIONS.has(translation)) {
-    throw new Error(
-      `${translation} is not available from the Bible provider. Choose another translation in Settings.`,
-    );
-  }
-
   const bookId = getBookId(book);
 
-  if (translation === OFFLINE_TRANSLATION) {
+  if (isOfflineTranslation(translation)) {
     return {
-      verses: getOfflineChapter(bookId, chapter),
+      verses: getOfflineChapter(translation, bookId, chapter),
       translation,
-      offlineFallback: false,
+      fallback: null,
     };
   }
 
+  const fallbackResult = (reason: "offline" | "removed"): ChapterResult => ({
+    verses: getOfflineChapter(FALLBACK_TRANSLATION, bookId, chapter),
+    translation: FALLBACK_TRANSLATION,
+    fallback: reason,
+  });
+
   const cacheKey = `${translation}:${bookId}:${chapter}`;
   const cached = chapterCache.get(cacheKey);
-  if (cached) return { verses: cached, translation, offlineFallback: false };
+  if (cached) return { verses: cached, translation, fallback: null };
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const status = await checkTranslation(translation);
+  if (status === "removed") return fallbackResult("removed");
+  if (status === "unreachable") return fallbackResult("offline");
+
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://bolls.life/get-text/${translation}/${bookId}/${chapter}/`,
-      { signal: controller.signal },
     );
-    if (!response.ok) {
-      throw new Error(
-        `Bible API error: ${response.status} ${response.statusText}`,
-      );
-    }
+    if (!response.ok) return fallbackResult("offline");
 
     const data: { verse: number; text: string }[] = await response.json();
     const verses = data
       .map((v) => ({ chapter, verse: v.verse, text: stripHtml(v.text) }))
       .filter((v) => v.text.length > 0)
       .sort((a, b) => a.verse - b.verse);
-
-    if (verses.length === 0) {
-      throw new Error(`No verses returned for "${book} ${chapter}"`);
-    }
+    if (verses.length === 0) return fallbackResult("offline");
 
     chapterCache.set(cacheKey, verses);
-    return { verses, translation, offlineFallback: false };
+    return { verses, translation, fallback: null };
   } catch {
-    // Offline or provider unreachable — fall back to the bundled translation
-    return {
-      verses: getOfflineChapter(bookId, chapter),
-      translation: OFFLINE_TRANSLATION,
-      offlineFallback: true,
-    };
-  } finally {
-    clearTimeout(timeout);
+    return fallbackResult("offline");
   }
 }

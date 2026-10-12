@@ -16,6 +16,8 @@ import { type PassageVerse } from "@/src/db/snippets";
 import {
   BOOK_IDS,
   CANONICAL_BOOKS,
+  type ChapterResult,
+  TRANSLATION_NAMES,
   fetchChapter,
   getChapterCount,
 } from "@/src/services/bibleService";
@@ -67,7 +69,8 @@ export default function BibleScreen() {
   const [verses, setVerses] = useState<PassageVerse[]>([]);
   // What is actually on screen, which is the bundled translation when offline
   const [shownTranslation, setShownTranslation] = useState<string | null>(null);
-  const [offlineFallback, setOfflineFallback] = useState(false);
+  // Why the bundled translation is showing instead of the chosen one, if it is
+  const [fallback, setFallback] = useState<ChapterResult["fallback"]>(null);
   const offlineFallbackRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,8 +113,8 @@ export default function BibleScreen() {
         if (cancelled) return;
         setVerses(result.verses);
         setShownTranslation(result.translation);
-        setOfflineFallback(result.offlineFallback);
-        offlineFallbackRef.current = result.offlineFallback;
+        setFallback(result.fallback);
+        offlineFallbackRef.current = result.fallback === "offline";
         setError(null);
         setLoading(false);
       })
@@ -202,6 +205,8 @@ export default function BibleScreen() {
     );
   }
 
+  const translationName =
+    (translation && TRANSLATION_NAMES[translation]) ?? translation;
   const previous = getAdjacentChapter(position, -1);
   const next = getAdjacentChapter(position, 1);
   const hasSelection = selectionStart !== null && selectionEnd !== null;
@@ -281,23 +286,30 @@ export default function BibleScreen() {
             hasSelection && styles.scrollWithBar,
           ]}
         >
-          {offlineFallback ? (
+          {fallback ? (
             <View style={styles.offlineNote}>
               <Ionicons
-                name="cloud-offline-outline"
+                name={
+                  fallback === "removed"
+                    ? "alert-circle-outline"
+                    : "cloud-offline-outline"
+                }
                 size={layout.iconSm}
                 color={colors.textSecondary}
               />
               <Text style={styles.offlineNoteText}>
-                {translation} needs a connection. Showing the King James
-                Version.
+                {fallback === "removed"
+                  ? `${translationName} is no longer available. Showing the King James Version. Choose another version in Settings.`
+                  : `${translationName} needs a connection. Showing the King James Version.`}
               </Text>
-              <TouchableOpacity
-                onPress={() => setReloadCount((count) => count + 1)}
-                hitSlop={spacing.sm}
-              >
-                <Text style={styles.offlineRetry}>Retry</Text>
-              </TouchableOpacity>
+              {fallback === "offline" ? (
+                <TouchableOpacity
+                  onPress={() => setReloadCount((count) => count + 1)}
+                  hitSlop={spacing.sm}
+                >
+                  <Text style={styles.offlineRetry}>Retry</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           ) : null}
           <Text style={styles.hint}>

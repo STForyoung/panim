@@ -16,15 +16,20 @@ import { type Topic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import {
   BOOK_IDS,
+  TRANSLATION_CREDITS,
   TRANSLATION_NAMES,
   type TranslationAvailability,
   getTranslationAvailability,
+  refreshTranslationStatus,
 } from "@/src/services/bibleService";
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
 import {
+  AppState,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -41,16 +46,19 @@ import {
 } from "react-native-safe-area-context";
 
 const TRANSLATIONS: NotificationSchedule["translation"][] = [
+  // Bundled translations first, then the ones fetched online
+  "KJV",
+  "BSB",
   "NKJV",
   "ESV",
   "NASB",
   "NLT",
-  "KJV",
 ];
 
-// Shown under each translation so it is clear which ones need a connection
-const AVAILABILITY_NOTES: Record<TranslationAvailability, string> = {
-  offline: "Available offline",
+// Shown under a translation that needs a connection or has been withdrawn.
+// Bundled translations carry no note — working everywhere is the unremarkable case.
+const AVAILABILITY_NOTES: Record<TranslationAvailability, string | null> = {
+  offline: null,
   online: "Online only",
   unavailable: "Not currently available",
 };
@@ -172,6 +180,9 @@ export default function SettingsScreen() {
   const [translationPickerVisible, setTranslationPickerVisible] =
     useState(false);
 
+  // Scripture credits modal
+  const [creditsVisible, setCreditsVisible] = useState(false);
+
   // Topic picker modal
   const [topicPickerVisible, setTopicPickerVisible] = useState(false);
   const [topicPickerType, setTopicPickerType] = useState<Topic["type"] | null>(
@@ -180,6 +191,50 @@ export default function SettingsScreen() {
   const [bookTopicSection, setBookTopicSection] = useState<"OT" | "NT" | null>(
     null,
   );
+
+  // Re-check the online translations whenever Settings opens, so one the provider has
+  // withdrawn is labelled and cannot be chosen
+  const [, setStatusCheckedAt] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      refreshTranslationStatus(TRANSLATIONS).then(() =>
+        setStatusCheckedAt(Date.now()),
+      );
+    }, []),
+  );
+
+  // Notification permission: null until first checked
+  const [canNotify, setCanNotify] = useState<boolean | null>(null);
+  const [canAskToNotify, setCanAskToNotify] = useState(false);
+
+  const checkNotificationPermission = useCallback(async () => {
+    const permission = await Notifications.getPermissionsAsync();
+    setCanNotify(permission.status === "granted");
+    setCanAskToNotify(permission.canAskAgain);
+  }, []);
+
+  // Checked when Settings opens and when the user comes back from the system settings
+  useFocusEffect(
+    useCallback(() => {
+      checkNotificationPermission();
+      const appState = AppState.addEventListener("change", (state) => {
+        if (state === "active") checkNotificationPermission();
+      });
+      return () => appState.remove();
+    }, [checkNotificationPermission]),
+  );
+
+  async function handleTurnOnNotifications() {
+    if (canAskToNotify) {
+      await Notifications.requestPermissionsAsync();
+      await checkNotificationPermission();
+      // Reminders that were waiting on permission can be scheduled now
+      await scheduleNotifications(db).catch(() => {});
+    } else {
+      // Already declined once — it can only be changed in the system settings
+      await Linking.openSettings();
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -355,6 +410,8 @@ export default function SettingsScreen() {
   const sheetTopInset =
     Platform.OS === "ios" ? spacing.lg : insets.top + spacing.md;
 
+  const selectedTranslationNote =
+    AVAILABILITY_NOTES[getTranslationAvailability(schedule.translation)];
   const activeTopicName = pendingActiveTopic
     ? (topics.find((t) => t.id === pendingActiveTopic)?.name ?? "Unknown topic")
     : null;
@@ -382,7 +439,7 @@ export default function SettingsScreen() {
         <Text style={styles.title}>Settings</Text>
 
         {/* Bible Translation */}
-        <Text style={styles.categoryHeader}>Bible Translation</Text>
+        <Text style={styles.categoryHeader}>Select Translation</Text>
         <Text style={styles.categoryNote}>Applies to new snippets only</Text>
 
         <View style={styles.sectionCard}>
@@ -395,13 +452,9 @@ export default function SettingsScreen() {
               <Text style={styles.rowLabel}>
                 {TRANSLATION_NAMES[schedule.translation]}
               </Text>
-              <Text style={styles.topicTypeTag}>
-                {
-                  AVAILABILITY_NOTES[
-                    getTranslationAvailability(schedule.translation)
-                  ]
-                }
-              </Text>
+              {selectedTranslationNote ? (
+                <Text style={styles.topicTypeTag}>{selectedTranslationNote}</Text>
+              ) : null}
             </View>
             <Chevron />
           </TouchableOpacity>
@@ -409,6 +462,28 @@ export default function SettingsScreen() {
 
         {/* Reminders */}
         <Text style={styles.categoryHeader}>Reminders</Text>
+
+        {canNotify === false ? (
+          <View style={styles.permissionNotice}>
+            <Ionicons
+              name="notifications-off-outline"
+              size={layout.icon}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.permissionNoticeText}>
+              Notifications are off for Panim, so reminders won&apos;t arrive.
+            </Text>
+            <TouchableOpacity
+              onPress={handleTurnOnNotifications}
+              hitSlop={spacing.sm}
+              accessibilityRole="button"
+            >
+              <Text style={styles.permissionNoticeAction}>
+                {canAskToNotify ? "Turn on" : "Open Settings"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Presets */}
         <Text style={styles.sectionHeader}>Times per day</Text>
@@ -588,6 +663,47 @@ export default function SettingsScreen() {
 
         {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
 
+        {/* Scripture credits */}
+        <View style={[styles.sectionCard, styles.creditsCard]}>
+          <TouchableOpacity
+            style={[styles.row, styles.rowSpaceBetween, styles.rowLast]}
+            onPress={() => setCreditsVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.rowLabel}>Scripture versions</Text>
+            <Chevron />
+          </TouchableOpacity>
+        </View>
+
+        {/* Scripture Credits Modal */}
+        <Modal
+          visible={creditsVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setCreditsVisible(false)}
+        >
+          <View style={styles.screen}>
+            <View style={[styles.modalHeader, { paddingTop: sheetTopInset }]}>
+              <View style={styles.modalCancelArea} />
+              <Text style={styles.modalTitle}>Scripture versions</Text>
+              <TouchableOpacity
+                style={styles.modalCancelArea}
+                onPress={() => setCreditsVisible(false)}
+              >
+                <Text style={[styles.modalCancel, styles.modalDone]}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.creditsList}>
+              {TRANSLATIONS.map((t) => (
+                <View key={t} style={styles.creditItem}>
+                  <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
+                  <Text style={styles.creditText}>{TRANSLATION_CREDITS[t]}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+
         {/* Translation Picker Modal */}
         <Modal visible={translationPickerVisible} animationType="slide"
           presentationStyle="pageSheet"
@@ -606,14 +722,15 @@ export default function SettingsScreen() {
               >
                 <Text style={styles.modalCancel}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Translation</Text>
+              <Text style={styles.modalTitle}>Select Translation</Text>
               <View style={styles.modalCancelArea} />
             </View>
             <ScrollView>
               {TRANSLATIONS.map((t, i) => {
                 const selected = schedule.translation === t;
-                const unavailable =
-                  getTranslationAvailability(t) === "unavailable";
+                const availability = getTranslationAvailability(t);
+                const unavailable = availability === "unavailable";
+                const note = AVAILABILITY_NOTES[availability];
                 return (
                   <TouchableOpacity
                     key={t}
@@ -631,9 +748,9 @@ export default function SettingsScreen() {
                   >
                     <View>
                       <Text style={styles.rowLabel}>{TRANSLATION_NAMES[t]}</Text>
-                      <Text style={styles.topicTypeTag}>
-                        {AVAILABILITY_NOTES[getTranslationAvailability(t)]}
-                      </Text>
+                      {note ? (
+                        <Text style={styles.topicTypeTag}>{note}</Text>
+                      ) : null}
                     </View>
                     {selected ? <SelectedCheck /> : null}
                   </TouchableOpacity>
@@ -1110,6 +1227,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs / 2,
   },
 
+  // Notification permission notice
+  permissionNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  permissionNoticeText: {
+    ...typography.label,
+    flex: 1,
+  },
+  permissionNoticeAction: {
+    ...typography.label,
+    color: colors.accent,
+    fontWeight: "600",
+  },
+
   // Error
   errorText: {
     ...typography.label,
@@ -1185,6 +1322,22 @@ const styles = StyleSheet.create({
   },
   modalDone: {
     textAlign: "right",
+  },
+
+  // Scripture credits
+  creditsCard: {
+    marginTop: spacing.xl,
+  },
+  creditsList: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.lg,
+  },
+  creditItem: {
+    gap: spacing.xs,
+  },
+  creditText: {
+    ...typography.label,
   },
   modalTitle: {
     ...typography.title,

@@ -16,7 +16,10 @@ import { type PassageVerse, createSnippet } from "@/src/db/snippets";
 import { addSnippetToTopic } from "@/src/db/snippetTopics";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
-import { fetchPassage } from "@/src/services/bibleService";
+import {
+  TranslationRemovedError,
+  fetchPassage,
+} from "@/src/services/bibleService";
 import { getPassageDraft } from "@/src/services/passageDraft";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { router, useLocalSearchParams } from "expo-router";
@@ -149,7 +152,8 @@ export default function CreateSnippetScreen() {
           ? e.message
           : "Failed to fetch passage. Check your connection and try again.",
       );
-      setShowRetry(true);
+      // Retrying cannot bring back a translation the provider has withdrawn
+      setShowRetry(!(e instanceof TranslationRemovedError));
     } finally {
       setIsFetching(false);
     }

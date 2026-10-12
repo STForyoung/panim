@@ -7,13 +7,13 @@ export type NotificationSchedule = {
   activeTopic: string | null;
   selectionOrder: 'random' | 'sequential';
   lastSentIndex: number;
-  translation: 'NKJV' | 'ESV' | 'NASB' | 'NLT' | 'KJV';
+  translation: 'KJV' | 'BSB' | 'NKJV' | 'ESV' | 'NASB' | 'NLT';
   notificationContent: 'passage' | 'reflection' | 'prayer';
 };
 
 const SINGLETON_ID = 'singleton';
 
-const TRANSLATIONS: NotificationSchedule['translation'][] = ['NKJV', 'ESV', 'NASB', 'NLT', 'KJV'];
+const TRANSLATIONS: NotificationSchedule['translation'][] = ['KJV', 'BSB', 'NKJV', 'ESV', 'NASB', 'NLT'];
 
 const DEFAULT_SCHEDULE: NotificationSchedule = {
   id: SINGLETON_ID,
@@ -22,7 +22,7 @@ const DEFAULT_SCHEDULE: NotificationSchedule = {
   activeTopic: null,
   selectionOrder: 'random',
   lastSentIndex: 0,
-  translation: 'NKJV',
+  translation: 'KJV',
   notificationContent: 'passage',
 };
 
