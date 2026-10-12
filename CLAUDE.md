@@ -140,7 +140,7 @@ metadata (key/value)
 
 - Every snippet is automatically linked to its **book topic** on save. "Unassigned" therefore means "has no custom topic".
 - **Migrations** live in `src/db/database.ts` and are versioned with `PRAGMA user_version` (currently **2**). Add the next one as `if (currentVersion < 3) { … PRAGMA user_version = 3 }`. See Lessons for the Android rules.
-- On first run, 66 book topics and a small set of default content (KJV text) are seeded.
+- On first run, 66 book topics and the starter content in `src/db/seeds.ts` are seeded: two custom topics ("This is the Gospel", "Meditating on The Word") with 13 snippets in KJV text. Seeds only run when there are no snippets, so existing installs are not changed.
 
 ### Reference Display Logic
 
