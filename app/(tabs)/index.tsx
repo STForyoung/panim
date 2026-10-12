@@ -1,6 +1,7 @@
 import { Button } from "@/src/components/Button";
 import { Fab } from "@/src/components/Fab";
 import { FadeIn } from "@/src/components/FadeIn";
+import { type IoniconName } from "@/src/components/IconButton";
 import { PressableScale } from "@/src/components/PressableScale";
 import { LoadingState } from "@/src/components/StateViews";
 import { TopicChip } from "@/src/components/TopicChip";
@@ -37,6 +38,13 @@ function getGreeting(): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
+}
+
+function getGreetingIcon(): IoniconName {
+  const hour = new Date().getHours();
+  if (hour < 12) return "sunny-outline";
+  if (hour < 17) return "partly-sunny-outline";
+  return "moon-outline";
 }
 
 function pickRandom<T>(arr: T[], exclude?: T): T {
@@ -228,7 +236,14 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <FadeIn>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
+          <View style={styles.greetingRow}>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Ionicons
+              name={getGreetingIcon()}
+              size={layout.icon + spacing.xs}
+              color={colors.accent}
+            />
+          </View>
           <View style={styles.reminderRow}>
             <Ionicons
               name="notifications-outline"
@@ -365,9 +380,14 @@ const styles = StyleSheet.create({
   },
 
   // Greeting
+  greetingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm + spacing.xs,
+    marginTop: spacing.md,
+  },
   greeting: {
     ...typography.display,
-    marginTop: spacing.md,
   },
   reminderRow: {
     flexDirection: "row",
@@ -417,7 +437,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   heroReflectionText: {
-    ...typography.scripture,
+    ...typography.reflectionMedium,
     color: colors.textSecondary,
   },
 

@@ -173,9 +173,18 @@ function buildRequests(
   return requests;
 }
 
+// Bolls.life serves a publisher notice in place of the text for these translations
+const UNAVAILABLE_TRANSLATIONS = new Set(["NIV"]);
+
 function stripHtml(text: string): string {
   if (!text) return "";
-  return text.replace(/<[^>]*>/g, "").trim();
+  return text
+    .replace(/<S>[^<]*<\/S>/gi, "") // Strong's numbers (KJV)
+    .replace(/<sup>[^<]*<\/sup>/gi, "") // translator footnotes (KJV)
+    .replace(/<br\s*\/?>/gi, " ") // line breaks in poetry (NLT)
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export async function fetchPassage(
@@ -186,6 +195,12 @@ export async function fetchPassage(
   verseEnd: number | null,
   translation: string,
 ): Promise<{ chapter: number; verse: number; text: string }[]> {
+  if (UNAVAILABLE_TRANSLATIONS.has(translation)) {
+    throw new Error(
+      `${translation} is not available from the Bible provider. Choose another translation in Settings.`,
+    );
+  }
+
   const bookId = getBookId(book);
   const requests = buildRequests(
     bookId,

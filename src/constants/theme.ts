@@ -1,5 +1,5 @@
 export const colors = {
-  background: "#F5F4F0",
+  background: "#EEECE6",
   surface: "#FDFCF9",
   textPrimary: "#232527",
   textSoft: "#41454A",
@@ -8,7 +8,7 @@ export const colors = {
   accent: "#2F6B62",
   accentSoft: "#DCE7E2",
   onAccent: "#FDFCF9",
-  border: "#E8E4DF",
+  border: "#DEDBD4",
   danger: "#B03A2E",
 };
 
@@ -47,8 +47,8 @@ export const typography = {
   // Passage on the Home card and the snippet screen
   scriptureLarge: {
     fontFamily: fonts.serif,
-    fontSize: 17,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 32,
     color: colors.textPrimary,
   },
   scripture: {
@@ -69,11 +69,18 @@ export const typography = {
     lineHeight: 24,
     color: colors.textPrimary,
   },
-  // Reflection and prayer where they are read in full
-  reflectionLarge: {
+  // Reflection preview on the Home card
+  reflectionMedium: {
     fontFamily: fonts.serif,
     fontSize: 16,
     lineHeight: 28,
+    color: colors.textPrimary,
+  },
+  // Reflection and prayer where they are read in full
+  reflectionLarge: {
+    fontFamily: fonts.serif,
+    fontSize: 17,
+    lineHeight: 30,
     color: colors.textPrimary,
   },
   reference: {

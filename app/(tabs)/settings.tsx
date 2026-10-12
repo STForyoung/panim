@@ -21,11 +21,13 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
 import {
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -52,26 +54,37 @@ const TRANSLATION_NAMES: Record<NotificationSchedule["translation"], string> = {
 };
 
 // 24h "HH:MM" strings
-const PRESETS: { label: string; sublabel: string; times: string[] }[] = [
-  { label: "1× Daily", sublabel: "12:00 PM", times: ["12:00"] },
-  { label: "2× Daily", sublabel: "9 AM · 6 PM", times: ["09:00", "18:00"] },
+const PRESETS: {
+  label: string;
+  short: string;
+  sublabel: string;
+  times: string[];
+}[] = [
+  { label: "1× Daily",
+    short: "1×", sublabel: "12:00 PM", times: ["12:00"] },
+  { label: "2× Daily",
+    short: "2×", sublabel: "9 AM · 6 PM", times: ["09:00", "18:00"] },
   {
     label: "3× Daily",
+    short: "3×",
     sublabel: "9 AM · 12 PM · 6 PM",
     times: ["09:00", "12:00", "18:00"],
   },
   {
     label: "4× Daily",
+    short: "4×",
     sublabel: "9 AM · 12 PM · 3 PM · 6 PM",
     times: ["09:00", "12:00", "15:00", "18:00"],
   },
   {
     label: "5× Daily",
+    short: "5×",
     sublabel: "9 AM · 12 PM · 3 PM · 6 PM · 9 PM",
     times: ["09:00", "12:00", "15:00", "18:00", "21:00"],
   },
   {
     label: "Hourly",
+    short: "Hourly",
     sublabel: "Every hour from 9 AM to 6 PM",
     times: [
       "09:00",
@@ -88,6 +101,20 @@ const PRESETS: { label: string; sublabel: string; times: string[] }[] = [
   },
 ];
 
+// Which snippets reminders are drawn from
+const MODE_OPTIONS = {
+  random: "All snippets",
+  topic: "One topic",
+  favourites: "Favourites only",
+};
+
+// What the notification text is taken from
+const CONTENT_OPTIONS = {
+  passage: "Passage",
+  reflection: "Reflection",
+  prayer: "Prayer",
+};
+
 function to12h(time24: string): string {
   const [hStr, mStr] = time24.split(":");
   const h = parseInt(hStr, 10);
@@ -101,6 +128,7 @@ export default function SettingsScreen() {
   const db = useSQLiteContext();
 
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [schedule, setSchedule] = useState<NotificationSchedule | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -249,11 +277,6 @@ export default function SettingsScreen() {
     setBookTopicSection(null);
   }
 
-  function handleSelectionOrderChange(selectionOrder: "random" | "sequential") {
-    setPendingSelectionOrder(selectionOrder);
-    setApplyMessage(null);
-  }
-
   async function handleApply() {
     setIsApplying(true);
     setApplyMessage(null);
@@ -315,6 +338,15 @@ export default function SettingsScreen() {
     );
   }
 
+  // Scheduled times sit in a three-column grid
+  const timeTileWidth = Math.floor(
+    (windowWidth - spacing.lg * 2 - spacing.sm * 2) / 3,
+  );
+
+  // Pickers open as sheets on iOS, which start below the status bar
+  const sheetTopInset =
+    Platform.OS === "ios" ? spacing.lg : insets.top + spacing.md;
+
   const activeTopicName = pendingActiveTopic
     ? (topics.find((t) => t.id === pendingActiveTopic)?.name ?? "Unknown topic")
     : null;
@@ -358,13 +390,171 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Reminders */}
+        <Text style={styles.categoryHeader}>Reminders</Text>
+
+        {/* Presets */}
+        <Text style={styles.sectionHeader}>Times per day</Text>
+        <View style={styles.segmented}>
+          {PRESETS.map((preset) => {
+            const isActive =
+              JSON.stringify(pendingTimes) === JSON.stringify(preset.times);
+            return (
+              <TouchableOpacity
+                key={preset.label}
+                style={[styles.segment, isActive && styles.segmentActive]}
+                onPress={() => handleApplyPreset(preset.times)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={preset.label}
+                accessibilityState={{ selected: isActive }}
+              >
+                <Text
+                  style={[
+                    styles.segmentText,
+                    isActive && styles.segmentTextActive,
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {preset.short}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Scheduled Times */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderInline}>Your times</Text>
+          {pendingTimes.length > 0 ? (
+            <TouchableOpacity
+              onPress={() => setPendingTimes([])}
+              hitSlop={spacing.sm}
+            >
+              <Text style={styles.clearButtonText}>Clear</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        {pendingTimes.length === 0 ? (
+          <Text style={styles.timesEmpty}>
+            Reminders are off. Pick how many times a day, or add a time.
+          </Text>
+        ) : null}
+        <View style={styles.timeGrid}>
+          {pendingTimes.map((time) => (
+            <View key={time} style={[styles.timeTile, { width: timeTileWidth }]}>
+              <Text
+                style={styles.timeTileText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {to12h(time)}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleRemoveTime(time)}
+                hitSlop={spacing.sm}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${to12h(time)}`}
+              >
+                <Ionicons
+                  name="close"
+                  size={layout.iconSm - spacing.xs}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <TouchableOpacity
+            style={[
+              styles.timeTile,
+              styles.addTimeTile,
+              { width: timeTileWidth },
+            ]}
+            onPress={openAddTime}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add" size={layout.iconSm} color={colors.accent} />
+            <Text style={styles.addTimeText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Mode */}
+        <Text style={styles.sectionHeader}>Which snippets to send</Text>
+        <View style={styles.sectionCard}>
+          {(["random", "topic", "favourites"] as const).map((mode) => {
+            const selected = pendingMode === mode;
+            const label = MODE_OPTIONS[mode];
+            return (
+              <View key={mode}>
+                <TouchableOpacity
+                  style={[
+                    styles.row,
+                    styles.rowSpaceBetween,
+                    mode === "favourites" && styles.rowLast,
+                  ]}
+                  onPress={() => handleModeChange(mode)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.rowLabel}>{label}</Text>
+                  {selected ? <SelectedCheck /> : null}
+                </TouchableOpacity>
+                {mode === "topic" && pendingMode === "topic" ? (
+                  <TouchableOpacity
+                    style={[styles.row, styles.topicPickerRow]}
+                    onPress={openTopicPicker}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.topicPickerText}>
+                      {activeTopicName ?? "Choose a topic…"}
+                    </Text>
+                    <Chevron />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Content */}
+        <Text style={styles.sectionHeader}>What each reminder shows</Text>
+        <View style={styles.sectionCard}>
+          {(["passage", "reflection", "prayer"] as const).map((content) => {
+            const selected = pendingNotificationContent === content;
+            const label = CONTENT_OPTIONS[content];
+            return (
+              <TouchableOpacity
+                key={content}
+                style={[
+                  styles.row,
+                  styles.rowSpaceBetween,
+                  content === "prayer" && styles.rowLast,
+                ]}
+                onPress={() => {
+                  setPendingNotificationContent(content);
+                  setApplyMessage(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.rowLabel}>{label}</Text>
+                {selected ? <SelectedCheck /> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
+
         {/* Translation Picker Modal */}
-        <Modal visible={translationPickerVisible} animationType="slide">
+        <Modal visible={translationPickerVisible} animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setTranslationPickerVisible(false)}
+        >
           <View style={styles.screen}>
             <View
               style={[
                 styles.modalHeader,
-                { paddingTop: insets.top + spacing.md },
+                { paddingTop: sheetTopInset },
               ]}
             >
               <TouchableOpacity
@@ -401,101 +591,16 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        {/* Notification Schedule */}
-        <Text style={styles.categoryHeader}>Notification Schedule</Text>
-        <Text style={styles.categoryNote}>When you receive reminders</Text>
-
-        {/* Presets */}
-        <Text style={styles.sectionHeader}>Presets</Text>
-        <View style={styles.presetChipRow}>
-          {PRESETS.map((preset) => {
-            const isActive =
-              JSON.stringify(pendingTimes) === JSON.stringify(preset.times);
-            return (
-              <TouchableOpacity
-                key={preset.label}
-                style={[styles.presetChip, isActive && styles.presetChipActive]}
-                onPress={() => handleApplyPreset(preset.times)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.presetChipText,
-                    isActive && styles.presetChipTextActive,
-                  ]}
-                >
-                  {preset.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {(() => {
-          const active = PRESETS.find(
-            (p) => JSON.stringify(pendingTimes) === JSON.stringify(p.times),
-          );
-          return active ? (
-            <Text style={styles.presetActiveDetail}>{active.sublabel}</Text>
-          ) : null;
-        })()}
-
-        {/* Scheduled Times */}
-        <Text style={styles.sectionHeader}>Your times</Text>
-        {pendingTimes.length === 0 ? (
-          <Text style={styles.mutedText}>No times set.</Text>
-        ) : (
-          <View style={styles.sectionCard}>
-            {pendingTimes.map((time, i) => (
-              <View
-                key={time}
-                style={[
-                  styles.row,
-                  styles.rowSpaceBetween,
-                  i === pendingTimes.length - 1 && styles.rowLast,
-                ]}
-              >
-                <Text style={styles.rowLabel}>{to12h(time)}</Text>
-                <TouchableOpacity
-                  onPress={() => handleRemoveTime(time)}
-                  hitSlop={spacing.sm}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={layout.icon}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={styles.outlineButton}
-          onPress={openAddTime}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={layout.iconSm} color={colors.accent} />
-          <Text style={styles.outlineButtonText}>Custom time</Text>
-        </TouchableOpacity>
-
-        {pendingTimes.length > 0 ? (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={() => setPendingTimes([])}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.clearButtonText}>Clear All</Text>
-          </TouchableOpacity>
-        ) : null}
-
         {/* Add Time Modal */}
-        <Modal visible={addTimeVisible} animationType="slide">
+        <Modal visible={addTimeVisible} animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setAddTimeVisible(false)}
+        >
           <View style={styles.screen}>
             <View
               style={[
                 styles.modalHeader,
-                { paddingTop: insets.top + spacing.md },
+                { paddingTop: sheetTopInset },
               ]}
             >
               <TouchableOpacity
@@ -569,17 +674,16 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        {/* Notification Preferences */}
-        <Text style={styles.categoryHeader}>Notification Preferences</Text>
-        <Text style={styles.categoryNote}>What gets sent in each reminder</Text>
-
         {/* Topic Picker Modal */}
-        <Modal visible={topicPickerVisible} animationType="slide">
+        <Modal visible={topicPickerVisible} animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={closeTopicPicker}
+        >
           <View style={styles.screen}>
             <View
               style={[
                 styles.modalHeader,
-                { paddingTop: insets.top + spacing.md },
+                { paddingTop: sheetTopInset },
               ]}
             >
               <TouchableOpacity
@@ -703,108 +807,6 @@ export default function SettingsScreen() {
             </ScrollView>
           </View>
         </Modal>
-
-        {/* Mode */}
-        <Text style={styles.sectionHeader}>Mode</Text>
-        <View style={styles.sectionCard}>
-          {(["random", "topic", "favourites"] as const).map((mode) => {
-            const selected = pendingMode === mode;
-            const label =
-              mode === "random"
-                ? "Random"
-                : mode === "topic"
-                  ? "Topic Focus"
-                  : "Favourites";
-            return (
-              <View key={mode}>
-                <TouchableOpacity
-                  style={[
-                    styles.row,
-                    styles.rowSpaceBetween,
-                    mode === "favourites" && styles.rowLast,
-                  ]}
-                  onPress={() => handleModeChange(mode)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.rowLabel}>{label}</Text>
-                  {selected ? <SelectedCheck /> : null}
-                </TouchableOpacity>
-                {mode === "topic" && pendingMode === "topic" ? (
-                  <TouchableOpacity
-                    style={[styles.row, styles.topicPickerRow]}
-                    onPress={openTopicPicker}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.topicPickerText}>
-                      {activeTopicName ?? "Select a topic…"}
-                    </Text>
-                    <Chevron />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            );
-          })}
-
-          </View>
-
-        {/* Content */}
-        <Text style={styles.sectionHeader}>Content</Text>
-        <View style={styles.sectionCard}>
-          {(["passage", "reflection", "prayer"] as const).map((content) => {
-            const selected = pendingNotificationContent === content;
-            const label =
-              content === "passage"
-                ? "Passage"
-                : content === "reflection"
-                  ? "Meditation"
-                  : "Prayer";
-            return (
-              <TouchableOpacity
-                key={content}
-                style={[
-                  styles.row,
-                  styles.rowSpaceBetween,
-                  content === "prayer" && styles.rowLast,
-                ]}
-                onPress={() => {
-                  setPendingNotificationContent(content);
-                  setApplyMessage(null);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rowLabel}>{label}</Text>
-                {selected ? <SelectedCheck /> : null}
-              </TouchableOpacity>
-            );
-          })}
-
-          </View>
-
-        {/* Selection Order */}
-        <Text style={styles.sectionHeader}>Selection order</Text>
-        <View style={styles.sectionCard}>
-          {(["random", "sequential"] as const).map((order, i) => {
-            const selected = pendingSelectionOrder === order;
-            const label = order === "random" ? "Random" : "Sequential";
-            return (
-              <TouchableOpacity
-                key={order}
-                style={[
-                  styles.row,
-                  styles.rowSpaceBetween,
-                  i === 1 && styles.rowLast,
-                ]}
-                onPress={() => handleSelectionOrderChange(order)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.rowLabel}>{label}</Text>
-                {selected ? <SelectedCheck /> : null}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {applyError ? <Text style={styles.errorText}>{applyError}</Text> : null}
       </ScrollView>
 
       {hasUnsavedChanges ? (
@@ -880,7 +882,7 @@ const styles = StyleSheet.create({
   // Section pattern
   sectionHeader: {
     ...typography.label,
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
   sectionCard: {
@@ -909,56 +911,81 @@ const styles = StyleSheet.create({
     ...typography.body,
   },
 
-  // Preset chips
-  presetChipRow: {
+  // Times-per-day segmented control
+  segmented: {
+    flexDirection: "row",
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.xs,
+    gap: spacing.xs,
+  },
+  segment: {
+    flex: 1,
+    minHeight: layout.controlHeight - spacing.sm,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.xs,
+  },
+  segmentActive: {
+    backgroundColor: colors.accent,
+  },
+  segmentText: {
+    ...typography.label,
+    color: colors.textPrimary,
+    fontWeight: "600",
+  },
+  segmentTextActive: {
+    color: colors.onAccent,
+  },
+
+  // Scheduled times
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sectionHeaderInline: {
+    ...typography.label,
+  },
+  clearButtonText: {
+    ...typography.label,
+    color: colors.danger,
+  },
+  timesEmpty: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  timeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
   },
-  presetChip: {
-    borderRadius: radius.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-  },
-  presetChipActive: {
-    backgroundColor: colors.accent,
-  },
-  presetChipText: {
-    ...typography.body,
-    color: colors.textPrimary,
-  },
-  presetChipTextActive: {
-    color: colors.onAccent,
-    fontWeight: "600",
-  },
-  presetActiveDetail: {
-    ...typography.label,
-    marginTop: spacing.sm,
-  },
-
-  // Add custom time button
-  outlineButton: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    minHeight: layout.controlHeight,
+  timeTile: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.xs,
+    minHeight: layout.controlHeight - spacing.sm,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md - spacing.xs,
+    backgroundColor: colors.surface,
+  },
+  timeTileText: {
+    ...typography.body,
+    flexShrink: 1,
+  },
+  addTimeTile: {
+    backgroundColor: colors.accentSoft,
     justifyContent: "center",
-    gap: spacing.sm,
-    marginTop: spacing.md,
   },
-  outlineButtonText: {
-    ...typography.button,
+  addTimeText: {
+    ...typography.body,
     color: colors.accent,
-  },
-  clearButton: {
-    paddingVertical: spacing.md,
-    alignItems: "center",
-  },
-  clearButtonText: {
-    ...typography.button,
-    color: colors.danger,
+    fontWeight: "600",
   },
 
   // Add Time modal inputs

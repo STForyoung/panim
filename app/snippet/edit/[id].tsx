@@ -16,6 +16,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { type PassageVerse, type Snippet, getSnippet, updateSnippet } from "@/src/db/snippets";
 import { Chevron } from "@/src/components/Icons";
 import { PassageText } from "@/src/components/PassageText";
+import { getSchedule } from "@/src/db/notificationSchedule";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
 import { type Topic, createTopic, getAllTopics } from "@/src/db/topics";
@@ -142,13 +143,14 @@ export default function EditSnippetScreen() {
     setShowRetry(false);
     setIsFetching(true);
     try {
+      const { translation } = await getSchedule(db);
       const verses = await fetchPassage(
         book,
         parseInt(chapterStart, 10),
         parseInt(verseStart, 10),
         chapterEnd ? parseInt(chapterEnd, 10) : null,
         verseEnd ? parseInt(verseEnd, 10) : null,
-        "NKJV",
+        translation,
       );
       setPassage(verses);
     } catch (e) {

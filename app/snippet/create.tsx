@@ -1,5 +1,6 @@
 import { Chevron } from "@/src/components/Icons";
 import { PassageText } from "@/src/components/PassageText";
+import { getSchedule } from "@/src/db/notificationSchedule";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { TopicChip } from "@/src/components/TopicChip";
 import {
@@ -120,13 +121,14 @@ export default function CreateSnippetScreen() {
     setShowRetry(false);
     setIsFetching(true);
     try {
+      const { translation } = await getSchedule(db);
       const verses = await fetchPassage(
         book,
         parseInt(chapterStart, 10),
         parseInt(verseStart, 10),
         chapterEnd ? parseInt(chapterEnd, 10) : null,
         verseEnd ? parseInt(verseEnd, 10) : null,
-        "NKJV",
+        translation,
       );
       setPassage(verses);
     } catch (e) {
