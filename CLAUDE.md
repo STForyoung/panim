@@ -2,286 +2,342 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+It has two parts: **Where we are** (how the app works today and the rules to follow) and **Where we're going** (roadmap, the future backend, known gaps).
+
+---
+
+# Part 1 — Where we are
+
 ## About
 
-Panim is a React Native mobile app for meditating on scripture. Users create personal Bible passage snippets with reflections, organize them by topic, and receive them as scheduled push notifications throughout the day.
+Panim is a React Native mobile app for meditating on scripture. Users read the Bible in the app, tap the verses that speak to them, and write a reflection (and optionally a prayer). Each saved passage-plus-reflection is a **snippet**. Snippets are organised by topic and come back throughout the day as scheduled local notifications.
+
+Status: the MVP is feature-complete and not yet released. Much of the recent work has been type-checked and viewed in the iOS simulator but not exercised by hand on real devices (see Roadmap).
 
 ## Commands
 
 ```bash
-npm install          # Install dependencies
-npx expo start       # Start dev server
-npm run ios          # Run on iOS simulator
-npm run android      # Run on Android emulator
-npm run lint         # Run ESLint
+npm install                      # Install dependencies
+npx expo start                   # Start dev server (development-build mode, because expo-dev-client is installed)
+npx expo start --go              # Start for Expo Go
+npx expo start --go --tunnel     # Expo Go when the phone is not on the same network
+npx expo start --clear           # Reset the Metro cache
+npx tsc --noEmit                 # Type-check
+npm run lint                     # ESLint
+npm run ios / npm run android    # Native build and run (android/ and ios/ are generated and gitignored)
 ```
+
+- **Node:** 22.13+ or 24.3+ is required by React Native 0.86. Node 20.14 fails. With nvm: `nvm use 24`.
+- **Expo Go:** the App Store only ships Expo Go for the newest SDK, so a real iPhone needs Expo Go for SDK 57. The iOS simulator gets a matching Expo Go installed by the CLI.
+- **Android notifications:** not fully testable in Expo Go. Use a development build: `eas build --profile development --platform android`.
 
 ## Stack
 
-- **Expo + React Native** with TypeScript (strict mode)
+- **Expo SDK 57 + React Native 0.86**, TypeScript 6 (strict)
 - **Expo Router** — file-based routing, routes live in `app/`
-- **expo-sqlite** — local storage for all data
-- **expo-notifications** — locally scheduled push notifications
+- **expo-sqlite** — all user data
+- **expo-notifications** — locally scheduled reminders
+- **AsyncStorage** — two flags only: `hasLaunched` (onboarding done) and `lastRead` (Bible position)
+- **Fonts** — Merriweather (the app's only serif) and Noto Rashi Hebrew (the onboarding wordmark), via `@expo-google-fonts`
+- **Icons** — Ionicons from `@expo/vector-icons`
 
-## Architecture
-
-Routing is file-based via Expo Router using a tab-based layout.
-
-### File Structure
+## File Structure
 
 ```
 app/
+  _layout.tsx              # Root: fonts, SQLiteProvider, AppInitializer (device id, reminder top-up)
+  index.tsx                # Redirects to onboarding or /(tabs)
+  onboarding.tsx           # 5 steps: brand, how it works, notifications, rhythm, all set
   (tabs)/
-    index.tsx              # Home — current/next snippet in rotation
-    library.tsx            # Library overview — 3 entry points
-    settings.tsx           # Translation preference + notification schedule
-  topic-kind/
-    conceptual.tsx         # All conceptual topics list
-    directed.tsx           # All directed topics list
-    unassigned.tsx         # Snippets with no topic assigned
+    _layout.tsx            # Tabs: Home, Bible, Library, Settings
+    index.tsx              # Home
+    bible.tsx              # Bible reader
+    library.tsx            # Library overview
+    settings.tsx           # Translation + reminders
   snippet/
-    create.tsx             # Create new snippet
+    create.tsx             # New snippet
     [id].tsx               # Snippet detail (read-only)
-    edit/
-      [id].tsx             # Edit existing snippet
-  topic/
-    [id].tsx               # Individual topic detail
-  onboarding.tsx           # First-launch onboarding flow
-  index.tsx                # Redirects to /(tabs)
-  _layout.tsx              # Root layout with SQLiteProvider + AppInitializer
+    edit/[id].tsx          # Edit snippet
+  topic/[id].tsx           # Topic detail
+  topic-kind/
+    custom.tsx             # "My Topics"
+    book.tsx               # "Bible Books"
+    unassigned.tsx         # Snippets with no custom topic
+assets/
+  bible/kjv/               # Bundled King James Version, one JSON file per book (1.json … 66.json)
 src/
-  components/              # Reusable UI components
-  db/                      # SQLite setup and queries
+  components/
+    BookPicker.tsx         # Sheet: Old/New Testament switch, book list, optional chapter grid
+    Button.tsx             # Text button: primary | tonal | ghost | danger, optional icon
+    Fab.tsx                # Floating "+" button
+    FadeIn.tsx             # Fade-and-rise on mount
+    IconButton.tsx         # Round icon button; `filled` for a primary action
+    Icons.tsx              # Chevron, SelectedCheck
+    ListRow.tsx            # Navigation row: icon, title, subtitle, chevron
+    PassageText.tsx        # Verses with verse numbers; `large` for reading screens
+    PressableScale.tsx     # Press feedback (shrink + fade); `dim={false}` to skip the fade
+    ScreenHeader.tsx       # Back button + right-side actions
+    SnippetCard.tsx        # Snippet summary card for lists
+    StateViews.tsx         # LoadingState, EmptyState
+    TabBar.tsx             # Custom tab bar
+    TopicChip.tsx          # Topic pill, optionally removable
+  constants/theme.ts       # All design tokens
+  db/                      # SQLite setup, migrations, queries, seeds
+  notifications/scheduler.ts   # Reminder playlist and scheduling
   services/
-    bibleService.ts        # Bible API service layer
-  notifications/
-    scheduler.ts           # Local notification scheduling logic
+    bibleService.ts        # The only place Bible text is fetched
+    offlineBible.ts        # Loader for the bundled KJV
+    passageDraft.ts        # Hands a passage from the Bible tab to the create screen
+  utils/
+    displayReference.ts    # getDisplayReference(snippet)
+    superscript.ts         # toSuperscript(n) for inline verse numbers
 ```
 
-### Data Model
+## Data Model
 
 ```typescript
 Snippet {
-  id: string              // UUID
-  book: string            // Standardized full name: "1 Corinthians"
-  chapterStart: number    // 3
-  verseStart: number      // 5
+  id: string                  // UUID
+  book: string                // Standardized full name: "1 Corinthians"
+  chapterStart: number
+  verseStart: number
   chapterEnd: number | null   // null if same chapter as start
   verseEnd: number | null     // null if single verse
-  passage: string         // Fetched from Bible API, cached locally
-  reflection: string      // User's personal thoughts
-  isFavourite: boolean
-  createdAt: number       // Unix timestamp
-  updatedAt: number       // Unix timestamp
+  passage: PassageVerse[]     // [{ chapter, verse, text }], stored as JSON; cached permanently
+  reflection: string
+  prayer: string | null
+  translation: string         // Version the passage text is in, e.g. "NKJV"
+  isFavourite: boolean        // Stored as 0/1
+  createdAt: number           // Unix ms
+  updatedAt: number
+  // syncedAt column exists in the table, unused until a backend exists
 }
 
 Topic {
   id: string
-  name: string            // "The Power of God" or "Genesis 1"
-  type: "conceptual" | "directed"
+  name: string                // "Beholding the face of God" or "Psalms"
+  type: "custom" | "book"     // custom = user-made; book = one per Bible book, seeded, not deletable
   createdAt: number
 }
 
-SnippetTopic {            // Junction table — many-to-many
-  snippetId: string
-  topicId: string
+SnippetTopic { snippetId, topicId }   // Many-to-many; ON DELETE CASCADE both ways
+
+NotificationSchedule {               // Single row, id "singleton"
+  times: string[]                              // ["09:00", "12:00", "18:00"]
+  mode: "random" | "topic" | "favourites"      // Which snippets reminders draw from ("random" = all)
+  activeTopic: string | null                   // topicId when mode is "topic"
+  selectionOrder: "random" | "sequential"      // Shuffled, or oldest first
+  notificationContent: "passage" | "reflection" | "prayer"
+  translation: "NKJV" | "ESV" | "NASB" | "NLT" | "KJV"   // Global preference; also lives here
+  lastSentIndex: number                        // Unused leftover
 }
 
-NotificationSchedule {
-  id: string
-  times: string[]                      // ["07:00", "12:00", "20:00"]
-  mode: "random" | "topic"             // pool to draw from
-  activeTopic: string | null           // topicId, used when mode is "topic"
-  selectionOrder: "random" | "sequential"  // how to pick within pool
-  lastSentIndex: number                // unused — reminder position lives in metadata.reminderPlaylist
-  translation: "NKJV" | "NIV" | "ESV" | "NASB" | "NLT" | "KJV"
-}
+metadata (key/value)
+  deviceId            // Stable id for future sync
+  reminderPlaylist    // Device-only: order reminders work through
+  reminderQueue       // Device-only: dated notifications currently scheduled
 ```
+
+- Every snippet is automatically linked to its **book topic** on save. "Unassigned" therefore means "has no custom topic".
+- **Migrations** live in `src/db/database.ts` and are versioned with `PRAGMA user_version` (currently **2**). Add the next one as `if (currentVersion < 3) { … PRAGMA user_version = 3 }`. See Lessons for the Android rules.
+- On first run, 66 book topics and a small set of default content are seeded.
 
 ### Reference Display Logic
 
-Derive the display reference from structured fields:
+Always use `getDisplayReference(snippet)` from `src/utils/displayReference.ts` — never build the string inline.
 
-- Single verse: `${book} ${chapterStart}:${verseStart}`
-- Same chapter range: `${book} ${chapterStart}:${verseStart}-${verseEnd}`
-- Cross-chapter range: `${book} ${chapterStart}:${verseStart}-${chapterEnd}:${verseEnd}`
+- Single verse: `John 3:16`
+- Same-chapter range: `Psalms 23:1-6`
+- Cross-chapter range: `Romans 8:1-8:39`
 
-### Navigation Structure
+## Screens
 
-**Tab 1 — Home**
-A welcoming, contemplative screen. Shows the current/next snippet in the notification rotation. One snippet at a time, not a list.
+**Home** — greeting with a time-of-day icon and the next reminder time. The main card is the snippet the next reminder will send: passage (4 lines, inline verse numbers), reference with a quiet version tag, topic chips, and the reflection in a tinted box. "Coming up" shows the three after it; "Favourites" is a second carousel. Floating "+" creates a snippet.
 
-**Tab 2 — Library**
-Overview screen with three entry points:
+**Bible** — chapter reader. Tap the chapter title for the BookPicker; arrows move between chapters and across books. Tap a verse to select it, tap further verses to extend or trim a continuous range, then "Add reflection" opens New Snippet with the passage filled in. Remembers the last chapter read.
 
-- Conceptual Topics → app/topic-kind/conceptual.tsx
-- Directed Topics → app/topic-kind/directed.tsx
-- Unassigned Snippets → app/topic-kind/unassigned.tsx
+**Library** — three rows: My Topics, Bible Books, Unassigned Snippets. Floating "+".
 
-**Topic Kind screens** show a list of topics of that kind, each showing name and snippet count. Tapping a topic navigates to its detail screen.
+**My Topics / Bible Books** — lists with snippet counts. My Topics has a header "+" for a new topic and long-press to delete.
 
-**Topic Detail** (app/topic/[id].tsx) shows all snippets belonging to that topic. Each snippet shows reference, truncated passage, truncated reflection.
+**Topic detail** — name, kind and count, then snippet cards. Header "+" creates a snippet in that topic; custom topics have a header delete.
 
-**Unassigned** (app/topic-kind/unassigned.tsx) shows all snippets not belonging to any topic. Same snippet item format as Topic Detail.
+**Snippet detail** — header icons for favourite, edit and delete. Reference as the title, full version name beneath it, topic chips, the passage, then Reflection and Prayer cards.
 
-**Tab 3 — Settings**
-Translation preference and notification schedule configuration.
+**New / Edit Snippet** — fixed top bar with back, title and a save tick (there is also a save button at the bottom). The passage shows as a card with a "Change" link; the reference fields (book, chapter, verse, optional end chapter and verse, fetch button) appear only when there is no passage yet or after "Change". Then Reflection, Prayer (optional) and Topics.
 
-**Outside tabs:**
+**Settings** — Bible Translation, then Reminders: Times per day (segmented presets), Your times (grid with add and remove), Which snippets to send, What each reminder shows, Order. Translation saves immediately; reminder changes are held until "Apply".
 
-- Snippet create and detail are full-screen routes
-- Topic detail is a full-screen route
+**Onboarding** — shown until `hasLaunched` is set.
 
-### Screen & Build Order
+## Bible Text
 
-1. ✅ Tab navigation setup
-2. ✅ Topic List + Create Topic (Library tab — now being restructured)
-3. ✅ Create Snippet with topic assignment
-4. ✅ Library overview screen (3 entry points)
-5. ✅ Conceptual Topics screen
-6. ✅ Directed Topics screen
-7. ✅ Unassigned Snippets screen
-8. ✅ Snippet Detail
-9. ✅ Snippet Edit
-10. ✅ Topic Detail
-11. ✅ Add isFavourite to data model
-12. ✅ Settings
-13. ✅ Home tab
-14. ✅ Onboarding
-15. ✅ Notification scheduling
+### Rules
 
-## Bible API
+- Bible text is always obtained through `src/services/bibleService.ts` — never fetched from screens or components
+- A snippet's passage is stored with the snippet and **never re-fetched** to display it. Snippets, lists, Home and reminders make no network calls
+- Do not save a snippet without passage text
+- Each snippet records the `translation` its text is in; show it wherever a passage is the focus (quietly — `typography.translationTag`)
+- Changing the translation setting affects new fetches only; existing snippets keep their text and version
 
-### Provider
+### Translations
 
-- **Current (MVP):** Bolls.life (free, no API key required)
-- **Planned migration path:** API.Bible (American Bible Society) → self-hosted/licensed text at scale
+| Code | Name                        | Availability                    |
+| ---- | --------------------------- | ------------------------------- |
+| NKJV | New King James Version      | Online only (default)           |
+| ESV  | English Standard Version    | Online only                     |
+| NASB | New American Standard Bible | Online only                     |
+| NLT  | New Living Translation      | Online only                     |
+| KJV  | King James Version          | Bundled — works offline         |
 
-### Supported Translations
+- **NIV is not offered.** The provider returns a publisher notice in place of NIV text. `bibleService` still refuses NIV as a safeguard, and a stored NIV preference falls back to NKJV
+- `TRANSLATION_NAMES` and `getTranslationAvailability()` in `bibleService.ts` are the source for names and the labels shown in Settings
 
-| Code | Full Name                   |
-| ---- | --------------------------- |
-| NKJV | New King James Version      |
-| NIV  | New International Version   |
-| ESV  | English Standard Version    |
-| NASB | New American Standard Bible |
-| NLT  | New Living Translation      |
-| KJV  | King James Version          |
+### Provider (Bolls.life)
 
-- Default translation: NKJV
-- Translation is a global user preference stored in `notification_schedule`
+- Free, no API key, no agreement. Base URL `https://bolls.life`. Books are referenced by number (Genesis = 1, John = 43)
+- Verse ranges: POST `/get-verses/` — the response is an array of arrays, always `.flat()` it
+- Whole chapters: GET `/get-text/<translation>/<bookId>/<chapter>/`
+- All provider text goes through `stripHtml`, which removes markup, Strong's numbers and footnotes
 
-### Architecture
+### Offline behaviour
 
-- The Bible API is always accessed through `src/services/bibleService.ts` — never called directly from screens or components
-- This abstraction means the underlying provider can be swapped without touching any other file
-- Passage is fetched **once** at snippet creation time and cached permanently in SQLite
-- Never re-fetch a passage that already exists in the database
-- App must be fully functional offline after the initial fetch
+- KJV is served from `assets/bible/kjv` with no network use
+- **Bible tab:** if the chosen translation cannot be fetched (offline, or no response in 10 seconds) it shows KJV with a note and a Retry link, and tries the chosen translation again on the next visit. Online chapters are kept in memory for the session only
+- **Typed references** (New/Edit Snippet): work offline only when KJV is the chosen translation. Other translations show the fetch error with a retry — they never silently substitute KJV
+- A reflection added while the Bible tab is on the KJV fallback saves KJV text and records KJV
 
-### API Details (Bolls.life)
+## Creating a Snippet
 
-- Base URL: `https://bolls.life`
-- Books are referenced by number (e.g. Genesis = 1, John = 43)
-- Verses are fetched individually and joined into a single passage string
-- Use the POST `/get-verses/` endpoint for fetching verse ranges
-- Response is an array of arrays — always call `.flat()` after parsing JSON
+Two entry points:
 
-### Error Handling
+1. **From the Bible tab** — selected verses are passed through `passageDraft` (route param `fromReader=1`); the form opens with the passage card already filled, nothing to fetch.
+2. **Typed reference** — pick a book (BookPicker), enter chapter and verse, optionally an end chapter and verse, then Fetch Passage.
 
-- If the API call fails on snippet creation, prompt the user to retry
-- Do not save a snippet without a successfully fetched passage
-- Show a clear error message — do not fail silently
+Topics on the form: assigned topics as removable chips, "Existing topic" (sheet of custom topics) and "New topic" (inline name field; created on save). Topic assignment is optional. Saving also links the snippet to its book topic, reschedules reminders, and opens the new snippet's detail screen.
 
-### Translation Change Behavior (MVP)
+Topics are created in two places only: inline on the snippet form, and the "+" on My Topics. Both create `custom` topics. Book topics are never created by users.
 
-- Changing translation applies to new snippets only
-- Existing cached passages are not re-fetched when translation changes
-- Post-MVP: offer user the option to re-fetch all passages in the new translation
+## Reminders
 
-## Create Snippet Flow
+- Scheduling is entirely on-device via expo-notifications
+- Reminders work through a saved playlist of snippet ids for the current selection (mode + topic + order), stored in `metadata.reminderPlaylist`; the notifications currently scheduled are in `metadata.reminderQueue`
+- No app code runs when a notification fires, so the playlist is scheduled ahead as individual dated notifications: up to 60 (iOS allows 64 pending) and at most 14 days. The last one is a notice to open the app and refresh reminders
+- `scheduleNotifications(db)` in `src/notifications/scheduler.ts` syncs the playlist and tops up the queue. It is cheap to call (it does nothing unless something changed or a reminder has fired). Call it on launch, on returning to the foreground, when Home gains focus, and after any change to settings, snippets, favourites or topics
+- Order "random" = shuffled, no repeats until every snippet has been sent, reshuffled each pass; "sequential" = oldest first. New snippets join the current pass
+- Home's main card and "Coming up" come from `getUpcomingReminders(db, n)` — never pick independently
+- If mode is "topic" but the topic has no snippets, or "favourites" with none, fall back to all snippets
+- Notification title is the reference; the body is the first sentence of the passage, reflection or prayer (prayer falls back to reflection, then passage)
+- Tapping a notification opens that snippet's detail screen
 
-1. Book picker — grouped modal (Old Testament / New Testament)
-2. Chapter + verse inputs (start required, end optional)
-3. Fetch Passage button — calls bibleService.ts, displays result
-4. Passage display — read-only
-5. Reflection input — required
-6. Topic assignment:
-   - List of currently assigned topics (each removable)
-   - Dropdown to assign an existing topic from the database
-   - Auto-suggested directed topic based on book + chapter (e.g. "Genesis 1") — one tap to add
-   - Inline create new topic (name + type) — immediately assigned on creation
-   - Topic assignment is optional — snippets saved without a topic appear in Unassigned Snippets
-7. Save — validates all fields, calls createSnippet + addSnippetToTopic, navigates to Library
+## Design System
+
+All colors, typography, spacing, radius, layout sizes and shadows live in `src/constants/theme.ts`. **Never hardcode colors, font sizes or spacing in screens or components** — add a token if one is missing.
+
+- **Palette** — warm off-white `background`, lighter `surface` for cards, charcoal text (`textHeading`, `textPrimary`, `textSoft`, `textSecondary`), one teal-green `accent` with `accentSoft` (chips, icon backgrounds) and `accentTint` (pale tinted areas), `onAccent` for text on the accent, `border`, `danger`
+- **Fonts** — `fonts.serif*` is Merriweather: Light for reading text, SemiBold and Bold for references and titles. Everything else uses the system font (no `fontFamily`)
+  - Serif: scripture, reflections and prayers where they are read or written in full, screen titles, section titles, references
+  - System font: buttons, labels, settings, navigation, and the reflection preview on the Home card
+- **Type roles** — `display` (screen titles), `heading`, `title`, `scriptureHero` (Home card passage), `scriptureLarge` (snippet screen, Bible tab), `scripture` (list cards, form preview), `reflection` / `reflectionMedium` / `reflectionLarge`, `reference`, `translationTag`, `body` / `bodySmall` / `bodyLarge`, `label`, `caption`, `button`
+- **Cards are flat** — no shadows and no borders; contrast comes from `surface` on `background`. Only floating elements use `shadows.floating`. Text fields show an accent border while focused; fields that sit inside a card are tinted with `background`
+- **Radius** — `radius.sm/md/lg` are a deliberate choice by the owner; do not change them
+- **Scripture is upright, not italic.** Italic is used only on the onboarding brand screen
 
 ## UI Conventions
 
-### Book Selection
-
-- Grouped picker modal: Old Testament (Genesis → Malachi), New Testament (Matthew → Revelation)
-- No search filter for MVP — browse only
-- Book list derived from BOOK_IDS in bibleService.ts — never duplicated elsewhere
-
-### Topic Assignment (Create Snippet)
-
-- Auto-suggest directed topic from book + chapter as soon as both are entered
-- User can accept suggested topic with one tap
-- User can assign multiple topics per snippet
-- User can create a new topic inline without leaving the screen
-
-### Topic Creation
-
-- Topics are created in two places only:
-  1. Inline during Create Snippet — handles both types, immediately assigned
-  2. Via "New Topic" button on the Conceptual Topics and Directed Topics
-     screens — type is pre-determined by which screen you're on
-- No standalone Create Topic screen
-- Never create a topic without context — it should always be clear
-  what type is being created
-
-### General
-
-- All screens are built — styling pass is next
-- Use React Native core components only (View, Text, TextInput, TouchableOpacity, FlatList, Modal, ScrollView)
-- No third party UI libraries for MVP
-
-## Delete Behavior
-
-- Snippets: permanently deleted with confirmation prompt
-- Topics: permanently deleted with confirmation prompt
-- Deleting a topic does not delete its snippets — they become unorganized
-- Warn user before deleting a topic that contains snippets
-- ON DELETE CASCADE handles snippet_topics cleanup automatically
-
-## Notifications
-
-- Scheduling handled entirely on-device via expo-notifications — no backend needed
-- Reminders work through a saved playlist of snippet ids for the current selection (mode + topic + order), stored in the `metadata` table as `reminderPlaylist`; the notifications currently scheduled are stored as `reminderQueue`
-- No app code runs when a notification fires, so the playlist is scheduled ahead as individual dated notifications: up to 60 (iOS allows 64 pending) and at most 14 days. The last one is a notice to open the app and refresh reminders
-- `scheduleNotifications(db)` in `src/notifications/scheduler.ts` syncs the playlist and tops up the queue. It is cheap to call (it does nothing unless something changed or a reminder has fired), so call it on launch, on returning to the foreground, when Home gains focus, and after any change to settings, snippets, favourites or topics
-- Order "random" = shuffled, no repeats until every snippet has been sent, reshuffled each pass; "sequential" = oldest first. New snippets join the current pass
-- Home's main card and "Coming up" come from `getUpcomingReminders(db, n)` — never pick independently
-- If mode is "topic" but the active topic has no snippets (or "favourites" with none), fall back to all snippets
-- Notification body shows display reference + first sentence of passage
-- Tapping a notification opens the app to that snippet's detail screen
+- React Native core components only (including `Pressable`, `Animated`, `ActivityIndicator`, `Modal`); no third-party UI libraries
+- Reuse the shared components in `src/components/` before writing new markup: buttons, icon buttons, headers, list rows, loading and empty states, press feedback, the book picker
+- Icons come from Ionicons — never use text characters such as `›`, `✓`, `×`, `+` or `★` as icons
+- Pickers open as sheets: `presentationStyle="pageSheet"` with `onRequestClose`
+- Labels and headings are sentence case; no all-caps section labels
+- Destructive actions are quiet (a muted header icon or small link) and always confirm
+- The book list always comes from `CANONICAL_BOOKS` / `BOOK_IDS` in `bibleService.ts` — never duplicate it
+- No search filter in the book picker — browse only
 
 ## Validation
 
-- Book name must be a standardized full Bible book name from BOOK_IDS
-- chapterStart and verseStart are required
-- chapterEnd and verseEnd are optional but must both be present if a range is intended
-- verseEnd must be greater than verseStart if chapterEnd equals chapterStart
-- Reflection is required
-- Topic assignment is optional — unassigned snippets appear in the Unassigned Snippets screen
+- Book must be a standardized full name from `BOOK_IDS`
+- `chapterStart` and `verseStart` are required
+- An end chapter requires an end verse
+- A passage must be present before saving
+- Topic assignment is optional
 
-## MVP Rules
+## Delete Behavior
 
-- **No backend** — everything runs on device, no server, no auth, no cloud sync
+- Snippets and topics are permanently deleted, after a confirmation prompt
+- Deleting a topic from My Topics (long-press) keeps its snippets; they simply lose that topic
+- Deleting from topic detail offers "Delete Topic Only" or "Delete Topic & Snippets" when the topic has snippets
+- Book topics cannot be deleted
+- `ON DELETE CASCADE` cleans up `snippet_topics`
+
+## Working Rules
+
+- **No backend** — everything runs on device: no server, no auth, no cloud sync (see Future backend for the direction)
 - **No web target** — iOS and Android only
 - **Keep changes minimal** — don't touch what doesn't need changing
 - **No temporary fixes** — find root causes
-- **Only touch what's necessary** — no side effects, no introducing new issues while fixing old ones
-- After every change ensure `npx expo start` runs without TypeScript errors
+- **Only touch what's necessary** — no side effects, no new issues while fixing old ones
+- After every change, `npx tsc --noEmit` and `npm run lint` must pass
+
+## Lessons
+
+- newArchEnabled in app.json — if useSQLiteContext throws "Property doesn't exist",
+  try restarting the dev server with --clear before assuming a version or config issue
+- Bolls.life /get-verses/ may return verse objects with undefined text for non-existent
+  verse numbers — always guard against undefined before calling string methods on verse text
+- Bolls.life /get-verses/ returns an array of arrays (one per request object) not a flat
+  array — always call .flat() after parsing the JSON response
+- Bolls.life text is not clean: KJV carries Strong's numbers (`<S>1245</S>`) and footnotes
+  (`<sup>…</sup>`), NLT uses `<br>` between poetry lines, and NIV returns a publisher notice
+  instead of scripture. Check a real response before trusting a translation
+- SQLite does not return booleans — boolean fields come back as
+  0 or 1 integers. Always cast with !! when using in UI conditions
+  e.g. !!snippet.isFavourite instead of snippet.isFavourite === true
+- expo-notifications remote notifications are removed from Expo Go
+  in SDK 53+. Local notifications still work on iOS Expo Go.
+  For full Android notification testing create a development build
+  via: eas build --profile development --platform android
+- A local notification cannot run app code when it fires. Anything that must vary per
+  reminder has to be decided when it is scheduled
+- useSQLiteContext cannot be called in \_layout.tsx directly since
+  it is the component that renders SQLiteProvider. Extract any
+  logic that needs DB access into a child component rendered
+  inside SQLiteProvider (e.g. AppInitializer)
+- Do not batch PRAGMA statements with DDL in a single execAsync call in migrateDb —
+  combining PRAGMA journal_mode = WAL with CREATE TABLE statements causes
+  "database is locked" on Android. Run each PRAGMA in its own execAsync call
+  before the DDL block.
+- Do not use getAllAsync or other prepared-statement APIs inside migrateDb (the
+  onInit handler) — this causes SQLITE_MISUSE (error code 21) on Android.
+  Use only execAsync for migrations; do row-level data transforms with pure SQL
+  (e.g. UPDATE ... SET col = json_quote(col) WHERE ...) instead of JS loops.
+- Expo Go on a real iPhone only runs the newest SDK. An older project shows
+  "Project is incompatible with this version of Expo Go"; the iOS simulator is unaffected
+- With expo-dev-client installed, `npx expo start` produces a development-build QR code
+  that the phone camera reports as "No usable data found". Use `--go` for Expo Go
+- The top-level `splash` field in app.json is no longer accepted; configure the
+  `expo-splash-screen` plugin instead
+- Fading a parent (opacity) that contains tinted children renders unevenly while pressed.
+  Use `dim={false}` on PressableScale for such cards, and build tinted boxes from plain
+  solid views rather than one-sided borders with partial corner radii
+- The lint rule react-hooks/set-state-in-effect rejects a synchronous setState in an
+  effect body. Set state in the event handler that triggers the work, or after an await
+- A component that should start fresh each time a modal opens is simplest as an inner
+  component rendered only while visible, with its initial state taken from props
+
+---
+
+# Part 2 — Where we're going
+
+## Roadmap
+
+In order:
+
+1. **Test on real devices** — an iPhone and an Android development build. Not yet exercised by hand: verse selection and "Add reflection" in the Bible tab, the reworked New/Edit forms, the pickers, reminder delivery and rotation, the offline KJV fallback, and everything on Android
+2. **New app icon and splash** — the assets are still the old brown artwork, and the splash and Android icon backgrounds in app.json still use an old colour. A new logo (a white tree on the accent green, after Psalm 1) is wanted; the design is not settled
+3. **Settle Bible licensing before release** — NKJV, ESV, NASB and NLT come from a free site with no agreement, and the Bible tab shows whole chapters of them. Consider a modern public-domain translation (for example the Berean Standard Bible or World English Bible) as the bundled default
+4. **Dark mode** — `userInterfaceStyle` is already `automatic`; no dark palette exists yet. Colours are all tokens, so this is mainly a second palette plus a way to switch
+5. **Premium backend** — see below
 
 ## Future backend (premium)
 
@@ -295,7 +351,7 @@ A premium version is expected to add a remote backend for accounts and cross-dev
   3. **Disposable copies of Bible text** — chapters fetched for the Bible tab (in memory only today)
 - Every user record keeps a stable UUID and, where it exists, a last-changed time
 - Each snippet records its Bible `translation`, so another device can re-fetch the passage from reference + version. The cloud is expected to store references and the user's own words, not a library of Bible text
-- All Bible text access stays behind `src/services/bibleService.ts`, so the source can move to a licensed API behind our own server
+- All Bible text access stays behind `src/services/bibleService.ts`, so the source can move to a licensed API (API.Bible is the candidate) behind our own server
 - Do not persist whole chapters of copyrighted translations on the device without checking the licence terms
 
 ### Deliberately deferred until cloud work starts
@@ -305,64 +361,27 @@ A premium version is expected to add a remote backend for accounts and cross-dev
 - Using the existing `snippets.syncedAt` column and `metadata.deviceId`
 - A persistent on-device chapter cache (depends on the Bible source and its licence)
 
+## Known Gaps
+
+- **Reflection is not enforced** — the forms allow saving a snippet with an empty reflection
+- **Reminders don't show the translation** — the notification title is the reference only
+- **Bible tab** — one chapter at a time (no selection across chapters), and verses that already have snippets are not marked
+- **Settings** — no indication when notification permission is denied; custom times are typed into hour and minute boxes; translation saves instantly while reminder changes wait for "Apply"
+- **`migrateDb` uses prepared statements** (`getFirstAsync` / `runAsync`) for the version check and seeding, which the Android lesson above warns against. Verify on Android
+- **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`; explicit columns would be safer as the schema grows
+- **No pagination** — `getAllSnippets` fetches every row, and several screens look up topics per snippet
+- **Seed guard is one-way** — seeds never re-run once any snippets exist; a seeded-version key would allow shipping new default content
+- **`notification_schedule` is a single row** — per-slot or per-day targeting would need a redesign, and the translation preference lives there for historical reasons
+- **Leftovers** — the `lastSentIndex` column, the `web` and `reset-project` scripts in package.json, and `react-native-web` are unused
+
 ## Out of Scope for MVP
 
-- User accounts or cross-device sync (see "Future backend")
-- Cloud backup (see "Future backend")
+- User accounts, cross-device sync and cloud backup (see Future backend)
 - Sharing snippets
-- Per-slot or per-day topic assignment for notifications
-- Topic editing or merging
-- Streaks or gamification
-- Social features
-- AMP translation
-- Search filter in book picker
-- Re-fetching passages when translation changes
-
-## Post-MVP Technical Debt
-
-Known issues to address before significant feature expansion:
-
-4. **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`. Explicit column handling would be safer as the schema grows.
-5. **No pagination** — `getAllSnippets` fetches all rows. Will cause load time and memory pressure with hundreds of snippets.
-6. **Seed guard is one-way** — seeds never re-run once any snippets exist. A `seeded_version` metadata key would allow shipping new default content to existing users.
-7. **`notification_schedule` is a single row** — per-slot or per-day topic targeting will require a schema redesign.
-
-## Design Tokens
-
-All colors, typography, spacing, radius, and shadow values live in `src/constants/theme.ts`.
-
-- Never hardcode colors, font sizes, or spacing values in screen files — always import from `theme.ts`
-- Scripture and reflection text always uses the Lora font family
-- UI labels, buttons, and navigation always use the system font (no `fontFamily` set)
-
-## Utilities
-
-- `src/utils/displayReference.ts` — `getDisplayReference(snippet)` derives the display reference string from structured fields per Reference Display Logic. Use this everywhere a reference is displayed — never derive inline.
-
-## Lessons
-
-- newArchEnabled in app.json — if useSQLiteContext throws "Property doesn't exist",
-  try restarting the dev server with --clear before assuming a version or config issue
-- Bolls.life /get-verses/ may return verse objects with undefined text for non-existent
-  verse numbers — always guard against undefined before calling string methods on verse text
-- Bolls.life /get-verses/ returns an array of arrays (one per request object) not a flat
-  array — always call .flat() after parsing the JSON response
-- SQLite does not return booleans — boolean fields come back as
-  0 or 1 integers. Always cast with !! when using in UI conditions
-  e.g. !!snippet.isFavourite instead of snippet.isFavourite === true
-- expo-notifications remote notifications are removed from Expo Go
-  in SDK 53+. Local notifications still work on iOS Expo Go.
-  For full Android notification testing create a development build
-  via: eas build --profile development --platform android
-- useSQLiteContext cannot be called in \_layout.tsx directly since
-  it is the component that renders SQLiteProvider. Extract any
-  logic that needs DB access into a child component rendered
-  inside SQLiteProvider (e.g. AppInitializer)
-- Do not batch PRAGMA statements with DDL in a single execAsync call in migrateDb —
-  combining PRAGMA journal_mode = WAL with CREATE TABLE statements causes
-  "database is locked" on Android. Run each PRAGMA in its own execAsync call
-  before the DDL block.
-- Do not use getAllAsync or other prepared-statement APIs inside migrateDb (the
-  onInit handler) — this causes SQLITE_MISUSE (error code 21) on Android.
-  Use only execAsync for migrations; do row-level data transforms with pure SQL
-  (e.g. UPDATE ... SET col = json_quote(col) WHERE ...) instead of JS loops.
+- Per-slot or per-day topic assignment for reminders
+- Topic renaming or merging
+- Streaks, gamification, social features
+- Reading plans, highlights, bookmarks or search in the Bible tab
+- Search filter in the book picker
+- Re-fetching existing passages when the translation changes
+- A background task for reminders (decided against: opening the app refills the queue)
