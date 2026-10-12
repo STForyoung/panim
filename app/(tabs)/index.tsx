@@ -18,18 +18,19 @@ import {
   getAllSnippets,
   getFavouriteSnippets,
 } from "@/src/db/snippets";
-import {
-  getSnippetsForTopic,
-  getTopicsForSnippet,
-} from "@/src/db/snippetTopics";
+import { getTopicsForSnippet } from "@/src/db/snippetTopics";
 import { type Topic } from "@/src/db/topics";
-import { getNextReminderTime } from "@/src/notifications/scheduler";
+import {
+  getNextReminderTime,
+  getUpcomingReminders,
+  scheduleNotifications,
+} from "@/src/notifications/scheduler";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { toSuperscript } from "@/src/utils/superscript";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { FlatList, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -47,17 +48,6 @@ function getGreetingIcon(): IoniconName {
   return "moon-outline";
 }
 
-function pickRandom<T>(arr: T[], exclude?: T): T {
-  const pool = exclude ? arr.filter((item) => item !== exclude) : arr;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function pickRandomN<T>(arr: T[], n: number, exclude?: T): T[] {
-  const pool = exclude ? arr.filter((item) => item !== exclude) : arr;
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, n);
-}
-
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
@@ -70,120 +60,36 @@ export default function HomeScreen() {
   const [favourites, setFavourites] = useState<Snippet[]>([]);
   const [nextReminder, setNextReminder] = useState<string | null>(null);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
-  const lastScheduleKey = useRef<string | null>(null);
-  const lastSnippetCount = useRef<number>(0);
-
-  const pickFromSchedule = useCallback(
-    async (snippets: Snippet[]) => {
-      const schedule = await getSchedule(db);
-      let pool: Snippet[] = snippets;
-      if (schedule.mode === "topic") {
-        if (!schedule.activeTopic) {
-          pool = snippets;
-        } else {
-          const topicSnippets = await getSnippetsForTopic(
-            db,
-            schedule.activeTopic,
-          );
-          pool = topicSnippets.length === 0 ? snippets : topicSnippets;
-        }
-      } else if (schedule.mode === "favourites") {
-        const favourites = await getFavouriteSnippets(db);
-        pool = favourites.length === 0 ? snippets : favourites;
-      }
-
-      if (pool.length === 0) return;
-
-      const picked = pickRandom(pool);
-      const topics = await getTopicsForSnippet(db, picked.id);
-      setCurrent(picked);
-      setCurrentTopics(topics);
-      setActiveTopicId(
-        schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null,
-      );
-      setNextReminder(getNextReminderTime(schedule.times));
-
-      if (schedule.selectionOrder === "sequential") {
-        // NOTE: lastSentIndex is never incremented in MVP, so this list will
-        // always start from index 0. Post-MVP: increment lastSentIndex after
-        // each notification is sent and persist it via updateSchedule.
-        const startIndex = schedule.lastSentIndex % pool.length;
-        const next: Snippet[] = [];
-        for (let i = 1; i <= 3; i++) {
-          const s = pool[(startIndex + i) % pool.length];
-          if (s && s.id !== picked.id) next.push(s);
-        }
-        // Fall back to all snippets if pool is exhausted
-        const comingUpSeq = next.length > 0 ? next : pickRandomN(snippets, 3, picked);
-        setComingUp(comingUpSeq);
-      } else {
-        const fromPool = pickRandomN(pool, 3, picked);
-        // Fall back to all snippets if pool is exhausted
-        setComingUp(fromPool.length > 0 ? fromPool : pickRandomN(snippets, 3, picked));
-      }
-    },
-    [db],
-  );
-
-  useEffect(() => {
-    async function load() {
-      const [snippets, favs] = await Promise.all([
-        getAllSnippets(db),
-        getFavouriteSnippets(db),
-      ]);
-      setAllSnippets(snippets);
-      setFavourites(favs);
-      if (snippets.length > 0) {
-        await pickFromSchedule(snippets);
-      }
-      setLoading(false);
-    }
-    load();
-  }, [db, pickFromSchedule]);
 
   useFocusEffect(
     useCallback(() => {
-      async function onFocus() {
+      async function load() {
         const [snippets, favs, schedule] = await Promise.all([
           getAllSnippets(db),
           getFavouriteSnippets(db),
           getSchedule(db),
         ]);
+
+        // Bring the reminder queue up to date first, so the card shows what will really be sent.
+        // Scheduling errors are non-fatal — the playlist order is still readable.
+        await scheduleNotifications(db).catch(() => {});
+        const upcoming = await getUpcomingReminders(db, 4);
+        const next = upcoming[0] ?? null;
+        const topics = next ? await getTopicsForSnippet(db, next.id) : [];
+
         setAllSnippets(snippets);
         setFavourites(favs);
-        setNextReminder(getNextReminderTime(schedule.times));
-
-        const scheduleKey = `${schedule.mode}:${schedule.activeTopic ?? ""}`;
-        const scheduleChanged = lastScheduleKey.current !== scheduleKey;
-        if (scheduleChanged) lastScheduleKey.current = scheduleKey;
-
-        const snippetCountChanged = lastSnippetCount.current !== snippets.length;
-        if (snippetCountChanged) lastSnippetCount.current = snippets.length;
-
-        const snippetsById = new Map(snippets.map((s) => [s.id, s]));
-
-        // Swap in the latest version of each Coming Up snippet (picks up edits)
-        // and drop any that no longer exist (handles topic/snippet deletions).
-        setComingUp((prev) =>
-          prev.flatMap((s) => snippetsById.get(s.id) ?? []),
+        setCurrent(next);
+        setCurrentTopics(topics);
+        setComingUp(upcoming.slice(1));
+        setActiveTopicId(
+          schedule.mode === "topic" ? (schedule.activeTopic ?? null) : null,
         );
-
-        // Re-pick if: no current snippet, snippet was deleted, schedule changed, or new snippets added.
-        setCurrent((prev) => {
-          const latest = prev ? snippetsById.get(prev.id) : undefined;
-          if (!prev || !latest || scheduleChanged || snippetCountChanged) {
-            if (snippets.length > 0) {
-              pickFromSchedule(snippets);
-            }
-            return prev;
-          }
-          // Same snippet stays on the card, but show its latest text and topics
-          getTopicsForSnippet(db, latest.id).then(setCurrentTopics);
-          return latest;
-        });
+        setNextReminder(getNextReminderTime(schedule.times));
+        setLoading(false);
       }
-      onFocus();
-    }, [db, pickFromSchedule]),
+      load();
+    }, [db]),
   );
 
   if (loading) {

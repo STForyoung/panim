@@ -16,6 +16,7 @@ import {
   deleteTopic,
   getAllTopics,
 } from "@/src/db/topics";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
@@ -109,6 +110,7 @@ export default function CustomTopicsScreen() {
         style: "destructive",
         onPress: async () => {
           await deleteTopic(db, topic.id);
+          await scheduleNotifications(db).catch(() => {});
           await loadTopics();
         },
       },

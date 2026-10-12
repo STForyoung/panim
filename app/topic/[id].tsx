@@ -6,6 +6,7 @@ import { colors, spacing, typography } from "@/src/constants/theme";
 import { type Snippet } from "@/src/db/snippets";
 import { getSnippetsForTopic } from "@/src/db/snippetTopics";
 import { type Topic, deleteTopic, getTopic } from "@/src/db/topics";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
@@ -51,6 +52,7 @@ export default function TopicDetailScreen() {
           style: "destructive",
           onPress: async () => {
             await deleteTopic(db, id);
+            await scheduleNotifications(db).catch(() => {});
             router.back();
           },
         },
@@ -70,6 +72,7 @@ export default function TopicDetailScreen() {
           text: "Delete Topic Only",
           onPress: async () => {
             await deleteTopic(db, id);
+            await scheduleNotifications(db).catch(() => {});
             router.back();
           },
         },
@@ -84,6 +87,7 @@ export default function TopicDetailScreen() {
               id,
             );
             await deleteTopic(db, id);
+            await scheduleNotifications(db).catch(() => {});
             router.back();
           },
         },

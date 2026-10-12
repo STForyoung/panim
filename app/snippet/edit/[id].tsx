@@ -19,6 +19,7 @@ import { Chevron } from "@/src/components/Icons";
 import { IconButton } from "@/src/components/IconButton";
 import { PassageText } from "@/src/components/PassageText";
 import { getSchedule } from "@/src/db/notificationSchedule";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
@@ -239,6 +240,7 @@ export default function EditSnippetScreen() {
         await addSnippetToTopic(db, id, bookTopic.id);
       }
 
+      await scheduleNotifications(db).catch(() => {});
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save snippet.");

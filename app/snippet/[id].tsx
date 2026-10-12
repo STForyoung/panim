@@ -11,6 +11,7 @@ import { PassageText } from "@/src/components/PassageText";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
 import { TopicChip } from "@/src/components/TopicChip";
+import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { colors, radius, spacing, typography } from "@/src/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -54,6 +55,7 @@ export default function SnippetDetailScreen() {
           style: "destructive",
           onPress: async () => {
             await deleteSnippet(db, id);
+            await scheduleNotifications(db).catch(() => {});
             router.back();
           },
         },
@@ -98,6 +100,7 @@ export default function SnippetDetailScreen() {
             onPress={async () => {
               const next = !isFavourite;
               await toggleFavourite(db, id, next);
+              await scheduleNotifications(db).catch(() => {});
               setSnippet({ ...snippet, isFavourite: next });
             }}
           />

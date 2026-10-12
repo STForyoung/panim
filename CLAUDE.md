@@ -93,7 +93,7 @@ NotificationSchedule {
   mode: "random" | "topic"             // pool to draw from
   activeTopic: string | null           // topicId, used when mode is "topic"
   selectionOrder: "random" | "sequential"  // how to pick within pool
-  lastSentIndex: number                // used when selectionOrder is "sequential"
+  lastSentIndex: number                // unused — reminder position lives in metadata.reminderPlaylist
   translation: "NKJV" | "NIV" | "ESV" | "NASB" | "NLT" | "KJV"
 }
 ```
@@ -256,8 +256,12 @@ Translation preference and notification schedule configuration.
 ## Notifications
 
 - Scheduling handled entirely on-device via expo-notifications — no backend needed
-- Reschedule notifications whenever: settings change, new snippet added to active topic, active topic changes
-- If mode is "topic" but active topic has no snippets, fall back to "random"
+- Reminders work through a saved playlist of snippet ids for the current selection (mode + topic + order), stored in the `metadata` table as `reminderPlaylist`; the notifications currently scheduled are stored as `reminderQueue`
+- No app code runs when a notification fires, so the playlist is scheduled ahead as individual dated notifications: up to 60 (iOS allows 64 pending) and at most 14 days. The last one is a notice to open the app and refresh reminders
+- `scheduleNotifications(db)` in `src/notifications/scheduler.ts` syncs the playlist and tops up the queue. It is cheap to call (it does nothing unless something changed or a reminder has fired), so call it on launch, on returning to the foreground, when Home gains focus, and after any change to settings, snippets, favourites or topics
+- Order "random" = shuffled, no repeats until every snippet has been sent, reshuffled each pass; "sequential" = oldest first. New snippets join the current pass
+- Home's main card and "Coming up" come from `getUpcomingReminders(db, n)` — never pick independently
+- If mode is "topic" but the active topic has no snippets (or "favourites" with none), fall back to all snippets
 - Notification body shows display reference + first sentence of passage
 - Tapping a notification opens the app to that snippet's detail screen
 
@@ -297,8 +301,6 @@ Translation preference and notification schedule configuration.
 Known issues to address before significant feature expansion:
 
 1. **DB migration versioning** — migrations run via blind try/catch every launch with no version tracking. Replace with `PRAGMA user_version` so each migration runs exactly once. Critical before remote DB sync or premium features.
-2. **`scheduleNotifications` assigns the same snippet to all time slots** — all daily reminders resolve to the same pool index. Each slot should advance the index so a user doesn't get the same snippet three times in one day.
-3. **`lastSentIndex` is never incremented** — sequential selection mode is half-built. Needs to be incremented after each notification is sent and persisted via `updateSchedule`.
 4. **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`. Explicit column handling would be safer as the schema grows.
 5. **No pagination** — `getAllSnippets` fetches all rows. Will cause load time and memory pressure with hundreds of snippets.
 6. **Seed guard is one-way** — seeds never re-run once any snippets exist. A `seeded_version` metadata key would allow shipping new default content to existing users.

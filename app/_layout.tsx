@@ -22,7 +22,7 @@ import {
 } from "@expo-google-fonts/noto-rashi-hebrew";
 import * as Crypto from "expo-crypto";
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider, useSQLiteContext } from "expo-sqlite";
@@ -75,7 +75,14 @@ function AppInitializer() {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       handleNotificationTap,
     );
-    return () => subscription.remove();
+    // Returning to the app refills the queue of upcoming reminders
+    const appState = AppState.addEventListener("change", (state) => {
+      if (state === "active") scheduleNotifications(db).catch(() => {});
+    });
+    return () => {
+      subscription.remove();
+      appState.remove();
+    };
   }, [db]);
 
   return null;

@@ -117,6 +117,12 @@ const MODE_OPTIONS = {
   favourites: "Favourites only",
 };
 
+// The order reminders work through the snippets
+const ORDER_OPTIONS = {
+  random: "Shuffled",
+  sequential: "In order (oldest first)",
+};
+
 // What the notification text is taken from
 const CONTENT_OPTIONS = {
   passage: "Passage",
@@ -555,6 +561,32 @@ export default function SettingsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.rowLabel}>{label}</Text>
+                {selected ? <SelectedCheck /> : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Order */}
+        <Text style={styles.sectionHeader}>Order</Text>
+        <View style={styles.sectionCard}>
+          {(["random", "sequential"] as const).map((order) => {
+            const selected = pendingSelectionOrder === order;
+            return (
+              <TouchableOpacity
+                key={order}
+                style={[
+                  styles.row,
+                  styles.rowSpaceBetween,
+                  order === "sequential" && styles.rowLast,
+                ]}
+                onPress={() => {
+                  setPendingSelectionOrder(order);
+                  setApplyMessage(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.rowLabel}>{ORDER_OPTIONS[order]}</Text>
                 {selected ? <SelectedCheck /> : null}
               </TouchableOpacity>
             );
