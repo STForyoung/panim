@@ -1,4 +1,3 @@
-import * as Crypto from "expo-crypto";
 import { type SQLiteDatabase } from "expo-sqlite";
 
 type SeedSnippet = {
@@ -217,20 +216,55 @@ const SEED_DATA: SeedTopic[] = [
   },
 ];
 
+// Starter topics and snippets have fixed ids, the same on every device, so that two
+// devices can be merged under one account later without duplicating them.
+function slug(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+function starterTopicId(topic: SeedTopic): string {
+  return `starter-topic:${slug(topic.name)}`;
+}
+
+function starterSnippetId(snippet: SeedSnippet): string {
+  const range = snippet.verseEnd === null ? "" : `-${snippet.verseEnd}`;
+  return `starter:${slug(snippet.book)}-${snippet.chapterStart}-${snippet.verseStart}${range}`;
+}
+
+const SEEDED_KEY = "starterContent";
+
 export async function seedDefaultContent(db: SQLiteDatabase): Promise<void> {
+  // Starter content is added once per install. Without this marker it would come back
+  // whenever the user deleted their last snippet.
+  const seeded = await db.getFirstAsync<{ value: string }>(
+    "SELECT value FROM metadata WHERE key = ?",
+    SEEDED_KEY,
+  );
+  if (seeded) return;
+
   const row = await db.getFirstAsync<{ count: number }>(
     "SELECT COUNT(*) as count FROM snippets",
   );
-  if (row && row.count > 0) return;
+  // An install that already has snippets is marked as seeded without adding anything
+  if (!row || row.count === 0) await insertStarterContent(db);
+
+  await db.runAsync(
+    "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+    SEEDED_KEY,
+    "1",
+  );
+}
+
+async function insertStarterContent(db: SQLiteDatabase): Promise<void> {
 
   const now = Date.now();
   // Each snippet gets its own creation time, so "oldest first" follows the order above
   let order = 0;
 
   for (const topic of SEED_DATA) {
-    const topicId = Crypto.randomUUID();
+    const topicId = starterTopicId(topic);
     await db.runAsync(
-      "INSERT INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)",
+      "INSERT OR IGNORE INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)",
       topicId,
       topic.name,
       "custom",
@@ -238,9 +272,9 @@ export async function seedDefaultContent(db: SQLiteDatabase): Promise<void> {
     );
 
     for (const snippet of topic.snippets) {
-      const snippetId = Crypto.randomUUID();
+      const snippetId = starterSnippetId(snippet);
       await db.runAsync(
-        `INSERT INTO snippets
+        `INSERT OR IGNORE INTO snippets
           (id, book, chapterStart, verseStart, chapterEnd, verseEnd, passage, reflection, prayer, translation, createdAt, updatedAt, isFavourite)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'KJV', ?, ?, 0)`,
         snippetId,
@@ -257,7 +291,7 @@ export async function seedDefaultContent(db: SQLiteDatabase): Promise<void> {
       order += 1;
 
       await db.runAsync(
-        "INSERT INTO snippet_topics (snippetId, topicId) VALUES (?, ?)",
+        "INSERT OR IGNORE INTO snippet_topics (snippetId, topicId) VALUES (?, ?)",
         snippetId,
         topicId,
       );
@@ -269,7 +303,7 @@ export async function seedDefaultContent(db: SQLiteDatabase): Promise<void> {
       );
       if (bookTopic) {
         await db.runAsync(
-          "INSERT INTO snippet_topics (snippetId, topicId) VALUES (?, ?)",
+          "INSERT OR IGNORE INTO snippet_topics (snippetId, topicId) VALUES (?, ?)",
           snippetId,
           bookTopic.id,
         );

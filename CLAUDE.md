@@ -134,13 +134,15 @@ NotificationSchedule {               // Single row, id "singleton"
 
 metadata (key/value)
   deviceId            // Stable id for future sync
+  starterContent      // Set once starter content has been handled for this install
   reminderPlaylist    // Device-only: order reminders work through
   reminderQueue       // Device-only: dated notifications currently scheduled
 ```
 
 - Every snippet is automatically linked to its **book topic** on save. "Unassigned" therefore means "has no custom topic".
 - **Migrations** live in `src/db/database.ts` and are versioned with `PRAGMA user_version` (currently **2**). Add the next one as `if (currentVersion < 3) { … PRAGMA user_version = 3 }`. See Lessons for the Android rules.
-- On first run, 66 book topics and the starter content in `src/db/seeds.ts` are seeded: two custom topics ("This is the Gospel", "Meditating on The Word") with 13 snippets in KJV text. Seeds only run when there are no snippets, so existing installs are not changed.
+- On first run, 66 book topics and the starter content in `src/db/seeds.ts` are seeded: two custom topics ("This is the Gospel", "Meditating on The Word") with their snippets in KJV text. Starter content is added once per install (marked by `metadata.starterContent`) and only if the install has no snippets
+- **Built-in content has fixed ids, the same on every device:** `book:<n>` for book topics (`book:19` is Psalms), `starter-topic:<slug>` and `starter:<book>-<chapter>-<verse>` for starter content. This lets two devices merge under one account later without duplicates. Never change these ids once released. Installs from before this change keep random ids for their built-in content, so always look book topics up by type and name, not by id
 
 ### Reference Display Logic
 
@@ -386,7 +388,7 @@ A premium version is expected to add a remote backend for accounts and cross-dev
 - **`migrateDb` uses prepared statements** (`getFirstAsync` / `runAsync`) for the version check and seeding, which the Android lesson above warns against. Verify on Android
 - **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`; explicit columns would be safer as the schema grows
 - **No pagination** — `getAllSnippets` fetches every row, and several screens look up topics per snippet
-- **Seed guard is one-way** — seeds never re-run once any snippets exist; a seeded-version key would allow shipping new default content
+- **Starter content is one-time** — `metadata.starterContent` records that it ran; shipping new default content to existing users would need a version number there
 - **`notification_schedule` is a single row** — per-slot or per-day targeting would need a redesign, and the translation preference lives there for historical reasons
 - **Leftovers** — the `lastSentIndex` column, the `web` and `reset-project` scripts in package.json, and `react-native-web` are unused
 

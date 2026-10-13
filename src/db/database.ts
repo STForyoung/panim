@@ -1,6 +1,5 @@
 import { seedDefaultContent } from "@/src/db/seeds";
-import { CANONICAL_BOOKS } from "@/src/services/bibleService";
-import * as Crypto from "expo-crypto";
+import { BOOK_IDS, CANONICAL_BOOKS } from "@/src/services/bibleService";
 import { type SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDb(db: SQLiteDatabase): Promise<void> {
@@ -79,22 +78,18 @@ export async function migrateDb(db: SQLiteDatabase): Promise<void> {
 
   // Seed one book topic per canonical Bible book if not already present.
   // Must run before seedDefaultContent so snippets can be assigned to book topics.
+  // The id is fixed ("book:19" for Psalms) so it is the same on every device, which lets
+  // two devices be merged under one account later without duplicate topics.
+  // Installs from before this change keep the ids they already have.
   const now = Date.now();
-  for (const book of CANONICAL_BOOKS) {
-    const existing = await db.getFirstAsync<{ id: string }>(
-      "SELECT id FROM topics WHERE type = 'book' AND name = ?",
-      book,
-    );
-    if (!existing) {
-      await db.runAsync(
-        "INSERT INTO topics (id, name, type, createdAt) VALUES (?, ?, ?, ?)",
-        Crypto.randomUUID(),
-        book,
-        "book",
-        now,
-      );
-    }
-  }
+  await db.execAsync(
+    CANONICAL_BOOKS.map(
+      (book) =>
+        `INSERT INTO topics (id, name, type, createdAt)
+         SELECT 'book:${BOOK_IDS[book]}', '${book}', 'book', ${now}
+         WHERE NOT EXISTS (SELECT 1 FROM topics WHERE type = 'book' AND name = '${book}');`,
+    ).join("\n"),
+  );
 
   await seedDefaultContent(db);
 }
