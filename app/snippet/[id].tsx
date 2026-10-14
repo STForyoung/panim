@@ -1,6 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { type Snippet, deleteSnippet, getSnippet, toggleFavourite } from "@/src/db/snippets";
@@ -143,6 +150,34 @@ export default function SnippetDetailScreen() {
             <PassageText verses={snippet.passage} large />
           </View>
 
+          {/* Opens the Bible tab at this passage */}
+          <TouchableOpacity
+            style={styles.contextLink}
+            onPress={() =>
+              router.navigate({
+                pathname: "/bible",
+                params: {
+                  book: snippet.book,
+                  chapter: String(snippet.chapterStart),
+                  verseStart: String(snippet.verseStart),
+                  // Only the first chapter is opened, so a range that runs into the next one is marked to the end of it
+                  verseEnd: String(
+                    snippet.chapterEnd !== null &&
+                      snippet.chapterEnd !== snippet.chapterStart
+                      ? 999
+                      : (snippet.verseEnd ?? snippet.verseStart),
+                  ),
+                  at: String(Date.now()),
+                },
+              })
+            }
+            hitSlop={spacing.sm}
+            accessibilityRole="button"
+          >
+            <Ionicons name="book-outline" size={layout.iconSm} color={colors.accent} />
+            <Text style={styles.contextLinkText}>Read in context</Text>
+          </TouchableOpacity>
+
           {snippet.reflection ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Reflection</Text>
@@ -221,6 +256,19 @@ const styles = StyleSheet.create({
   // Passage
   passage: {
     marginTop: spacing.xl,
+  },
+
+  contextLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  contextLinkText: {
+    ...typography.label,
+    color: colors.accent,
+    fontWeight: "600",
   },
 
   // Reflection and prayer

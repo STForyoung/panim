@@ -1,15 +1,9 @@
-import { Button } from "@/src/components/Button";
 import { IconButton } from "@/src/components/IconButton";
 import { ListRow } from "@/src/components/ListRow";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
-import {
-  colors,
-  layout,
-  radius,
-  spacing,
-  typography,
-} from "@/src/constants/theme";
+import { TopicNameSheet } from "@/src/components/TopicNameSheet";
+import { colors, spacing, typography } from "@/src/constants/theme";
 import {
   type Topic,
   createTopic,
@@ -20,34 +14,18 @@ import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { Alert, FlatList, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type TopicWithCount = Topic & { snippetCount: number };
 
 export default function CustomTopicsScreen() {
   const db = useSQLiteContext();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const [topics, setTopics] = useState<TopicWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [topicName, setTopicName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const loadTopics = useCallback(async () => {
     const all = await getAllTopics(db);
@@ -69,32 +47,10 @@ export default function CustomTopicsScreen() {
     }, [loadTopics]),
   );
 
-  function openModal() {
-    setTopicName("");
-    setError(null);
-    setModalVisible(true);
-  }
-
-  function closeModal() {
+  async function handleCreate(name: string) {
+    await createTopic(db, { name, type: "custom" });
     setModalVisible(false);
-  }
-
-  async function handleSave() {
-    if (!topicName.trim()) {
-      setError("Topic name is required.");
-      return;
-    }
-    setError(null);
-    setIsSaving(true);
-    try {
-      await createTopic(db, { name: topicName.trim(), type: "custom" });
-      closeModal();
-      await loadTopics();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create topic.");
-    } finally {
-      setIsSaving(false);
-    }
+    await loadTopics();
   }
 
   async function handleLongPress(topic: TopicWithCount) {
@@ -136,7 +92,7 @@ export default function CustomTopicsScreen() {
             <ScreenHeader onBack={() => router.back()}>
               <IconButton
                 icon="add"
-                onPress={openModal}
+                onPress={() => setModalVisible(true)}
                 accessibilityLabel="New topic"
                 color={colors.accent}
               />
@@ -168,45 +124,12 @@ export default function CustomTopicsScreen() {
         }
       />
 
-      <Modal visible={modalVisible} animationType="slide">
-        <View style={styles.screen}>
-          <View
-            style={[
-              styles.modalHeader,
-              { paddingTop: insets.top + spacing.md },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.modalCancelArea}
-              onPress={closeModal}
-              disabled={isSaving}
-              hitSlop={spacing.sm}
-            >
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>New Topic</Text>
-            <View style={styles.modalCancelArea} />
-          </View>
-
-          <View style={styles.modalBody}>
-            <TextInput
-              style={styles.modalInput}
-              value={topicName}
-              onChangeText={setTopicName}
-              placeholder="Topic name"
-              placeholderTextColor={colors.textSecondary + "80"}
-              autoFocus
-            />
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-            <Button
-              label={isSaving ? "Saving…" : "Save"}
-              onPress={handleSave}
-              disabled={isSaving}
-              style={styles.modalSaveButton}
-            />
-          </View>
-        </View>
-      </Modal>
+      <TopicNameSheet
+        visible={modalVisible}
+        title="New Topic"
+        onSave={handleCreate}
+        onClose={() => setModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -229,43 +152,5 @@ const styles = StyleSheet.create({
     ...typography.label,
     marginTop: spacing.xs,
     marginBottom: spacing.md,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  modalCancelArea: {
-    minWidth: layout.fab + spacing.sm,
-  },
-  modalCancel: {
-    ...typography.button,
-    color: colors.accent,
-  },
-  modalTitle: {
-    ...typography.title,
-    flex: 1,
-    textAlign: "center",
-  },
-  modalBody: {
-    padding: spacing.lg,
-  },
-  modalInput: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    ...typography.body,
-    lineHeight: undefined, // lineHeight on single-line TextInput clips descenders on iOS
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalSaveButton: {
-    marginTop: spacing.lg,
-  },
-  errorText: {
-    ...typography.label,
-    color: colors.danger,
-    marginTop: spacing.sm,
   },
 });

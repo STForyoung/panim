@@ -81,6 +81,7 @@ src/
     StateViews.tsx         # LoadingState, EmptyState
     TabBar.tsx             # Custom tab bar
     TopicChip.tsx          # Topic pill, optionally removable
+    TopicNameSheet.tsx     # Sheet with one field, for creating and renaming a topic
   constants/theme.ts       # All design tokens
   db/                      # SQLite setup, migrations, queries, seeds
   notifications/scheduler.ts   # Reminder playlist and scheduling
@@ -156,15 +157,15 @@ Always use `getDisplayReference(snippet)` from `src/utils/displayReference.ts` �
 
 **Home** — greeting with a time-of-day icon and the next reminder time (or, when times are set but notification permission is off, a line saying so; tapping it shows the system prompt, or opens the phone's settings for the app if permission was already declined). The main card is the snippet the next reminder will send: passage (4 lines, inline verse numbers), reference with a quiet version tag, topic chips, and the reflection in a tinted box. "Coming up" shows the three after it; "Favourites" is a second carousel. Floating "+" creates a snippet.
 
-**Bible** — chapter reader. Tap the chapter title for the BookPicker; arrows move between chapters and across books. Tap a verse to select it, tap further verses to extend or trim a continuous range, then "Add reflection" opens New Snippet with the passage filled in. Remembers the last chapter read.
+**Bible** — chapter reader. Tap the chapter title for the BookPicker; arrows move between chapters and across books. Tap a verse to select it, tap further verses to extend or trim a continuous range, then "Add reflection" opens New Snippet with the passage filled in. Remembers the last chapter read. It can also be opened at a passage with route params (`/bible?book=John&chapter=3&verseStart=16&verseEnd=17&at=<timestamp>`): the chapter opens scrolled to those verses, which are lightly tinted. `at` must change on each request so a repeat is noticed.
 
 **Library** — three rows: My Topics, Bible Books, Unassigned Snippets. Floating "+".
 
 **My Topics / Bible Books** — lists with snippet counts. My Topics has a header "+" for a new topic and long-press to delete.
 
-**Topic detail** — name, kind and count, then snippet cards. Header "+" creates a snippet in that topic; custom topics have a header delete.
+**Topic detail** — name, kind and count, then snippet cards. Header "+" creates a snippet in that topic; custom topics also have header icons to rename and delete. Book topics can be neither renamed nor deleted.
 
-**Snippet detail** — header icons for favourite, edit and delete. Reference as the title, full version name beneath it, topic chips, the passage, then Reflection and Prayer cards.
+**Snippet detail** — header icons for favourite, edit and delete. Reference as the title, full version name beneath it, topic chips, the passage with a "Read in context" link that opens the Bible tab at it, then Reflection and Prayer cards.
 
 **New / Edit Snippet** — fixed top bar with back, title and a save tick (there is also a save button at the bottom). The passage shows as a card with a "Change" link; the reference fields (book, chapter, verse, optional end chapter and verse, fetch button) appear only when there is no passage yet or after "Change". Then Reflection, Prayer (optional) and Topics.
 
@@ -383,7 +384,7 @@ A premium version is expected to add a remote backend for accounts and cross-dev
 ## Known Gaps
 
 - **Reminders don't show the translation** — the notification title is the reference only
-- **Bible tab** — one chapter at a time (no selection across chapters), and verses that already have snippets are not marked
+- **Bible tab** — one chapter at a time (no selection across chapters), and verses that already have snippets are not marked. "Read in context" opens the passage in the currently selected translation, which may differ from the snippet's
 - **Settings** — custom times are typed into hour and minute boxes; translation saves instantly while reminder changes wait for "Apply"
 - **`migrateDb` uses prepared statements** (`getFirstAsync` / `runAsync`) for the version check and seeding, which the Android lesson above warns against. Verify on Android
 - **`updateSnippet` uses dynamic SQL** — builds SET clauses from `Object.entries(fields)`; explicit columns would be safer as the schema grows
@@ -397,7 +398,7 @@ A premium version is expected to add a remote backend for accounts and cross-dev
 - User accounts, cross-device sync and cloud backup (see Future backend)
 - Sharing snippets
 - Per-slot or per-day topic assignment for reminders
-- Topic renaming or merging
+- Merging topics
 - Streaks, gamification, social features
 - Reading plans, highlights, bookmarks or search in the Bible tab
 - Search filter in the book picker

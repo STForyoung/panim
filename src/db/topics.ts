@@ -32,6 +32,14 @@ export async function getAllTopics(db: SQLiteDatabase): Promise<Topic[]> {
   return db.getAllAsync<Topic>('SELECT * FROM topics ORDER BY createdAt DESC');
 }
 
+export async function renameTopic(db: SQLiteDatabase, id: string, name: string): Promise<void> {
+  const topic = await db.getFirstAsync<{ type: string }>('SELECT type FROM topics WHERE id = ?', id);
+  if (topic?.type === 'book') {
+    throw new Error('Book topics cannot be renamed.');
+  }
+  await db.runAsync('UPDATE topics SET name = ? WHERE id = ?', name, id);
+}
+
 export async function deleteTopic(db: SQLiteDatabase, id: string): Promise<void> {
   const topic = await db.getFirstAsync<{ type: string }>('SELECT type FROM topics WHERE id = ?', id);
   if (topic?.type === 'book') {

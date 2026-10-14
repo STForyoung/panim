@@ -25,7 +25,7 @@ import { setPassageDraft } from "@/src/services/passageDraft";
 import { getDisplayReference } from "@/src/utils/displayReference";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -83,17 +83,70 @@ export default function BibleScreen() {
   // Book and chapter picker
   const [pickerVisible, setPickerVisible] = useState(false);
 
-  // Restore the last chapter that was open
+  // A snippet's "Read in context" link opens this tab at its passage:
+  // /bible?book=John&chapter=3&verseStart=16&verseEnd=17&at=<timestamp>
+  const request = useLocalSearchParams<{
+    book?: string;
+    chapter?: string;
+    verseStart?: string;
+    verseEnd?: string;
+    at?: string;
+  }>();
+  // Verses to point out and scroll to after arriving from a snippet
+  const [marked, setMarked] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+  const hasPosition = useRef(false);
+
+  // Opens the requested passage, or on first load the last chapter that was open
   useEffect(() => {
-    AsyncStorage.getItem(LAST_READ_KEY)
-      .then((value) => {
-        const saved: Position | null = value ? JSON.parse(value) : null;
-        setPosition(
-          saved && BOOK_IDS[saved.book] ? saved : DEFAULT_POSITION,
+    let cancelled = false;
+
+    async function open() {
+      const chapter = parseInt(request.chapter ?? "", 10);
+      const requested =
+        request.book &&
+        BOOK_IDS[request.book] &&
+        chapter >= 1 &&
+        chapter <= getChapterCount(request.book)
+          ? { book: request.book, chapter }
+          : null;
+
+      let target: Position;
+      if (requested) {
+        target = requested;
+        await AsyncStorage.setItem(LAST_READ_KEY, JSON.stringify(target)).catch(
+          () => {},
         );
-      })
-      .catch(() => setPosition(DEFAULT_POSITION));
-  }, []);
+      } else {
+        if (hasPosition.current) return;
+        const value = await AsyncStorage.getItem(LAST_READ_KEY).catch(() => null);
+        const saved: Position | null = value ? JSON.parse(value) : null;
+        target = saved && BOOK_IDS[saved.book] ? saved : DEFAULT_POSITION;
+      }
+      if (cancelled) return;
+
+      const start = parseInt(request.verseStart ?? "", 10);
+      const end = parseInt(request.verseEnd ?? "", 10);
+      hasPosition.current = true;
+      setPosition(target);
+      setMarked(
+        requested && start >= 1
+          ? { start, end: end >= start ? end : start }
+          : null,
+      );
+      setLoading(true);
+      setError(null);
+      setVerses([]);
+      setSelectionStart(null);
+      setSelectionEnd(null);
+    }
+    open();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [request.at, request.book, request.chapter, request.verseStart, request.verseEnd]);
 
   // Pick up a translation change made in Settings
   useFocusEffect(
@@ -135,6 +188,7 @@ export default function BibleScreen() {
 
   function goTo(next: Position) {
     setPosition(next);
+    setMarked(null);
     setLoading(true);
     setError(null);
     setVerses([]);
@@ -207,6 +261,8 @@ export default function BibleScreen() {
 
   const translationName =
     (translation && TRANSLATION_NAMES[translation]) ?? translation;
+  const isMarked = (verse: number) =>
+    marked !== null && verse >= marked.start && verse <= marked.end;
   const previous = getAdjacentChapter(position, -1);
   const next = getAdjacentChapter(position, 1);
   const hasSelection = selectionStart !== null && selectionEnd !== null;
@@ -323,7 +379,21 @@ export default function BibleScreen() {
             return (
               <Pressable
                 key={v.verse}
-                style={[styles.verseRow, selected && styles.verseRowSelected]}
+                style={[
+                  styles.verseRow,
+                  isMarked(v.verse) && styles.verseRowMarked,
+                  selected && styles.verseRowSelected,
+                ]}
+                // Bring the passage a snippet pointed to into view
+                onLayout={
+                  marked?.start === v.verse
+                    ? (e) =>
+                        scrollRef.current?.scrollTo({
+                          y: Math.max(e.nativeEvent.layout.y - spacing.lg, 0),
+                          animated: false,
+                        })
+                    : undefined
+                }
                 onPress={() => handleVersePress(v.verse)}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
@@ -443,6 +513,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     marginHorizontal: -spacing.sm,
+  },
+  // The passage a snippet pointed to
+  verseRowMarked: {
+    backgroundColor: colors.accentTint,
   },
   verseRowSelected: {
     backgroundColor: colors.accentSoft,

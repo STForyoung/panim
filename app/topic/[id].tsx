@@ -2,10 +2,16 @@ import { IconButton } from "@/src/components/IconButton";
 import { ScreenHeader } from "@/src/components/ScreenHeader";
 import { SnippetCard } from "@/src/components/SnippetCard";
 import { EmptyState, LoadingState } from "@/src/components/StateViews";
+import { TopicNameSheet } from "@/src/components/TopicNameSheet";
 import { colors, spacing, typography } from "@/src/constants/theme";
 import { type Snippet } from "@/src/db/snippets";
 import { getSnippetsForTopic } from "@/src/db/snippetTopics";
-import { type Topic, deleteTopic, getTopic } from "@/src/db/topics";
+import {
+  type Topic,
+  deleteTopic,
+  getTopic,
+  renameTopic,
+} from "@/src/db/topics";
 import { scheduleNotifications } from "@/src/notifications/scheduler";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
@@ -22,6 +28,7 @@ export default function TopicDetailScreen() {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [renameVisible, setRenameVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,6 +47,12 @@ export default function TopicDetailScreen() {
       load();
     }, [db, id]),
   );
+
+  async function handleRename(name: string) {
+    await renameTopic(db, id, name);
+    setTopic((prev) => (prev ? { ...prev, name } : prev));
+    setRenameVisible(false);
+  }
 
   function handleDelete() {
     if (!topic) return;
@@ -128,12 +141,20 @@ export default function TopicDetailScreen() {
           <View>
             <ScreenHeader onBack={() => router.back()}>
               {topic.type !== "book" ? (
-                <IconButton
-                  icon="trash-outline"
-                  onPress={handleDelete}
-                  accessibilityLabel="Delete topic"
-                  color={colors.textSecondary}
-                />
+                <>
+                  <IconButton
+                    icon="trash-outline"
+                    onPress={handleDelete}
+                    accessibilityLabel="Delete topic"
+                    color={colors.textSecondary}
+                  />
+                  <IconButton
+                    icon="create-outline"
+                    onPress={() => setRenameVisible(true)}
+                    accessibilityLabel="Rename topic"
+                    color={colors.textSecondary}
+                  />
+                </>
               ) : null}
               <IconButton
                 icon="add"
@@ -162,6 +183,14 @@ export default function TopicDetailScreen() {
             hint="Tap + to add one."
           />
         }
+      />
+
+      <TopicNameSheet
+        visible={renameVisible}
+        title="Rename Topic"
+        initialName={topic.name}
+        onSave={handleRename}
+        onClose={() => setRenameVisible(false)}
       />
     </SafeAreaView>
   );
