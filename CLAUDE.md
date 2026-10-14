@@ -247,7 +247,7 @@ Topics are created in two places only: inline on the snippet form, and the "+" o
 - Home's main card and "Coming up" come from `getUpcomingReminders(db, n)` — never pick independently
 - If mode is "topic" but the topic has no snippets, or "favourites" with none, fall back to all snippets
 - Notification title is the reference; the body is the first sentence of the passage, reflection or prayer (prayer falls back to reflection, then passage)
-- Tapping a notification opens that snippet's detail screen
+- Tapping a notification opens that snippet's detail screen, including when the tap launches a closed app. This is handled in `AppInitializer` with `useLastNotificationResponse()` once the app has reached the tabs, then `clearLastNotificationResponseAsync()`. Do not switch back to `addNotificationResponseReceivedListener`: it is registered too late to catch a launching tap
 
 ## Design System
 
@@ -317,6 +317,10 @@ All colors, typography, spacing, radius, layout sizes and shadows live in `src/c
   in SDK 53+. Local notifications still work on iOS Expo Go.
   For full Android notification testing create a development build
   via: eas build --profile development --platform android
+- A tap on a notification that launches a closed app is delivered before the root layout finishes
+  loading (fonts, database), so a response listener registered there misses it and the app opens on
+  Home. Read it with `useLastNotificationResponse()` instead, and only navigate once the start-up
+  redirect has landed on the tabs, or the redirect overrides the navigation
 - A local notification cannot run app code when it fires. Anything that must vary per
   reminder has to be decided when it is scheduled
 - useSQLiteContext cannot be called in \_layout.tsx directly since
