@@ -1,0 +1,10 @@
+// Cloudflare deployment for panim.io. The site is plain static files in ./public,
+// served as-is (no build step). /privacy serves privacy.html, and so on.
+{
+  "name": "panim-website",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "html_handling": "auto-trailing-slash"
+  }
+}
