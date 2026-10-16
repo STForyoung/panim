@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "scheme": "panim",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/831b6586-6747-48a0-ae48-a9b0d51940b0"
+    },
     "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": false,
