@@ -290,6 +290,13 @@ All colors, typography, spacing, radius, layout sizes and shadows live in `src/c
 - Book topics cannot be deleted
 - `ON DELETE CASCADE` cleans up `snippet_topics`
 
+## Website (panim.io)
+
+- Plain static pages in `website/public` (home, `/privacy`, `/support`), styled to match the app. No build step
+- Deployed by Cloudflare (Workers with static assets) from the `website` folder on every push to `main`; config in `website/wrangler.jsonc`
+- `https://panim.io/privacy` and `https://panim.io/support` are the URLs given to the App Store and Play Store. Keep the privacy policy in step with what the app actually sends: today only Bolls.life (online-only Bible versions) and Expo's update service. Update its effective date when it changes
+- Contact address is `hello@panim.io`, forwarded by Cloudflare Email Routing
+
 ## Working Rules
 
 - **No backend** — everything runs on device: no server, no auth, no cloud sync (see Future backend for the direction)
