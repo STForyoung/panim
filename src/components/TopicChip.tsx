@@ -10,7 +10,9 @@ type Props = {
 export function TopicChip({ name, onRemove }: Props) {
   return (
     <View style={styles.chip}>
-      <Text style={styles.name}>{name}</Text>
+      <Text style={styles.name} numberOfLines={1}>
+        {name}
+      </Text>
       {onRemove && (
         <TouchableOpacity
           onPress={onRemove}
@@ -35,9 +37,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + spacing.xs / 2,
     gap: spacing.xs,
     alignSelf: 'flex-start',
+    // A long name is cut off with "…" instead of running past the card's edge
+    maxWidth: '100%',
   },
   name: {
     ...typography.label,
     color: colors.accent,
+    flexShrink: 1,
   },
 });

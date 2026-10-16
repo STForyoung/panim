@@ -58,6 +58,9 @@ function getGreetingIcon(): IoniconName {
   return "moon-outline";
 }
 
+// Topic chips shown on the main card before the rest are summarised as "+N"
+const MAX_HERO_TOPICS = 3;
+
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
@@ -258,9 +261,14 @@ export default function HomeScreen() {
 
               {displayTopics.length > 0 ? (
                 <View style={styles.topicsRow}>
-                  {displayTopics.map((t) => (
+                  {displayTopics.slice(0, MAX_HERO_TOPICS).map((t) => (
                     <TopicChip key={t.id} name={t.name} />
                   ))}
+                  {displayTopics.length > MAX_HERO_TOPICS ? (
+                    <TopicChip
+                      name={`+${displayTopics.length - MAX_HERO_TOPICS}`}
+                    />
+                  ) : null}
                 </View>
               ) : null}
 
