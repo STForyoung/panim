@@ -3,12 +3,11 @@ import { PressableScale } from "@/src/components/PressableScale";
 import {
   colors,
   layout,
-  radius,
   spacing,
   typography,
 } from "@/src/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TABS: Record<
@@ -38,7 +37,15 @@ export function TabBar({ state, navigation }: Props) {
     <View
       style={[
         styles.container,
-        { paddingBottom: Math.max(insets.bottom, spacing.sm) },
+        {
+          // On iPhone the inset is the home-indicator area, which already leaves room under
+          // the labels. On Android it is the system navigation bar itself, so the labels need
+          // their own space above it or the bar looks cramped.
+          paddingBottom:
+            Platform.OS === "android"
+              ? insets.bottom + spacing.sm
+              : Math.max(insets.bottom, spacing.sm),
+        },
       ]}
     >
       {state.routes.map((route: any, index: number) => {
@@ -90,7 +97,8 @@ const styles = StyleSheet.create({
   pill: {
     width: layout.tabPillWidth,
     height: layout.tabPillHeight,
-    borderRadius: radius.lg,
+    // Exactly half the height, so the ends are full semicircles on every platform
+    borderRadius: layout.tabPillHeight / 2,
     alignItems: "center",
     justifyContent: "center",
   },

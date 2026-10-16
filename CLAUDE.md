@@ -363,6 +363,27 @@ In order:
 4. **Dark mode** — `userInterfaceStyle` is already `automatic`; no dark palette exists yet. Colours are all tokens, so this is mainly a second palette plus a way to switch
 5. **Premium backend** — see below
 
+## Future Improvements
+
+Ideas discussed and agreed as worth doing after launch. None block the MVP. The first entry is the agreed first post-launch feature; the rest are not scheduled.
+
+- **Meditation mode (first post-launch feature)** — a full-screen view that shows one snippet at a time, moving between them by swiping sideways like turning pages (not a vertical feed, which invites skimming). It is most useful once a user has many snippets. Shape agreed so it stays contemplative:
+  - entered deliberately — a "Meditate" button on a topic and on the Home card — while lists stay as they are
+  - a defined set with an end (a topic's snippets, or the next few in the reminder playlist) and a quiet closing screen, never an endless supply
+  - nothing on screen but the passage and reflection, one way out, and perhaps a way to add a thought to the current snippet
+  - React Native's own paging list is enough; no new packages
+- **Multi-verse snippets** — one snippet holding separate verses (John 3:16 with 3:18) or verses from different books (John 3:16 with Romans 5:8). Today a snippet is one verse or one continuous range. The passage is already stored as a list of verses, so this mainly needs: the reference built from that list instead of start/end fields (for example "John 3:16, 18" or "John 3:16; Romans 5:8"), tap-to-toggle selection in the Bible tab (and keeping a selection while changing chapter or book, for the multi-book case), a `book` on each stored verse and links to more than one book topic (multi-book only). Existing snippets need no conversion; a range is the simplest case of a verse list
+- **"Update available" line in the app** — compare the installed version with the App Store's (Apple's public lookup by bundle id) and offer to open the store. Android needs Google's in-app update package
+- **Mark verses that already have snippets** in the Bible tab
+- **Show the translation in reminders**
+- **A native time picker** for custom reminder times (needs a package)
+- **"Remove starter snippets"** in Settings, only if users ask for it
+- **More starter content in an update** — change `metadata.starterContent` from "1" (done) to a version number, group `SEED_DATA` into numbered sets (today's two topics are set 1), and on launch add every set newer than the recorded number. Record sets added, not snippets present, so content a user deleted never comes back. Can ship over the air. Decide then: whether new content joins reminders straight away (a new topic is gentlest), whether to fill passages from the user's bundled version (KJV or BSB) instead of fixed KJV text, and whether users who deleted all starter content still get new sets
+- **Android back gesture feel** — on Android, back is the system edge swipe (must start at the very edge, shows an arrow, then jumps back), which feels less fluid than the iPhone's drag-from-edge. To revisit: turn on `android.predictiveBackGestureEnabled` in app.json (Android 14+ then previews the previous screen while swiping). Needs a new native build and testing on a phone, since it changes how back events arrive. A custom in-app swipe gesture was ruled out: it would conflict with the system gesture and the horizontal carousels
+- **iPad support** — `supportsTablet` is off; turning it on needs the layout checked on iPad and iPad screenshots for the store
+- **Occasional encouragements** — preferred route: local notifications with encouragement messages bundled in the app (for example weekly), new messages shipped over the air. Collects nothing. Alternative for a mailing list later: an optional email signup posting to a newsletter service's public form (no own server needed); this changes the App Store privacy answers from "Data Not Collected", must stay optional, needs an unticked opt-in and an updated privacy policy
+- **Remote push notifications** (for example to announce an update) — needs push tokens stored on a server, so it belongs with the premium backend
+
 ## Future backend (premium)
 
 A premium version is expected to add a remote backend for accounts and cross-device sync. The MVP stays on-device, but new work should not make that harder.
